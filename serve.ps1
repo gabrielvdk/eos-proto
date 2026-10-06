@@ -3,7 +3,7 @@
 param([int]$Port = 8080)
 
 $root = $PSScriptRoot
-$default = 'Goals & Rocks.html'
+$default = 'index.html'
 $types = @{ '.html'='text/html; charset=utf-8'; '.css'='text/css'; '.js'='text/javascript'; '.json'='application/json'
             '.svg'='image/svg+xml'; '.png'='image/png'; '.jpg'='image/jpeg'; '.ico'='image/x-icon' }
 

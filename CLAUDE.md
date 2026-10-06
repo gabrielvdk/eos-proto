@@ -4,9 +4,10 @@ A single-page tool for tracking EOS (Entrepreneurial Operating System) goals and
 Originally built as a Claude.ai artifact; the original conversation is not available, so this file is the source of context.
 
 ## What it is
-- One self-contained file: `Goals & Rocks.html` (HTML + CSS + vanilla JS, no build step, no dependencies except the Figtree Google Font).
+- One self-contained file: `index.html` (HTML + CSS + vanilla JS, no build step, no dependencies except the Figtree Google Font).
 - Open it by double-clicking; it runs in any modern browser.
 - **Preview in Claude Code's browser pane:** it can't open `file://` URLs, so serve the folder with `serve.ps1` (plain PowerShell, no Node/Python installed on this machine): run `powershell -NoProfile -ExecutionPolicy Bypass -File serve.ps1 -Port 8080` in the background, then open `http://localhost:8080`. Config is also in `.claude/launch.json` (`eos-tracker`). The server sends `no-store`, so a reload shows the latest edit.
+- **Published** via GitHub Pages from the public repo `gabrielvdk/eos-proto` (branch `main`, root) → https://gabrielvdk.github.io/eos-proto/. Publishing = commit + `git push`. The page has `<meta name="robots" content="noindex, nofollow">`. Everything in the repo is public; data people enter stays in their own browser's localStorage and is never published.
 
 ## Features
 - **One Year Plan** tab: goals at three levels (Company → Department → Team), each linked to a parent goal.
