@@ -131,9 +131,8 @@ td.title{font-weight:400}
 .lvl-Department{background:color-mix(in srgb,var(--department) 14%,transparent);color:var(--department)}
 .lvl-Team{background:color-mix(in srgb,var(--team) 16%,transparent);color:var(--team)}
 .brtag{font-size:10.5px;font-weight:700;letter-spacing:.03em;color:var(--forum);background:color-mix(in srgb,var(--forum) 14%,transparent);border-radius:5px;padding:1px 5px;margin-left:4px;white-space:nowrap}
-.chkrow{display:flex;align-items:flex-start;gap:9px;font-size:13px;cursor:pointer;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--canvas)}
-.chkrow input{accent-color:var(--forum);width:16px;height:16px;margin:1px 0 0;flex:none}
-.chkrow:has(input:checked){border-color:color-mix(in srgb,var(--forum) 45%,transparent);background:color-mix(in srgb,var(--forum) 8%,var(--surface))}
+.chkrow{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2);cursor:pointer;justify-self:start}
+.chkrow input{accent-color:var(--forum);width:14px;height:14px;margin:0}
 .goalpill{background:var(--accent-soft);color:var(--accent)}
 .teampill{background:var(--canvas);color:var(--ink-2);border:1px solid var(--line)}
 .dot{width:8px;height:8px;border-radius:50%;flex:none}
@@ -424,6 +423,9 @@ table.rr tbody td.rk{padding:9px 12px;height:auto}
 .rkhead .titlebtn{min-width:0;flex:0 1 auto;font-weight:600}
 .rkhead .titlebtn .t{display:block}
 .rkhead .updbtn{margin-left:auto}
+.rkmeta .idsbtn{margin-left:auto;border:0;background:none;color:var(--line-strong);padding:2px;border-radius:5px;display:inline-flex}
+.rkmeta .idsbtn:hover{color:var(--accent);background:var(--accent-soft)}
+.rkmeta .idsbtn svg{width:16px;height:16px}
 .updbtn.has{color:var(--ink-2)}
 .rkmeta{display:flex;align-items:center;gap:10px}
 .rkmeta .stbtn{padding:2px 24px 2px 9px;font-size:12px;min-width:124px}
@@ -830,7 +832,7 @@ function renderReview(){
   const weeks=[];for(const w=mondayOf(start);w<=end;w.setDate(w.getDate()+7))weeks.push(localISO(w));
   const nowWk=localISO(mondayOf(TODAY));
   const wkCls=k=>k<nowWk?"past":k===nowWk?"now":"";
-  const head=`<div class="viewhead"><h1>Rock Review${teamFilter?` <span class="dim">· ${esc(teamFilter)}</span>`:""}</h1><span class="count">${rocks.length} rocks · week ${isoWeek(TODAY)}</span><div class="spacer"></div>
+  const head=`<div class="viewhead"><h1>Rock Review${teamFilter?` <span class="dim">· ${esc(teamFilter)}</span>`:""}</h1><span class="count">${rocks.length} rock${rocks.length===1?"":"s"} · week ${isoWeek(TODAY)}</span><div class="spacer"></div>
     <select class="ctl" data-act="quarter" aria-label="Quarter">${QUARTERS.map(q=>`<option ${q===quarterFilter?"selected":""}>${q}</option>`).join("")}</select></div>`;
   const cols=`<thead><tr>${weeks.map(k=>`<th class="wk ${wkCls(k)}" ${k===nowWk?'aria-current="date"':""}><div class="n">Wk ${isoWeek(parseD(k))}</div><div class="dt">${fmtDate(k)}</div></th>`).join("")}</tr></thead>`;
   const chip=(r,m)=>{
@@ -851,7 +853,7 @@ function renderReview(){
     const undated=(r.milestones||[]).filter(m=>!m.deadline).length;
     return `<tr class="${rowCls(r)}"><td class="rk"><div class="rkcell">
       <div class="rkhead">${ownerHTML(r.ownerId)}<button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${r.team&&r.team!==teamFilter?`<span class="teamtag">${esc(r.team)}</span>`:""}${brTag(r)}${updBtn(r)}</div>
-      <div class="rkmeta">${statusSelect(r)}${progressHTML(r)}${undated?`<span class="muted" style="font-size:12px">${undated} undated</span>`:""}</div>
+      <div class="rkmeta">${statusSelect(r)}${progressHTML(r)}${undated?`<span class="muted" style="font-size:12px">${undated} undated</span>`:""}${idsBtn(r)}</div>
     </div></td></tr>`;
   }).join("");
   let right=rocks.map(r=>{
@@ -920,9 +922,21 @@ function renderL10Pick(){
       return `<button class="pteam" data-act="pickteam" data-team="${esc(t)}"><span class="dot" style="background:var(--team)"></span>${esc(t)}${n?`<span class="n">${n} open</span>`:""}</button>`}).join("")}</div></div>`).join("")}
   </div>`;
 }
-function addCard(col,title){
-  const c={id:uid(),team:teamFilter,column:col,title,description:"",owners:[],createdBy:ME,createdAt:todayISO(),updates:[],history:[]};
-  logHist(c,"Created");S.cards.push(c);save();
+function addCard(col,title,team=teamFilter){
+  const c={id:uid(),team,column:col,title,description:"",owners:[],createdBy:ME,createdAt:todayISO(),updates:[],history:[]};
+  logHist(c,"Created");S.cards.push(c);save();return c;
+}
+/* Rock Review → IDS shortcut: the board of the team being viewed, else the rock's own team; none if neither has a board */
+const idsTarget=r=>isBoardTeam(teamFilter)?teamFilter:isBoardTeam(r.team)?r.team:null;
+const ICON_IDS='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h7M2.5 8h5M2.5 12h4"/><path d="M12 8.5v5M9.5 11h5"/></svg>';
+function idsBtn(r){
+  const t=idsTarget(r);if(!t)return "";
+  return `<button class="idsbtn" data-act="rock2ids" data-id="${r.id}" aria-label="Add to IDS" data-tip="Add to the IDS list of ${esc(t)}:\nRock Review: ${esc(r.title)}">${ICON_IDS}</button>`;
+}
+function rockToIDS(r){
+  const team=idsTarget(r),title=`Rock Review: ${r.title}`;if(!team)return;
+  if(S.cards.some(c=>c.team===team&&c.column==="ids"&&c.title===title)){toast(`Already on the IDS list of ${team}`);return}
+  addCard("ids",title,team);toast(`Added to IDS · ${team}`);
 }
 // move a card to a column, before another card (or to the end of that column)
 function moveCard(id,col,beforeId){
@@ -1127,9 +1141,9 @@ function drawRockModal(){
       ${field("Status",`<select id="f-status">${opt(STATUSES.map(s=>s[0]),r.status)}</select>`)}
       ${field("Contributes to goal",pickerHTML("f-goal"))}
     </div>
-    <label class="chkrow"><input type="checkbox" id="f-trackbr" ${r.trackBR?"checked":""}><span><b>Track in Business Review</b><span class="muted"> — shown in Business Review alongside OT - Escalate rocks</span></span></label>
     ${field("Description",`<textarea id="f-desc">${esc(r.description)}</textarea>`)}
     ${field("Deliverables",`<textarea id="f-deliv">${esc(r.deliverables)}</textarea>`)}
+    <label class="chkrow"><input type="checkbox" id="f-trackbr" ${r.trackBR?"checked":""}>Track in Business Review</label>
   </div>`}
   </div>
   ${side}
@@ -1321,6 +1335,7 @@ $("#app").addEventListener("click",e=>{
   else if(act==="addupd"){const same=updOpen&&updOpen.kind===b.dataset.kind&&updOpen.id===id;updOpen=same?null:{kind:b.dataset.kind,id};render()}
   else if(act==="pickteam"){teamFilter=b.dataset.team;l10Add=null;render()}
   else if(act==="editcard")cardModal(card(id));
+  else if(act==="rock2ids")rockToIDS(S.rocks.find(r=>r.id===id));
   else if(act==="kadd"){l10Add=b.dataset.col;render()}
   else if(act==="kaddcancel"){l10Add=null;render()}
   else if(act==="kaddsave")submitComposer();

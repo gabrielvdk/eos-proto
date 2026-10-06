@@ -23,6 +23,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
   - Each dated milestone is a chip in its deadline week (done / overdue / due ≤7 days / to do); clicking a chip toggles done.
   - Left column per rock: owner, title, team tag (hidden when a team is filtered), update icon (hover = latest update, click = quick-update popover), status dropdown, progress bar.
   - Layout is two tables side by side (`.rr-left` fixed, `.rr-right` inside `.rr-scroll`) so only the weeks scroll; `syncReviewRows()` equalises row heights after each render. The update popover is rendered outside the tables so rows can't cover it.
+  - Light-grey IDS icon under the update icon (`idsBtn` / `rockToIDS`): adds "Rock Review: <rock title>" to the end of the IDS column of the viewed team/forum, else the rock's own team; hidden when neither has a board; no duplicates of an open IDS card.
   - Horizontal scroll is kept across re-renders (`rrScroll`); entering the view or changing quarter jumps to the current week.
 - Rock modal: left tabs **Details · Milestones** (`modalState.left`), right tabs **Updates · History** (`modalState.tab`).
   - Milestones tab: round done-checkbox, inline name, compact date label that opens the native picker (`showPicker()` on a hidden date input), delete on hover; Enter jumps to the next milestone / adds one. Edits live on the modal's working copy and are saved (and logged to history) with "Save changes".
