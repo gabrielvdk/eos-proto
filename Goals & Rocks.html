@@ -131,21 +131,27 @@ td.title{font-weight:400}
 .teampill{background:var(--canvas);color:var(--ink-2);border:1px solid var(--line)}
 .dot{width:8px;height:8px;border-radius:50%;flex:none}
 
-/* status select styled as colored block */
-.status{position:relative;display:inline-block}
-.status select{appearance:none;-webkit-appearance:none;border:0;border-radius:7px;padding:5px 26px 5px 11px;font-weight:600;font-size:13px;min-width:132px;color:#fff;cursor:pointer}
-.status::after{content:"";position:absolute;right:10px;top:50%;width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-70%) rotate(45deg);color:rgba(255,255,255,.85);pointer-events:none}
+/* status: coloured trigger button + custom menu (native <select> popups can't be styled on Windows) */
 .st-not{background:var(--grey-pill)!important;color:var(--ink-2)!important}
-.status:has(select.st-not)::after{color:var(--ink-2)}
 .st-on{background:var(--green)!important}
 .st-off{background:var(--red)!important}
 .st-esc{background:var(--red-deep)!important}
 .st-done{background:var(--green-deep)!important}
-.st-can{background:repeating-linear-gradient(135deg,var(--grey-pill) 0 6px,color-mix(in srgb,var(--grey-pill) 70%,var(--surface)) 6px 12px)!important;color:var(--ink-2)!important;text-decoration:line-through}
-.status:has(select.st-can)::after{color:var(--ink-2)}
-/* each option shows its own status color, not the selected one's */
-.status option{color:#fff;font-weight:600;padding:6px 10px}
-.status option.st-can{background:var(--grey-pill)!important}
+.st-can{background:repeating-linear-gradient(135deg,var(--grey-pill) 0 6px,color-mix(in srgb,var(--grey-pill) 70%,var(--surface)) 6px 12px)!important;color:var(--ink-2)!important}
+.stbtn{position:relative;border:0;border-radius:7px;padding:5px 28px 5px 11px;font-weight:600;font-size:13px;min-width:132px;color:#fff;text-align:left;white-space:nowrap}
+.stbtn.st-can{text-decoration:line-through}
+.stbtn::after{content:"";position:absolute;right:11px;top:50%;width:5px;height:5px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-70%) rotate(45deg);opacity:.8}
+.stbtn[aria-expanded="true"]{box-shadow:0 0 0 3px var(--accent-soft)}
+.stbtn:hover{filter:brightness(1.05)}
+.stmenu{position:fixed;z-index:15;min-width:200px;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;box-shadow:var(--shadow);padding:4px}
+.stmenu[hidden]{display:none}
+.stmenu .it{display:grid;grid-template-columns:12px 1fr 16px;align-items:center;gap:10px;width:100%;border:0;background:none;padding:7px 10px;border-radius:7px;text-align:left;font-size:13.5px;font-weight:500;color:var(--ink)}
+.stmenu .it:hover,.stmenu .it:focus-visible{background:var(--canvas);outline:none}
+.stmenu .it[aria-checked="true"]{font-weight:700}
+.stmenu .it .sq{width:12px;height:12px;border-radius:4px}
+.stmenu .it .ck{color:var(--accent);display:inline-flex}
+.stmenu .it .ck svg{width:14px;height:14px}
+.stmenu .sep{height:1px;background:var(--line);margin:4px 6px}
 /* milestone toggle */
 .ms-toggle{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:4px 10px;font-weight:600;font-size:12.5px;color:var(--ink-2);min-width:68px}
 .ms-toggle.done{background:var(--green);border-color:var(--green);color:#fff}
@@ -312,7 +318,8 @@ table.rr tbody td.rk{padding:9px 12px;height:auto}
 .rkhead .updbtn{margin-left:auto}
 .updbtn.has{color:var(--ink-2)}
 .rkmeta{display:flex;align-items:center;gap:10px}
-.rkmeta .status select{padding:2px 24px 2px 9px;font-size:12px;min-width:124px}
+.rkmeta .stbtn{padding:2px 24px 2px 9px;font-size:12px;min-width:124px}
+.rkmeta .stbtn::after{right:9px}
 .rkmeta .prog .bar{height:10px}
 tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
 .chip{display:block;width:100%;text-align:left;border:1px solid var(--line);border-left:3px solid var(--grey-fill);background:var(--surface);border-radius:6px;padding:3px 8px;font-size:12.5px;line-height:1.3;margin-bottom:4px;color:var(--ink)}
@@ -344,6 +351,7 @@ tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
 <div id="tip" role="tooltip"></div>
 
 <div class="backdrop" id="backdrop"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="stmenu" id="stmenu" role="menu" aria-label="Set status" hidden></div>
 <div class="backdrop" id="cbackdrop" style="z-index:25"></div>
 <div class="toast" id="toast"></div>
 
@@ -536,7 +544,7 @@ function progressHTML(r){
   return `<div class="prog" data-tip="${done} of ${n} done${over?`, ${over} overdue`:""}"><div class="bar"><span class="done" style="width:${done/n*100}%"></span><span class="over" style="width:${over/n*100}%"></span></div><span class="lbl">${done}/${n}</span></div>`;
 }
 function statusSelect(r){
-  return `<span class="status"><select class="${statusClass(r.status)}" data-act="status" data-id="${r.id}" aria-label="Status">${STATUSES.map(([s,c])=>`<option class="${c}" ${s===r.status?"selected":""}>${s}</option>`).join("")}</select></span>`;
+  return `<button class="stbtn ${statusClass(r.status)}" data-act="statusmenu" data-id="${r.id}" aria-haspopup="menu" aria-expanded="false" aria-label="Status: ${esc(r.status)}">${esc(r.status)}</button>`;
 }
 function goalChainText(g){
   const chain=[];let cur=g,guard=0;while(cur&&guard++<10){chain.unshift(cur);cur=cur.parentId?goal(cur.parentId):null}
@@ -864,6 +872,42 @@ function hideTip(){tip.classList.remove("show");tipEl=null}
 document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el!==tipEl){el?showTip(el):hideTip()}});
 document.addEventListener("scroll",hideTip,true);
 $("#resetBtn").addEventListener("click",()=>askConfirm("Replace everything with the sample data? All your changes will be lost.","Reset").then(ok=>{if(ok){S=seed();save();quarterFilter=null;render();toast("Sample data restored")}}));
+/* status menu (one shared element, positioned under the clicked status button) */
+const stMenu={id:null,btn:null};
+const CHECK='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg>';
+function openStatusMenu(btn){
+  closeStatusMenu();
+  const r=S.rocks.find(x=>x.id===btn.dataset.id);if(!r)return;
+  const menu=$("#stmenu");
+  menu.innerHTML=STATUSES.map(([s,c],i)=>`${i===4?'<div class="sep" role="separator"></div>':""}<button class="it" role="menuitemradio" aria-checked="${s===r.status}" data-st="${esc(s)}"><span class="sq ${c}"></span><span>${esc(s)}</span><span class="ck">${s===r.status?CHECK:""}</span></button>`).join("");
+  menu.hidden=false;
+  const b=btn.getBoundingClientRect(),mh=menu.offsetHeight,mw=menu.offsetWidth;
+  menu.style.left=Math.max(8,Math.min(b.left,innerWidth-mw-8))+"px";
+  menu.style.top=(b.bottom+6+mh>innerHeight-8&&b.top-6-mh>8?b.top-6-mh:b.bottom+6)+"px"; // flip up when there's no room below
+  stMenu.id=r.id;stMenu.btn=btn;btn.setAttribute("aria-expanded","true");
+  ($('[aria-checked="true"]',menu)||$(".it",menu)).focus();
+}
+function closeStatusMenu(refocus){
+  if(!stMenu.id)return;
+  $("#stmenu").hidden=true;
+  if(stMenu.btn&&stMenu.btn.isConnected){stMenu.btn.setAttribute("aria-expanded","false");if(refocus)stMenu.btn.focus()}
+  stMenu.id=null;stMenu.btn=null;
+}
+function setStatus(id,status){
+  const r=S.rocks.find(x=>x.id===id);if(!r||r.status===status)return;
+  const old=r.status;r.status=status;logHist(r,`Status changed from ${old} to ${status}`);save();render();toast(`Status: ${status}`);
+}
+$("#stmenu").addEventListener("click",e=>{const it=e.target.closest("[data-st]");if(!it)return;const id=stMenu.id;closeStatusMenu();setStatus(id,it.dataset.st)});
+$("#stmenu").addEventListener("keydown",e=>{
+  const its=[...document.querySelectorAll("#stmenu .it")],i=its.indexOf(document.activeElement);
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();its[(i+(e.key==="ArrowDown"?1:-1)+its.length)%its.length].focus()}
+  else if(e.key==="Home"||e.key==="End"){e.preventDefault();its[e.key==="Home"?0:its.length-1].focus()}
+  else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();closeStatusMenu(true)}
+  else if(e.key==="Tab")closeStatusMenu();
+});
+document.addEventListener("mousedown",e=>{if(stMenu.id&&!e.target.closest("#stmenu")&&e.target.closest("[data-act='statusmenu']")!==stMenu.btn)closeStatusMenu()});
+document.addEventListener("scroll",e=>{if(stMenu.id&&!(e.target.closest&&e.target.closest("#stmenu")))closeStatusMenu()},true);
+window.addEventListener("resize",()=>closeStatusMenu());
 /* in-app confirmation dialog (window.confirm() is blocked in some embedded browsers) */
 function askConfirm(msg,okLabel="Delete"){
   return new Promise(resolve=>{
@@ -892,6 +936,7 @@ $("#app").addEventListener("click",e=>{
   else if(act==="newrock")rockModal(null);
   else if(act==="editrock")rockModal(S.rocks.find(r=>r.id===id));
   else if(act==="addupd"){const same=updOpen&&updOpen.kind===b.dataset.kind&&updOpen.id===id;updOpen=same?null:{kind:b.dataset.kind,id};render()}
+  else if(act==="statusmenu"){stMenu.id===id?closeStatusMenu():openStatusMenu(b)}
   else if(act==="updcancel"){updOpen=null;render()}
   else if(act==="updpost")postQuickUpdate();
   else if(act==="mtoggle"){const r=S.rocks.find(r=>r.id===b.dataset.rock);const m=r.milestones.find(x=>x.id===id);m.done=!m.done;logHist(r,`Milestone “${m.title}” marked ${m.done?"done":"to do"}`);save();render()}
@@ -902,8 +947,7 @@ $("#app").addEventListener("click",e=>{
 $("#app").addEventListener("change",e=>{
   const el=e.target;const {act,id}=el.dataset;
   if(el.dataset.filter==="type"){el.checked?fTypes.add(el.value):fTypes.delete(el.value);render();return}
-  if(act==="status"){const r=S.rocks.find(x=>x.id===id);const old=r.status;r.status=el.value;logHist(r,`Status changed from ${old} to ${r.status}`);save();render();toast(`Status: ${r.status}`)}
-  else if(act==="quarter"){quarterFilter=el.value;rrScroll=null;S.quarter=el.value;save();render()}
+  if(act==="quarter"){quarterFilter=el.value;rrScroll=null;S.quarter=el.value;save();render()}
   else if(act==="mtitle"||act==="mdate"){const m=S.rocks.find(r=>r.id===el.dataset.rock).milestones.find(x=>x.id===id);
     if(act==="mtitle")m.title=el.value.trim()||m.title;else m.deadline=el.value;save();render()}
 });
