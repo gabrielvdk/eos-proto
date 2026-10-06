@@ -236,6 +236,10 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .combo .item.dis:hover{background:transparent}
 .combo .item .lvl{font-size:11.5px;color:var(--ink-3);margin-left:auto;white-space:nowrap}
 .combo .none{padding:8px 10px;color:var(--ink-3);font-size:13px}
+.combo .grp{padding:9px 10px 3px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}
+#f-goal .list{max-height:320px}
+.grid12{display:grid;grid-template-columns:1fr 2fr;gap:12px}
+@media (max-width:640px){.grid12{grid-template-columns:1fr}}
 .mtabs{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid var(--line)}
 .mtabs button{border:0;background:none;padding:10px 12px;font-weight:600;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
 .mtabs button[aria-selected="true"]{color:var(--ink);border-color:var(--accent)}
@@ -795,18 +799,19 @@ function initParentCombo(g){
   const blocked=descendants(g.id);
   const flat=()=>{const out=[];const kids=p=>S.goals.filter(x=>(x.parentId||null)===p);const walk=(p,dep)=>kids(p).forEach(x=>{out.push({g:x,dep});walk(x.id,dep+1)});walk(null,0);return out};
   const setLabel=()=>{const p=modalState.parentId?goal(modalState.parentId):null;inp.value=p?p.title:"";inp.placeholder=p?"":"None — type to search";};
-  let active=-1;
+  let active=-1,typed=false; // until the user types, the input shows the current parent and must not act as a filter
   const draw=()=>{
-    const q=inp.value.trim().toLowerCase();
+    const q=typed?inp.value.trim().toLowerCase():"";
     const rows=flat().filter(({g:x})=>!blocked.has(x.id)&&x.id!==g.id&&(!q||x.title.toLowerCase().includes(q)||x.team.toLowerCase().includes(q)));
     const items=[`<div class="item ${!modalState.parentId?"sel":""}" data-id="">— none —</div>`].concat(rows.map(({g:x,dep},i)=>{
       const ok=allowed(x);return`<div class="item ${ok?"":"dis"} ${x.id===modalState.parentId?"sel":""}" data-id="${ok?x.id:""}" data-dis="${!ok}" style="padding-left:${10+(q?0:dep*18)}px"><span class="dot" style="background:var(--${x.level.toLowerCase()})"></span><span>${esc(x.title)}</span><span class="lvl">${x.level}${ok?"":" · not a higher level"}</span></div>`}));
     list.innerHTML=rows.length||!q?items.join(""):`<div class="none">No goals match “${esc(inp.value)}”</div>`;active=-1;
   };
-  const open=()=>{box.classList.add("open");inp.setAttribute("aria-expanded","true");draw()};
-  const close=()=>{box.classList.remove("open");inp.setAttribute("aria-expanded","false");setLabel()};
-  inp.addEventListener("focus",()=>{inp.select();open()});
-  inp.addEventListener("input",()=>{open()});
+  const open=()=>{box.classList.add("open");inp.setAttribute("aria-expanded","true");draw();$(".item.sel",list)?.scrollIntoView({block:"nearest"})};
+  const close=()=>{box.classList.remove("open");inp.setAttribute("aria-expanded","false");typed=false;setLabel()};
+  inp.addEventListener("focus",()=>{typed=false;inp.select();open()});
+  inp.addEventListener("mousedown",()=>{if(document.activeElement===inp&&!box.classList.contains("open"))open()});
+  inp.addEventListener("input",()=>{typed=true;open()});
   inp.addEventListener("keydown",e=>{
     const its=[...list.querySelectorAll(".item:not(.dis)")];
     if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();active=Math.max(0,Math.min(its.length-1,active+(e.key==="ArrowDown"?1:-1)));its.forEach((it,i)=>it.classList.toggle("active",i===active));its[active]?.scrollIntoView({block:"nearest"})}
@@ -824,17 +829,46 @@ function rockModal(r){
   modalState={kind:"rock",obj:work,isNew,orig:r,tab:"updates"};
   drawRockModal();
 }
-function goalOptionsFor(team,currentId){
-  let list=S.goals.filter(g=>g.level==="Team"&&g.team===team);
-  if(!list.length) list=S.goals.filter(g=>g.team===team);
-  const cur=currentId?goal(currentId):null;
-  if(cur&&!list.includes(cur)) list=[cur,...list];
-  return list;
+/* searchable "Contributes to goal" picker: all goals, the rock's own team first, then Company / Department / other teams */
+function initGoalCombo(r){
+  const box=$("#f-goal"),inp=$("#f-goal-in"),list=$("#f-goal-list");
+  const byLevel=(a,b)=>LEVELS.indexOf(a.level)-LEVELS.indexOf(b.level)||a.title.localeCompare(b.title);
+  const byTeam=(a,b)=>a.team.localeCompare(b.team)||a.title.localeCompare(b.title);
+  const setLabel=()=>{const g=r.goalId?goal(r.goalId):null;inp.value=g?g.title:"";inp.placeholder=g?"":"None — type to search"};
+  let active=-1,typed=false; // until the user types, the input shows the current goal and must not act as a filter
+  const draw=()=>{
+    const q=typed?inp.value.trim().toLowerCase():"",team=$("#f-team").value;
+    const match=g=>!q||[g.title,g.team,g.level].some(s=>s.toLowerCase().includes(q));
+    const rest=S.goals.filter(g=>g.team!==team);
+    const groups=[[`${team} goals`,S.goals.filter(g=>g.team===team).sort(byLevel),true],
+      ["Company",rest.filter(g=>g.level==="Company").sort(byTeam)],
+      ["Department",rest.filter(g=>g.level==="Department").sort(byTeam)],
+      ["Other teams",rest.filter(g=>g.level==="Team").sort(byTeam)]];
+    let html=q?"":`<div class="item ${!r.goalId?"sel":""}" data-id="">— none —</div>`,hits=0;
+    groups.forEach(([name,gs,own])=>{gs=gs.filter(match);if(!gs.length)return;hits+=gs.length;
+      html+=`<div class="grp">${esc(name)}</div>`+gs.map(g=>`<div class="item ${g.id===r.goalId?"sel":""}" data-id="${g.id}"><span class="dot" style="background:var(--${g.level.toLowerCase()})"></span><span>${esc(g.title)}</span><span class="lvl">${own?g.level:g.level==="Company"?"":esc(g.team)}</span></div>`).join("")});
+    list.innerHTML=hits||!q?html:`<div class="none">No goals match “${esc(inp.value)}”</div>`;active=-1;
+  };
+  const open=()=>{box.classList.add("open");inp.setAttribute("aria-expanded","true");draw();$(".item.sel",list)?.scrollIntoView({block:"nearest"})};
+  const close=()=>{box.classList.remove("open");inp.setAttribute("aria-expanded","false");typed=false;setLabel()};
+  const pick=id=>{r.goalId=id||null;close()};
+  inp.addEventListener("focus",()=>{typed=false;inp.select();open()});
+  inp.addEventListener("mousedown",()=>{if(document.activeElement===inp&&!box.classList.contains("open"))open()});
+  inp.addEventListener("input",()=>{typed=true;open()});
+  inp.addEventListener("keydown",e=>{
+    const its=[...list.querySelectorAll(".item")];
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();active=Math.max(0,Math.min(its.length-1,active+(e.key==="ArrowDown"?1:-1)));its.forEach((it,i)=>it.classList.toggle("active",i===active));its[active]?.scrollIntoView({block:"nearest"})}
+    else if(e.key==="Enter"){e.preventDefault();const it=its[active]||its.find(x=>x.dataset.id)||its[0];if(it)pick(it.dataset.id)}
+    else if(e.key==="Escape"){e.stopPropagation();close();inp.blur()}
+  });
+  list.addEventListener("mousedown",e=>{const it=e.target.closest(".item");if(!it)return;e.preventDefault();pick(it.dataset.id)});
+  inp.addEventListener("blur",()=>setTimeout(close,120));
+  $("#f-team").addEventListener("change",()=>{if(box.classList.contains("open"))draw()});
+  setLabel();
 }
 function drawRockModal(){
   const r=modalState.obj,isNew=modalState.isNew,tab=modalState.tab;
   const updHTML=r.updates.length?r.updates.map(u=>`<div class="upd"><div>${esc(u.text)}</div><div class="meta">${fmtDate(u.at)}</div></div>`).join(""):`<div class="muted">No updates yet.</div>`;
-  const goalOpts=goalOptionsFor(r.team,r.goalId);
   const left=modalState.left||"details";
   const msHTML=`<div class="msl">${r.milestones.map(m=>`<div class="msr ${m.done?"done":""}" data-row="${m.id}">
       <button class="mck" data-m="mstoggle" data-id="${m.id}" aria-pressed="${m.done}" aria-label="Done" title="Mark ${m.done?"to do":"done"}">${CHECK}</button>
@@ -859,9 +893,9 @@ function drawRockModal(){
       ${field("Team",`<select id="f-team">${opt(S.teams,r.team)}</select>`)}
       ${field("Quarter",`<select id="f-quarter">${opt(QUARTERS,r.quarter)}</select>`)}
     </div>
-    <div class="grid2">
+    <div class="grid12">
       ${field("Status",`<select id="f-status">${opt(STATUSES.map(s=>s[0]),r.status)}</select>`)}
-      ${field("Contributes to goal",`<select id="f-goal"><option value="">— none —</option>${opt(goalOpts,r.goalId,g=>g.level==="Team"?g.title:`${g.title} (${g.level})`,g=>g.id)}</select>`)}
+      ${field("Contributes to goal",`<div class="combo" id="f-goal"><input id="f-goal-in" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="f-goal-list"><div class="list" id="f-goal-list" role="listbox"></div></div>`)}
     </div>
     ${field("Description",`<textarea id="f-desc">${esc(r.description)}</textarea>`)}
     ${field("Deliverables",`<textarea id="f-deliv">${esc(r.deliverables)}</textarea>`)}
@@ -871,13 +905,13 @@ function drawRockModal(){
   </div>
   <footer>${isNew?"":`<button class="btn danger" data-m="delrock">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="saverock">${isNew?"Create rock":"Save changes"}</button></footer>`);
   $("#modal").classList.add("wide");
-  $("#f-team")?.addEventListener("change",e=>{const sel=$("#f-goal");const cur=sel.value;const list=goalOptionsFor(e.target.value,null);sel.innerHTML=`<option value="">— none —</option>`+opt(list,list.some(g=>g.id===cur)?cur:"",g=>g.level==="Team"?g.title:`${g.title} (${g.level})`,g=>g.id)});
+  if($("#f-goal"))initGoalCombo(r);
 }
 const msDateCls=m=>!m.deadline?"empty":m.done?"":isPast(m.deadline)?"over":isSoon(m.deadline)?"soon":"";
 function syncRockFields(){
   const r=modalState.obj;
   if(!$("#f-title"))return; // Details tab not shown; its values were synced when leaving it
-  r.title=$("#f-title").value;r.ownerId=$("#f-owner").value;r.team=$("#f-team").value;r.quarter=$("#f-quarter").value;r.status=$("#f-status").value;r.goalId=$("#f-goal").value||null;
+  r.title=$("#f-title").value;r.ownerId=$("#f-owner").value;r.team=$("#f-team").value;r.quarter=$("#f-quarter").value;r.status=$("#f-status").value; // goalId is set directly by the goal picker
   r.description=$("#f-desc").value;r.deliverables=$("#f-deliv").value;
 }
 function updateModal(kind,id){
