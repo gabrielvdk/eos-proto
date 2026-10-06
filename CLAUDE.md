@@ -17,6 +17,11 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
   - Owner avatar, status (Not Set / On-Track / Off-Track / Off-Track Escalate / Done / Cancelled), milestone progress bar (done / overdue / to do), last update, linked goal (tooltip shows full goal chain).
   - Expand a rock to edit milestones inline (title, done toggle, deadline, per-milestone updates, delete).
   - Quick-update popover on rocks and milestones; rock modal with Updates and History tabs.
+- **Rock Review** tab: meeting view. Rows = rocks of the selected quarter/team; columns = ISO weeks (header: "Wk n" + Monday date) spanning the quarter, widened to include every milestone deadline.
+  - Past week headers red-soft, current week solid accent (and tinted column), future weeks plain.
+  - Each dated milestone is a chip in its deadline week (done / overdue / due ≤7 days / to do); clicking a chip toggles done.
+  - Sticky left column per rock: owner, title, team, status dropdown, progress bar, last update + quick-update button.
+  - Horizontal scroll is kept across re-renders (`rrScroll`); entering the view or changing quarter jumps to the current week.
 - Light/dark theme follows the OS (`prefers-color-scheme`).
 
 ## Data & storage

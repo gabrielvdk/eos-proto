@@ -276,6 +276,37 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .legend{display:flex;gap:14px;align-items:center;color:var(--ink-3);font-size:12px;flex-wrap:wrap}
 .legend span{display:inline-flex;align-items:center;gap:5px}
 .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+/* rock review (weekly milestone grid) */
+table.rr{width:auto;min-width:100%;border-collapse:separate;border-spacing:0}
+table.rr th.rk,table.rr td.rk{position:sticky;left:0;z-index:2;background:var(--surface);width:360px;min-width:360px;max-width:360px;border-right:1px solid var(--line-strong)}
+table.rr thead th.rk{vertical-align:bottom}
+table.rr th.wk{width:150px;min-width:150px;max-width:150px;padding:8px 10px;border-left:1px solid var(--line);vertical-align:top}
+.wk .n{font-weight:700;font-size:13px;color:var(--ink)}
+.wk .dt{font-weight:500;font-size:12px;color:var(--ink-3)}
+th.wk.past{background:var(--red-soft)}
+th.wk.past .n,th.wk.past .dt{color:var(--ink-2)}
+th.wk.now{background:var(--accent)}
+th.wk.now .n{color:#fff}
+th.wk.now .dt{color:rgba(255,255,255,.85)}
+table.rr td.wkc{vertical-align:top;padding:8px;border-left:1px solid var(--line);width:150px;min-width:150px;max-width:150px}
+table.rr td.wkc.now{background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
+table.rr tbody td.rk{padding:10px 12px}
+.rkcell{display:grid;gap:7px}
+.rkhead{display:flex;align-items:center;gap:8px;min-width:0}
+.rkhead .titlebtn{min-width:0;flex:0 1 auto;font-weight:600}
+.rkhead .titlebtn .t{display:block}
+.rkmeta{display:flex;align-items:center;gap:10px}
+tr.cancelled .rkhead,tr.cancelled td.wkc,tr.cancelled .lastupd{opacity:.5}
+.chip{display:grid;gap:1px;width:100%;text-align:left;border:1px solid var(--line);border-left:3px solid var(--grey-fill);background:var(--surface);border-radius:7px;padding:5px 8px;font-size:12.5px;line-height:1.3;margin-bottom:6px;color:var(--ink)}
+.chip:last-child{margin-bottom:0}
+.chip:hover{box-shadow:0 0 0 1px var(--accent)}
+.chip .when{font-size:11px;font-weight:600;color:var(--ink-3)}
+.chip.done{border-left-color:var(--green);background:var(--green-soft)}
+.chip.done .t{color:var(--ink-2);text-decoration:line-through}
+.chip.over{border-left-color:var(--red);background:var(--red-soft)}
+.chip.over .when{color:var(--red)}
+.chip.soon{border-left-color:var(--amber)}
 </style>
 </head>
 <body>
@@ -288,6 +319,7 @@ table.tree .pill{padding:2px 9px;font-size:12px}
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" data-view="plan" aria-selected="true">One Year Plan</button>
     <button class="tab" role="tab" data-view="rocks" aria-selected="false">Rocks</button>
+    <button class="tab" role="tab" data-view="review" aria-selected="false">Rock Review</button>
   </div>
   <div class="spacer"></div>
   <label class="topfilter" id="teamFilterWrap" hidden>Team <select class="ctl" id="teamFilter" aria-label="Filter rocks by team"></select></label>
@@ -440,6 +472,7 @@ load();
 
 /* ---------- ui state ---------- */
 let view="plan", planMode="list", quarterFilter=null, updOpen=null, teamFilter="";
+let rrScroll=null; // Rock Review horizontal scroll position; null = jump to the current week on next render
 let sortCol="type", sortDir=1; // plan list sort
 const fTypes=new Set(LEVELS); // plan type filter (checked types)
 const collapsed=new Set(), expanded=new Set();
@@ -452,7 +485,12 @@ const initials=n=>n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
 const fmtDate=s=>{if(!s)return"";const dt=new Date(s+"T00:00:00");return dt.toLocaleDateString("en-GB",{day:"numeric",month:"short"})};
 const isPast=s=>s&&new Date(s+"T00:00:00")<TODAY;
 const isSoon=s=>{if(!s)return false;const dt=new Date(s+"T00:00:00");const diff=(dt-TODAY)/864e5;return diff>=0&&diff<=7};
-const todayISO=()=>TODAY.toISOString().slice(0,10);
+const localISO=dt=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+const todayISO=()=>localISO(TODAY); // local date; toISOString() would give yesterday in timezones east of UTC
+const parseD=s=>new Date(s+"T00:00:00");
+const mondayOf=dt=>{const x=new Date(dt);x.setHours(0,0,0,0);x.setDate(x.getDate()-(x.getDay()+6)%7);return x};
+const isoWeek=dt=>{const x=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));x.setUTCDate(x.getUTCDate()+4-(x.getUTCDay()||7));return Math.ceil(((x-Date.UTC(x.getUTCFullYear(),0,1))/864e5+1)/7)};
+const quarterRange=q=>{const [,n,y]=q.match(/Q(\d) (\d{4})/).map(Number);return [new Date(y,(n-1)*3,1),new Date(y,n*3,0)]};
 const statusClass=st=>(STATUSES.find(x=>x[0]===st)||STATUSES[0])[1];
 function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),1600)}
 
@@ -587,12 +625,53 @@ function rockRow(r){
   return main+sub;
 }
 
+/* ---------- rock review view ---------- */
+function renderReview(){
+  if(!quarterFilter) quarterFilter=S.quarter||QUARTERS[0];
+  const rocks=S.rocks.filter(r=>r.quarter===quarterFilter&&(!teamFilter||r.team===teamFilter));
+  // weeks span the quarter, widened to include every milestone deadline of the shown rocks
+  let [start,end]=quarterRange(quarterFilter);
+  rocks.forEach(r=>(r.milestones||[]).forEach(m=>{if(!m.deadline)return;const dt=parseD(m.deadline);if(dt<start)start=dt;if(dt>end)end=dt}));
+  const weeks=[];for(const w=mondayOf(start);w<=end;w.setDate(w.getDate()+7))weeks.push(localISO(w));
+  const nowWk=localISO(mondayOf(TODAY));
+  const wkCls=k=>k<nowWk?"past":k===nowWk?"now":"";
+  const head=`<div class="viewhead"><h1>Rock Review${teamFilter?` <span class="dim">· ${esc(teamFilter)}</span>`:""}</h1><span class="count">${rocks.length} rocks · week ${isoWeek(TODAY)}</span><div class="spacer"></div>
+    <select class="ctl" data-act="quarter" aria-label="Quarter">${QUARTERS.map(q=>`<option ${q===quarterFilter?"selected":""}>${q}</option>`).join("")}</select></div>`;
+  const cols=`<thead><tr><th class="rk">Rock</th>${weeks.map(k=>`<th class="wk ${wkCls(k)}" ${k===nowWk?'aria-current="date"':""}><div class="n">Wk ${isoWeek(parseD(k))}</div><div class="dt">${fmtDate(k)}</div></th>`).join("")}</tr></thead>`;
+  const chip=(r,m)=>{
+    const over=!m.done&&isPast(m.deadline),soon=!m.done&&!over&&isSoon(m.deadline);
+    const day=parseD(m.deadline).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+    const u=(m.updates||[])[0];
+    const tipText=`${m.title}\nDeadline ${day}${m.done?" · done":over?" · overdue":""}${u?`\nLatest: ${u.text}`:""}\nClick to mark ${m.done?"to do":"done"}`;
+    return `<button class="chip ${m.done?"done":over?"over":soon?"soon":""}" data-act="mtoggle" data-rock="${r.id}" data-id="${m.id}" data-tip="${esc(tipText)}"><span class="when">${m.done?"✓ ":""}${day}</span><span class="t">${esc(m.title)}</span></button>`;
+  };
+  let rows=rocks.map(r=>{
+    const byWk={};let undated=0;
+    (r.milestones||[]).forEach(m=>{if(!m.deadline){undated++;return}(byWk[localISO(mondayOf(parseD(m.deadline)))]??=[]).push(m)});
+    const cells=weeks.map(k=>`<td class="wkc ${k===nowWk?"now":""}">${(byWk[k]||[]).sort((a,b)=>a.deadline.localeCompare(b.deadline)).map(m=>chip(r,m)).join("")}</td>`).join("");
+    return `<tr class="row ${r.status==="Cancelled"?"cancelled":""}"><td class="rk"><div class="rkcell">
+      <div class="rkhead">${ownerHTML(r.ownerId)}<button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${!teamFilter&&r.team?`<span class="teamtag">${esc(r.team)}</span>`:""}</div>
+      <div class="rkmeta">${statusSelect(r)}${progressHTML(r)}</div>
+      ${lastUpdateHTML(r,"rock")}
+      ${undated?`<div class="muted" style="font-size:12px">${undated} milestone${undated>1?"s":""} without a deadline</div>`:""}
+    </div></td>${cells}</tr>`;
+  }).join("");
+  if(!rocks.length) rows=`<tr><td class="rk"><div class="empty"><b>No rocks for ${esc(quarterFilter)}${teamFilter?` in ${esc(teamFilter)}`:""}</b>Add rocks in the Rocks tab.</div></td><td colspan="${weeks.length}"></td></tr>`;
+  const legend=`<div class="legend" style="margin-top:10px"><span><i class="sw" style="background:var(--green)"></i> done</span><span><i class="sw" style="background:var(--red)"></i> overdue</span><span><i class="sw" style="background:var(--amber)"></i> due within 7 days</span><span><i class="sw" style="background:var(--grey-fill)"></i> to do</span><span>· Click a milestone to mark it done</span></div>`;
+  return head+`<div class="board"><div class="scroll rr-scroll"><table class="rr">${cols}<tbody>${rows}</tbody></table></div></div>`+legend;
+}
+
 /* ---------- render ---------- */
 function render(){
-  $("#app").innerHTML=view==="plan"?renderPlan():renderRocks();
-  $("#app").classList.toggle("wide",view==="rocks");
-  const tfw=$("#teamFilterWrap");tfw.hidden=view!=="rocks";
-  if(view==="rocks"){const sel=$("#teamFilter");sel.innerHTML=`<option value="">All teams</option>`+S.teams.map(t=>`<option value="${esc(t)}" ${t===teamFilter?"selected":""}>${esc(t)}</option>`).join("");sel.classList.toggle("active",!!teamFilter)}
+  $("#app").innerHTML=view==="plan"?renderPlan():view==="rocks"?renderRocks():renderReview();
+  if(view==="review"){
+    const sc=$(".rr-scroll");
+    if(rrScroll===null){const now=$("th.wk.now",sc),pin=$("th.rk",sc);rrScroll=now?Math.max(0,now.offsetLeft-pin.offsetWidth-now.offsetWidth):0} // show one past week before the current one
+    sc.scrollLeft=rrScroll;rrScroll=sc.scrollLeft;
+  }
+  $("#app").classList.toggle("wide",view!=="plan");
+  const tfw=$("#teamFilterWrap");tfw.hidden=view==="plan";
+  if(view!=="plan"){const sel=$("#teamFilter");sel.innerHTML=`<option value="">All teams</option>`+S.teams.map(t=>`<option value="${esc(t)}" ${t===teamFilter?"selected":""}>${esc(t)}</option>`).join("");sel.classList.toggle("active",!!teamFilter)}
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===view));
   const ta=$("[data-pop-text]");if(ta){
     const pop=$("[data-pop]"),btn=$('.updbtn.on');if(pop&&btn){const r=btn.getBoundingClientRect();const w=Math.min(320,window.innerWidth-16);pop.style.width=w+"px";pop.style.top=(r.bottom+6)+"px";pop.style.left=Math.max(8,Math.min(r.right-w,window.innerWidth-w-8))+"px"}
@@ -730,7 +809,9 @@ function updateModal(kind,id){
 }
 
 /* ---------- events ---------- */
-document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{view=t.dataset.view;render()}));
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{view=t.dataset.view;if(view==="review")rrScroll=null;render()}));
+// Rock Review: remember horizontal scroll across re-renders; a real scroll closes the update popover (it is positioned to its button)
+document.addEventListener("scroll",e=>{const el=e.target;if(!el.classList||!el.classList.contains("rr-scroll"))return;if(Math.abs(el.scrollLeft-(rrScroll??0))<1)return;rrScroll=el.scrollLeft;if(updOpen){updOpen=null;render()}},true);
 $("#teamFilter").addEventListener("change",e=>{teamFilter=e.target.value;render()});
 // instant tooltips
 const tip=$("#tip");let tipEl=null;
@@ -765,7 +846,7 @@ $("#app").addEventListener("change",e=>{
   const el=e.target;const {act,id}=el.dataset;
   if(el.dataset.filter==="type"){el.checked?fTypes.add(el.value):fTypes.delete(el.value);render();return}
   if(act==="status"){const r=S.rocks.find(x=>x.id===id);const old=r.status;r.status=el.value;logHist(r,`Status changed from ${old} to ${r.status}`);save();render();toast(`Status: ${r.status}`)}
-  else if(act==="quarter"){quarterFilter=el.value;S.quarter=el.value;save();render()}
+  else if(act==="quarter"){quarterFilter=el.value;rrScroll=null;S.quarter=el.value;save();render()}
   else if(act==="mtitle"||act==="mdate"){const m=S.rocks.find(r=>r.id===el.dataset.rock).milestones.find(x=>x.id===id);
     if(act==="mtitle")m.title=el.value.trim()||m.title;else m.deadline=el.value;save();render()}
 });
