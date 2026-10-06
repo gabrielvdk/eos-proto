@@ -327,6 +327,74 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .legend span{display:inline-flex;align-items:center;gap:5px}
 .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
 
+/* level 10: agenda + kanban board */
+.l10{display:grid;grid-template-columns:250px minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:980px){.l10{grid-template-columns:1fr}}
+.agenda{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 10px 8px;position:sticky;top:76px}
+.agh{display:flex;align-items:baseline;justify-content:space-between;padding:0 6px 6px;border-bottom:1px solid var(--line)}
+.agh h2{margin:0;font-size:14px;font-weight:700}
+.agenda ol{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:1px}
+.agenda .ai{display:flex;align-items:baseline;gap:8px;width:100%;padding:7px 6px;border:0;background:none;border-radius:8px;text-align:left;font-size:13.5px;color:var(--ink)}
+.agenda .an{flex:1}
+.agenda .am{font-size:12px;color:var(--ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.agenda .am.big{color:var(--ink);font-weight:700}
+.agenda .lnk{font-weight:600}
+.agenda .lnk:hover{background:var(--accent-soft);color:var(--accent)}
+.agenda ul{margin:0 0 4px;padding:0 0 0 22px;font-size:12.5px;color:var(--ink-2)}
+.agenda ul li{padding:1px 0}
+.agenda ul li::marker{color:var(--amber)}
+.kboard{display:grid;grid-template-columns:repeat(3,minmax(250px,1fr));gap:12px;overflow-x:auto;align-items:start}
+.kcol{background:color-mix(in srgb,var(--line) 45%,var(--canvas));border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:240px;border-top:3px solid var(--grey-fill);transition:box-shadow .3s}
+.kcol.k-ids{border-top-color:var(--amber)} .kcol.k-todo{border-top-color:var(--accent)} .kcol.k-done{border-top-color:var(--green)}
+.kcol.flash{box-shadow:0 0 0 3px var(--accent-soft),0 0 0 5px var(--accent)}
+.kcol header{display:flex;align-items:center;gap:8px;padding:0 4px}
+.kcol h2{margin:0;font-size:13.5px;font-weight:700}
+.kcol header .n{font-size:12px;color:var(--ink-3);font-weight:600;background:var(--surface);border-radius:999px;padding:0 7px}
+.ksub{font-size:12px;color:var(--ink-3);margin:-6px 4px 0}
+.klist{display:flex;flex-direction:column;gap:8px;min-height:30px}
+.kcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;cursor:pointer;box-shadow:0 1px 2px rgba(28,36,48,.07);display:grid;gap:6px}
+.kcard:hover{border-color:var(--line-strong);box-shadow:0 2px 8px rgba(28,36,48,.1)}
+.kcard:active{cursor:grabbing}
+.kcard.dragging{opacity:.35}
+.kcard .kt{font-size:13.5px;overflow-wrap:anywhere}
+.k-done .kcard .kt{color:var(--ink-2);text-decoration:line-through}
+.kmeta{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink-3);min-height:22px}
+.kmeta>span:not(.own){display:inline-flex;align-items:center;gap:3px}
+.kmeta svg{width:14px;height:14px}
+.kmeta .own{margin-left:auto;display:flex;padding-left:5px}
+.kmeta .own .avatar{width:22px;height:22px;font-size:10px;margin-left:-5px;box-shadow:0 0 0 2px var(--surface)}
+.kmeta .noown{font-size:11.5px;color:var(--amber);font-weight:600}
+.kph{height:3px;border-radius:2px;background:var(--accent);margin:-2px 0}
+.kadd{border:0;background:none;color:var(--ink-2);padding:7px 6px;font-weight:600;text-align:left;border-radius:8px}
+.kadd:hover{background:var(--surface);color:var(--ink)}
+.kcompose{display:grid;gap:6px}
+.kcompose textarea{width:100%;border:1px solid var(--accent);border-radius:10px;padding:8px 10px;resize:none;min-height:60px;background:var(--surface);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
+.kcompose .row{display:flex;gap:6px}
+.l10pick{padding:20px 22px;display:grid;gap:14px}
+.l10pick p{margin:0;color:var(--ink-2)}
+.pdept .grp{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.pteams{display:flex;flex-wrap:wrap;gap:8px}
+.pteam{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-strong);background:var(--surface);border-radius:10px;padding:8px 12px;font-weight:600}
+.pteam:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.pteam .n{font-size:11.5px;font-weight:600;color:var(--ink-3)}
+/* card modal */
+.colseg{display:flex;width:100%}
+.colseg button{flex:1;white-space:nowrap;padding:7px 8px}
+.owners{display:grid;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips:empty{display:none}
+.ochip{display:inline-flex;align-items:center;gap:6px;background:var(--canvas);border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 2px;font-size:12.5px;font-weight:600}
+.ochip .avatar{width:20px;height:20px;font-size:9.5px}
+.ochip button{border:0;background:none;color:var(--ink-3);width:18px;height:18px;border-radius:50%;padding:0;line-height:1}
+.ochip button:hover{background:var(--red-soft);color:var(--red)}
+.rte{min-height:120px;max-height:360px;overflow:auto;border:1px solid var(--line-strong);border-radius:9px;padding:8px 10px;background:var(--surface);overflow-wrap:anywhere;white-space:pre-wrap}
+.rte:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.rte:empty::before{content:attr(data-placeholder);color:var(--ink-3)}
+.rte img{display:block;max-width:100%;max-height:260px;border-radius:6px;border:1px solid var(--line);margin:6px 0;cursor:zoom-in}
+.lightbox{position:fixed;inset:0;z-index:26;background:rgba(14,18,26,.8);display:none;align-items:center;justify-content:center;padding:3vh 3vw;cursor:zoom-out}
+.lightbox.open{display:flex}
+.lightbox img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:var(--shadow);background:#fff}
+
 /* rock review (weekly milestone grid) */
 .rrwrap{display:flex;align-items:flex-start}
 .rrwrap .rr-scroll{flex:1 1 auto;min-width:0}
@@ -378,6 +446,7 @@ tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
     <button class="tab" role="tab" data-view="plan" aria-selected="true">One Year Plan</button>
     <button class="tab" role="tab" data-view="rocks" aria-selected="false">Rocks</button>
     <button class="tab" role="tab" data-view="review" aria-selected="false">Rock Review</button>
+    <button class="tab" role="tab" data-view="l10" aria-selected="false">Level 10</button>
   </div>
   <div class="spacer"></div>
   <div class="topfilter" id="teamFilterWrap"></div>
@@ -390,6 +459,7 @@ tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
 <div class="backdrop" id="backdrop"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div class="stmenu" id="stmenu" role="menu" aria-label="Set status" hidden></div>
 <div class="backdrop" id="cbackdrop" style="z-index:25"></div>
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Image preview"><img alt=""></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -525,7 +595,21 @@ function seed(){
   ];
   goals.forEach(g=>{g.history=[{at:d(1,12),who:"p1",text:"Created"},{at:d(1,19),who:"p2",text:"Deliverables updated"}]});
   rocks.forEach((r,i)=>{r.history=[{at:r.quarter==="Q3 2026"?d(7,1):d(9,29),who:r.ownerId,text:"Created"}].concat(r.status!=="Not Set"?[{at:d(10,1),who:r.ownerId,text:`Status set to ${r.status}`}]:[])});
-  return {people,departments,goals,rocks,quarter:"Q4 2026"};
+  return {people,departments,goals,rocks,cards:seedCards(),quarter:"Q4 2026"};
+}
+/* Level 10 board cards (IDS / To Do / Done), per team. Same card type in every column, so an IDS item can become a to-do. */
+function seedCards(){
+  const C=(team,column,title,description,owners,day,updates=[])=>({id:uid(),team,column,title,description,owners,createdBy:"p1",createdAt:d(10,day),
+    updates:updates.map(([dd,text])=>({at:d(10,dd),text})),history:[{at:d(10,day),who:"p1",text:"Created"}]});
+  return [
+    C("LG Dev","ids","Release pipeline takes 40 minutes","Every release waits on the full end-to-end suite. Can we split it into a fast smoke set and a nightly run?",[],2),
+    C("LG Dev","ids","Who owns the flaky end-to-end tests?","Three different people fixed the same test this month.",[],5),
+    C("LG Dev","todo","Share incident post-mortem with the service desk","",["p6"],1,[[2,"Draft is ready, reviewing with Ravi."]]),
+    C("LG Dev","todo","Book architecture review for the billing split","",["p10","p6"],1),
+    C("LG Dev","done","Update the on-call rota for Q4","",["p6"],1),
+    C("Direct Sales","ids","Pricing exceptions are approved ad hoc","Deals over €50k get custom discounts without a clear approval path.",[],2),
+    C("Direct Sales","todo","Send updated case-study shortlist","",["p8"],1),
+  ];
 }
 
 const KEY="goals-rocks-v7"; // v7: teams replaced by S.departments (real org structure)
@@ -535,15 +619,21 @@ function load(){
   try{const raw=localStorage.getItem(KEY); if(raw){S=JSON.parse(raw);migrate();return}}catch(e){}
   S=seed();
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(S));return true}
+  catch(e){toast("Not saved: browser storage is full. Remove some pasted images.",5000);return false} // ~5 MB per site; screenshots use most of it
+}
 // bring older saved data up to date (runs before the helpers below exist, so keep it self-contained)
 function migrate(){
   [...S.goals,...S.rocks].forEach(x=>{if(x.team==="Company")x.team=COMPANY}); // the company unit was renamed to its real name
+  if(!S.cards)S.cards=seedCards(); // Level 10 boards were added later
 }
 load();
 
 /* ---------- ui state ---------- */
 let view="plan", planMode="list", quarterFilter=null, updOpen=null, teamFilter="";
+let tfPicker=null; // top-bar team filter picker (refreshed on render so its label follows teamFilter)
+let l10Add=null; // column key whose inline "add card" composer is open
 let rrScroll=null; // Rock Review horizontal scroll position; null = jump to the current week on next render
 let sortCol="type", sortDir=1; // plan list sort
 const fTypes=new Set(LEVELS); // plan type filter (checked types)
@@ -570,7 +660,10 @@ const deptOf=u=>u===COMPANY?null:(S.departments.find(d=>d.name===u)||S.departmen
 const levelOf=u=>u===COMPANY?"Company":isDept(u)?"Department":"Team";
 const unitMatches=(u,filter)=>!filter||u===filter||(isDept(filter)&&deptOf(u)===filter); // a department filter includes its teams
 const statusClass=st=>(STATUSES.find(x=>x[0]===st)||STATUSES[0])[1];
-function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),1600)}
+function toast(msg,ms=1600){
+  const t=$("#toast");if(Date.now()<(t._lock||0))return; // a long (warning) toast isn't overwritten by a routine "saved" toast
+  t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),ms);if(ms>2000)t._lock=Date.now()+ms;
+}
 
 const ICONS={
   chev:'<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2l4 4-4 4"/></svg>',
@@ -760,9 +853,70 @@ function syncReviewRows(){
   L.forEach((tr,i)=>{tr.style.height=h[i]+"px";if(R[i])R[i].style.height=h[i]+"px"});
 }
 
+/* ---------- Level 10 meeting view ---------- */
+const AGENDA=[["Segue",5],["Scorecard",5],["Rock Review",5,"review"],["Customer / Employee Headlines",5],["To-Do List",5,"todo"],["IDS",60,"ids"],
+  ["Conclude",5,null,["Recap To-Do List","Cascading Messages","Rating (1–10)"]]];
+const COLS=[["ids","IDS","Identify, Discuss, Solve"],["todo","To Do","7-day commitments"],["done","Done","Dealt with"]];
+const colName=k=>(COLS.find(c=>c[0]===k)||[])[1]||k;
+const isBoardTeam=u=>S.departments.some(d=>d.teams.includes(u)); // boards exist per team only (HR is a team of HR too)
+const card=id=>S.cards.find(c=>c.id===id);
+const imgCount=html=>(String(html||"").match(/<img/g)||[]).length;
+const ICON_IMG='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="6" cy="6.5" r="1.2"/><path d="M14 11l-3.5-3.5L4 13"/></svg>';
+function renderL10(){
+  if(!isBoardTeam(teamFilter))return renderL10Pick();
+  const cards=S.cards.filter(c=>c.team===teamFilter);
+  const open=cards.filter(c=>c.column!=="done").length;
+  const head=`<div class="viewhead"><h1>Level 10 <span class="dim">· ${esc(teamFilter)}</span></h1><span class="count">${open} open item${open===1?"":"s"}</span></div>`;
+  const agenda=`<aside class="agenda" aria-label="Meeting agenda"><div class="agh"><h2>Agenda</h2><span class="muted">${AGENDA.reduce((s,a)=>s+a[1],0)} min</span></div>
+    <ol>${AGENDA.map(([name,min,to,subs])=>`<li>${to?`<button class="ai lnk" data-act="agenda" data-to="${to}" title="${to==="review"?"Open Rock Review":`Show the ${colName(to)} column`}">`:`<div class="ai">`}<span class="an">${esc(name)}</span><span class="am ${min>=30?"big":""}">${min} min</span>${to?"</button>":"</div>"}
+      ${subs?`<ul>${subs.map(s=>`<li>${esc(s)}</li>`).join("")}</ul>`:""}</li>`).join("")}</ol></aside>`;
+  const cardHTML=c=>{
+    const imgs=imgCount(c.description),upd=(c.updates||[]).length,own=c.owners||[];
+    return `<div class="kcard" draggable="true" data-card="${c.id}" data-act="editcard" data-id="${c.id}" tabindex="0">
+      <div class="kt">${esc(c.title)}</div>
+      <div class="kmeta">${imgs?`<span title="${imgs} image${imgs>1?"s":""}">${ICON_IMG}${imgs}</span>`:""}${upd?`<span title="${upd} update${upd>1?"s":""}">${ICONS.note}${upd}</span>`:""}
+        <span class="own">${own.length?own.map(id=>ownerHTML(id)).join(""):c.column==="todo"?'<span class="noown">No owner</span>':""}</span></div></div>`;
+  };
+  const cols=COLS.map(([key,name,sub])=>{
+    const cs=cards.filter(c=>c.column===key);
+    const add=key==="done"?"":l10Add===key
+      ?`<div class="kcompose"><textarea placeholder="${key==="ids"?"Issue to discuss…":"What needs to be done?"}" aria-label="New card title"></textarea><div class="row"><button class="btn sm primary" data-act="kaddsave" data-col="${key}">Add card</button><button class="btn sm ghost" data-act="kaddcancel">Cancel</button></div></div>`
+      :`<button class="kadd" data-act="kadd" data-col="${key}">+ Add ${key==="ids"?"issue":"to-do"}</button>`;
+    return `<section class="kcol k-${key}" data-col="${key}"><header><h2>${name}</h2><span class="n">${cs.length}</span></header><div class="ksub">${sub}</div>
+      <div class="klist">${cs.map(cardHTML).join("")}</div>${add}</section>`;
+  }).join("");
+  return head+`<div class="l10">${agenda}<div class="kboard">${cols}</div></div>`;
+}
+function renderL10Pick(){
+  const d0=teamFilter?(isDept(teamFilter)?teamFilter:null):null; // a selected department is listed first
+  const depts=[...S.departments].sort((a,b)=>(b.name===d0)-(a.name===d0));
+  const openCount=t=>S.cards.filter(c=>c.team===t&&c.column!=="done").length;
+  return `<div class="viewhead"><h1>Level 10</h1></div><div class="board l10pick">
+    <p><b>Level 10 meetings are held per team.</b> ${teamFilter?`You're viewing <b>${esc(teamFilter)}</b>, which isn't a team. `:""}Pick a team to open its board:</p>
+    ${depts.map(d=>`<div class="pdept"><div class="grp">${esc(d.name)}</div><div class="pteams">${d.teams.map(t=>{const n=openCount(t);
+      return `<button class="pteam" data-act="pickteam" data-team="${esc(t)}"><span class="dot" style="background:var(--team)"></span>${esc(t)}${n?`<span class="n">${n} open</span>`:""}</button>`}).join("")}</div></div>`).join("")}
+  </div>`;
+}
+function addCard(col,title){
+  const c={id:uid(),team:teamFilter,column:col,title,description:"",owners:[],createdBy:ME,createdAt:todayISO(),updates:[],history:[]};
+  logHist(c,"Created");S.cards.push(c);save();
+}
+// move a card to a column, before another card (or to the end of that column)
+function moveCard(id,col,beforeId){
+  const c=card(id);if(!c||beforeId===id)return;
+  const from=c.column;S.cards.splice(S.cards.indexOf(c),1);c.column=col;
+  let i=beforeId?S.cards.findIndex(x=>x.id===beforeId):-1;
+  if(i<0){i=S.cards.findLastIndex(x=>x.team===c.team&&x.column===col)+1;if(i===0)i=S.cards.length}
+  S.cards.splice(i,0,c);
+  if(from!==col)logHist(c,`Moved from ${colName(from)} to ${colName(col)}`);
+  save();render();if(from!==col)toast(`Moved to ${colName(col)}`);
+}
+
 /* ---------- render ---------- */
 function render(){
-  $("#app").innerHTML=view==="plan"?renderPlan():view==="rocks"?renderRocks():renderReview();
+  $("#app").innerHTML=view==="plan"?renderPlan():view==="rocks"?renderRocks():view==="review"?renderReview():renderL10();
+  tfPicker?.refresh(); // views can change teamFilter (e.g. the Level 10 team picker)
+  if(view==="l10"&&l10Add){const ta=$("#app .kcompose textarea");ta&&ta.focus()}
   if(view==="review"){
     syncReviewRows();
     const sc=$(".rr-scroll");
@@ -825,17 +979,17 @@ function initGoalPicker(id,{get,set,groups,emptyText}){
   return initPicker(id,{get,set,emptyText,noun:"goals",display:v=>goal(v)?.title||"",
     groups:()=>groups().map(g=>({name:g.name,items:g.goals.map(x=>({id:x.id,title:x.title,level:x.level,label:g.label?g.label(x):"",search:`${x.title} ${x.team} ${x.level}`}))}))});
 }
-function initPicker(id,{get,set,groups,emptyText,display,dotOf,noun="items",allowNone=true,noneText=""}){ // noneText: shown (and listed) for the empty value instead of "— none —"
+function initPicker(id,{get,set,groups,emptyText,display,dotOf,noun="items",allowNone=true,noneText="",placeholder=""}){ // noneText: shown (and listed) for the empty value instead of "— none —"
   const box=$("#"+id),inp=$(`#${id}-in`),list=$(`#${id}-list`);
   let active=-1,typed=false; // until the user types, the input shows the current value and must not act as a filter
-  const setLabel=()=>{const v=get();inp.value=v?display(v):noneText;inp.placeholder=v||noneText?"":allowNone?"None — type to search":"Type to search";
+  const setLabel=()=>{const v=get();inp.value=v?display(v):noneText;inp.placeholder=v||noneText?"":placeholder||(allowNone?"None — type to search":"Type to search");
     if(dotOf){const d=$(".cur-dot",box);d.style.background=v?`var(--${dotOf(v).toLowerCase()})`:"transparent"}};
   const draw=()=>{
     const q=typed?inp.value.trim().toLowerCase():"";
     const match=it=>!q||`${it.search||it.title} ${it.label||""}`.toLowerCase().includes(q);
     let html=q||!allowNone?"":`<div class="item ${!get()?"sel":""}" data-id="" role="option">${esc(noneText||"— none —")}</div>`,hits=0;
     groups().forEach(({name,items})=>{const its=items.filter(match);if(!its.length)return;hits+=its.length;
-      html+=`<div class="grp">${esc(name)}</div>`+its.map(it=>`<div class="item ${it.id===get()?"sel":""}" data-id="${esc(it.id)}" role="option"${it.indent&&!q?` style="padding-left:${10+it.indent*18}px"`:""}><span class="dot" style="background:var(--${it.level.toLowerCase()})"></span><span class="t">${esc(it.title)}</span><span class="lvl">${esc(it.label||"")}</span></div>`).join("")});
+      html+=`<div class="grp">${esc(name)}</div>`+its.map(it=>`<div class="item ${it.id===get()?"sel":""}" data-id="${esc(it.id)}" role="option"${it.indent&&!q?` style="padding-left:${10+it.indent*18}px"`:""}><span class="dot" style="background:${it.color||`var(--${it.level.toLowerCase()})`}"></span><span class="t">${esc(it.title)}</span><span class="lvl">${esc(it.label||"")}</span></div>`).join("")});
     if(!hits&&!q&&emptyText)html+=`<div class="none">${esc(emptyText())}</div>`;
     list.innerHTML=hits||!q?html:`<div class="none">No ${noun} match “${esc(inp.value)}”</div>`;active=-1;
   };
@@ -976,13 +1130,98 @@ function updateModal(kind,id){
   <footer><button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="quickpost">Post update</button></footer>`);
 }
 
+/* ---------- Level 10 card modal ---------- */
+function cardModal(c){
+  modalState={kind:"card",obj:JSON.parse(JSON.stringify(c)),orig:c,tab:"updates"};
+  drawCardModal();
+}
+function drawCardModal(){
+  const c=modalState.obj,tab=modalState.tab,by=person(c.createdBy);
+  const updHTML=c.updates.length?c.updates.map(u=>`<div class="upd"><div>${esc(u.text)}</div><div class="meta">${fmtDate(u.at)}</div></div>`).join(""):`<div class="muted">No updates yet.</div>`;
+  const tabBtn=(key,label,n)=>`<button role="tab" data-m="tab" data-tab="${key}" aria-selected="${tab===key}">${label} <span class="muted">${n}</span></button>`;
+  openModal(`<header><h2>${colName(c.column)} item</h2><span class="teamtag">${esc(c.team)}</span><button class="btn ghost sm" data-m="close">✕</button></header>
+  <div class="twocol">
+  <div class="main"><div class="body">
+    ${field("Title",`<input id="f-title" value="${esc(c.title)}">`)}
+    <div class="grid2">
+      ${field("Column",`<div class="seg colseg" role="group" aria-label="Column">${COLS.map(([k,n])=>`<button data-m="cardcol" data-col="${k}" aria-pressed="${c.column===k}">${n}</button>`).join("")}</div>`)}
+      ${field("Owners",`<div class="owners"><div class="chips" id="f-ownchips"></div>${pickerHTML("f-owneradd")}</div>`)}
+    </div>
+    <div class="field"><label for="f-cdesc">Description</label><div id="f-cdesc" class="rte" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Add detail… paste a screenshot with Ctrl+V">${sanitizeHTML(c.description)}</div></div>
+    <div class="muted" style="font-size:12px">Added by ${esc(by?by.name:"unknown")} on ${fmtDate(c.createdAt)}</div>
+  </div></div>
+  <div class="side">
+    <div class="mtabs" role="tablist">${tabBtn("updates","Updates",c.updates.length)}${tabBtn("history","History",(c.history||[]).length)}</div>
+    <div class="pane">${tab==="updates"?`<div class="addupd"><input id="f-newupd" placeholder="What's the latest?"><button class="btn" data-m="updadd">Post</button></div><div class="updates">${updHTML}</div>`:historyHTML(c)}</div>
+  </div></div>
+  <footer><button class="btn danger" data-m="carddel">Delete</button><span class="spacer"></span><button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="cardsave">Save changes</button></footer>`);
+  $("#modal").classList.add("wide");
+  const drawOwners=()=>{$("#f-ownchips").innerHTML=c.owners.map(id=>{const p=person(id);return p?`<span class="ochip">${ownerHTML(id)}${esc(p.name)}<button data-m="ownerdel" data-id="${id}" aria-label="Remove ${esc(p.name)}">×</button></span>`:""}).join("")};
+  modalState.drawOwners=drawOwners;drawOwners();
+  initPicker("f-owneradd",{get:()=>"",set:v=>{if(v&&!c.owners.includes(v)){c.owners.push(v);drawOwners()}},display:()=>"",allowNone:false,noun:"people",placeholder:"Add owner…",
+    groups:()=>[{name:"People",items:S.people.filter(p=>!c.owners.includes(p.id)).map(p=>({id:p.id,title:p.name,color:p.color}))}]});
+  initRichText($("#f-cdesc"));
+}
+function syncCardFields(){
+  const c=modalState.obj;if(!$("#f-title"))return;
+  c.title=$("#f-title").value;c.description=sanitizeHTML($("#f-cdesc").innerHTML);
+}
+/* description editor: plain-text paste, pasted/dropped images are downscaled and embedded as data URLs */
+function initRichText(el){
+  const insertImage=(file,range)=>{
+    const rd=new FileReader();
+    rd.onload=()=>{const img=new Image();img.onload=()=>{
+      const k=Math.min(1,1600/Math.max(img.width,img.height)),cv=document.createElement("canvas");
+      cv.width=Math.round(img.width*k);cv.height=Math.round(img.height*k);cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+      let url=cv.toDataURL("image/png");if(url.length>500000)url=cv.toDataURL("image/jpeg",.85); // PNG keeps text crisp; big photos go JPEG
+      const node=document.createElement("img");node.src=url;
+      if(range&&el.contains(range.startContainer)){range.deleteContents();range.insertNode(node);range.setStartAfter(node);range.collapse(true);const s=getSelection();s.removeAllRanges();s.addRange(range)}
+      else el.appendChild(node);
+    };img.src=rd.result};
+    rd.readAsDataURL(file);
+  };
+  const curRange=()=>{const s=getSelection();return s.rangeCount&&el.contains(s.anchorNode)?s.getRangeAt(0).cloneRange():null};
+  el.addEventListener("paste",e=>{
+    const files=[...(e.clipboardData?.items||[])].filter(i=>i.kind==="file"&&i.type.startsWith("image/")).map(i=>i.getAsFile());
+    e.preventDefault();
+    if(files.length){files.forEach(f=>insertImage(f,curRange()))}
+    else document.execCommand("insertText",false,e.clipboardData.getData("text/plain")); // never paste foreign HTML
+  });
+  el.addEventListener("dragover",e=>{if([...e.dataTransfer.items].some(i=>i.kind==="file"))e.preventDefault()});
+  el.addEventListener("drop",e=>{const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith("image/"));if(!files.length)return;e.preventDefault();
+    const r=document.caretRangeFromPoint?document.caretRangeFromPoint(e.clientX,e.clientY):null;files.forEach(f=>insertImage(f,r))});
+  el.addEventListener("click",e=>{if(e.target.tagName==="IMG")openLightbox(e.target.src)});
+}
+// keep only simple formatting and embedded raster images; everything else is unwrapped or dropped
+function sanitizeHTML(html){
+  const t=document.createElement("template");t.innerHTML=String(html||"");
+  const OK=new Set(["DIV","P","BR","IMG","B","STRONG","I","EM","U","UL","OL","LI","SPAN"]),DROP=new Set(["SCRIPT","STYLE","IFRAME","OBJECT","EMBED","LINK","META","svg","SVG","MATH"]);
+  const clean=n=>[...n.childNodes].forEach(c=>{
+    if(c.nodeType===3)return;
+    if(c.nodeType!==1||DROP.has(c.tagName)){c.remove();return}
+    clean(c);
+    if(!OK.has(c.tagName)){c.replaceWith(...c.childNodes);return}
+    [...c.attributes].forEach(a=>{if(!(c.tagName==="IMG"&&a.name==="src"))c.removeAttribute(a.name)});
+    if(c.tagName==="IMG"&&!/^data:image\/(png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$/i.test(c.getAttribute("src")||""))c.remove();
+  });
+  clean(t.content);
+  const out=t.innerHTML.trim();
+  return /^(<br>|<div><br><\/div>)?$/.test(out)?"":out;
+}
+function openLightbox(src){
+  const lb=$("#lightbox");$("img",lb).src=src;lb.classList.add("open");
+  const close=()=>{lb.classList.remove("open");document.removeEventListener("keydown",key,true)};
+  const key=e=>{if(e.key==="Escape"){e.preventDefault();e.stopImmediatePropagation();close()}};
+  document.addEventListener("keydown",key,true);lb.onclick=close;
+}
+
 /* ---------- events ---------- */
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{view=t.dataset.view;if(view==="review")rrScroll=null;render()}));
 // Rock Review: remember horizontal scroll across re-renders; a real scroll closes the update popover (it is positioned to its button)
 document.addEventListener("scroll",e=>{const el=e.target;if(!el.classList||!el.classList.contains("rr-scroll"))return;if(Math.abs(el.scrollLeft-(rrScroll??0))<1)return;rrScroll=el.scrollLeft;if(updOpen){updOpen=null;render()}},true);
 // team filter in the top bar (all views): same picker as the Team field, plus "All teams"
 $("#teamFilterWrap").innerHTML=`<label for="tf-in">Team</label>`+pickerHTML("tf",{dot:true});
-initPicker("tf",{get:()=>teamFilter,set:v=>{teamFilter=v||"";rrScroll=null;render()},groups:unitGroups,display:v=>v,dotOf:levelOf,noun:"teams",noneText:"All teams"});
+tfPicker=initPicker("tf",{get:()=>teamFilter,set:v=>{teamFilter=v||"";rrScroll=null;render()},groups:unitGroups,display:v=>v,dotOf:levelOf,noun:"teams",noneText:"All teams"});
 // instant tooltips
 const tip=$("#tip");let tipEl=null;
 function showTip(el){const t=el.getAttribute("data-tip");if(!t)return;tip.textContent=t;tip.classList.add("show");const r=el.getBoundingClientRect(),tw=tip.offsetWidth,th=tip.offsetHeight;
@@ -1055,6 +1294,14 @@ $("#app").addEventListener("click",e=>{
   else if(act==="newrock")rockModal(null);
   else if(act==="editrock")rockModal(S.rocks.find(r=>r.id===id));
   else if(act==="addupd"){const same=updOpen&&updOpen.kind===b.dataset.kind&&updOpen.id===id;updOpen=same?null:{kind:b.dataset.kind,id};render()}
+  else if(act==="pickteam"){teamFilter=b.dataset.team;l10Add=null;render()}
+  else if(act==="editcard")cardModal(card(id));
+  else if(act==="kadd"){l10Add=b.dataset.col;render()}
+  else if(act==="kaddcancel"){l10Add=null;render()}
+  else if(act==="kaddsave")submitComposer();
+  else if(act==="agenda"){const to=b.dataset.to;
+    if(to==="review"){view="review";rrScroll=null;render();return}
+    const col=$(`.kcol[data-col="${to}"]`);if(col){col.scrollIntoView({block:"nearest",behavior:"smooth"});col.classList.remove("flash");void col.offsetWidth;col.classList.add("flash")}}
   else if(act==="statusmenu"){stMenu.id===id?closeStatusMenu():openStatusMenu(b)}
   else if(act==="updcancel"){updOpen=null;render()}
   else if(act==="updpost")postQuickUpdate();
@@ -1070,6 +1317,31 @@ $("#app").addEventListener("change",e=>{
   else if(act==="mtitle"||act==="mdate"){const m=S.rocks.find(r=>r.id===el.dataset.rock).milestones.find(x=>x.id===id);
     if(act==="mtitle")m.title=el.value.trim()||m.title;else m.deadline=el.value;save();render()}
 });
+/* Level 10: inline composer (Enter adds and keeps it open for the next card, Esc closes) */
+function submitComposer(){
+  const ta=$("#app .kcompose textarea");if(!ta||!l10Add)return;const t=ta.value.trim();if(!t){ta.focus();return}
+  addCard(l10Add,t);render();
+}
+$("#app").addEventListener("keydown",e=>{
+  if(e.target.matches(".kcompose textarea")){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();submitComposer()}else if(e.key==="Escape"){l10Add=null;render()}return}
+  if(e.target.matches(".kcard")&&(e.key==="Enter"||e.key===" ")){e.preventDefault();cardModal(card(e.target.dataset.card))}
+});
+/* Level 10: drag cards between and within columns; a thin line shows where the card will land */
+let dragId=null;
+const dropMarker=document.createElement("div");dropMarker.className="kph";
+$("#app").addEventListener("dragstart",e=>{const c=e.target.closest(".kcard");if(!c)return;dragId=c.dataset.card;hideTip();
+  e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",dragId);setTimeout(()=>c.classList.add("dragging"))});
+$("#app").addEventListener("dragover",e=>{
+  const col=e.target.closest(".kcol");if(!col||!dragId)return;e.preventDefault();e.dataTransfer.dropEffect="move";
+  const list=$(".klist",col),after=[...list.querySelectorAll(".kcard:not(.dragging)")].find(k=>{const r=k.getBoundingClientRect();return e.clientY<r.top+r.height/2});
+  after?list.insertBefore(dropMarker,after):list.appendChild(dropMarker);
+});
+$("#app").addEventListener("drop",e=>{
+  const col=e.target.closest(".kcol");if(!col||!dragId)return;e.preventDefault();
+  const before=dropMarker.nextElementSibling?.dataset.card||null,id=dragId;dragId=null;dropMarker.remove();
+  moveCard(id,col.dataset.col,before);
+});
+$("#app").addEventListener("dragend",()=>{dragId=null;dropMarker.remove();document.querySelectorAll(".kcard.dragging").forEach(k=>k.classList.remove("dragging"))});
 $("#app").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&e.target.matches("input.inline"))e.target.blur();
   if(e.target.matches("[data-pop-text]")){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();postQuickUpdate()}else if(e.key==="Escape"){updOpen=null;render()}}
@@ -1092,7 +1364,27 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#backdrop").clas
 $("#modal").addEventListener("click",e=>{
   const b=e.target.closest("[data-m]");if(!b)return;const m=b.dataset.m,id=b.dataset.id;
   if(m==="close")return closeModal();
-  if(m==="tab"){if(modalState.kind==="rock")syncRockFields();modalState.tab=b.dataset.tab;modalState.kind==="goal"?drawGoalModal():drawRockModal();return}
+  if(m==="tab"){if(modalState.kind==="rock")syncRockFields();if(modalState.kind==="card")syncCardFields();modalState.tab=b.dataset.tab;
+    ({goal:drawGoalModal,rock:drawRockModal,card:drawCardModal})[modalState.kind]();return}
+  if(modalState.kind==="card"){
+    const c=modalState.obj;
+    if(m==="updadd"){const t=$("#f-newupd").value.trim();if(!t)return;syncCardFields();c.updates.unshift({at:todayISO(),text:t});drawCardModal()}
+    else if(m==="cardcol"){c.column=b.dataset.col;document.querySelectorAll('#modal [data-m="cardcol"]').forEach(x=>x.setAttribute("aria-pressed",x===b));$("#modal header h2").textContent=`${colName(c.column)} item`}
+    else if(m==="ownerdel"){c.owners=c.owners.filter(x=>x!==id);modalState.drawOwners()}
+    else if(m==="cardsave"){syncCardFields();if(!c.title.trim()){$("#f-title").focus();return}
+      const o=modalState.orig,pn=id=>(person(id)||{}).name||"?";
+      diffHist({...o,description:sanitizeHTML(o.description)},c,{title:(a,b)=>`Title changed to “${b}”`,description:()=>"Description updated"}).forEach(t=>logHist(c,t));
+      c.owners.filter(x=>!o.owners.includes(x)).forEach(x=>logHist(c,`Owner added: ${pn(x)}`));
+      o.owners.filter(x=>!c.owners.includes(x)).forEach(x=>logHist(c,`Owner removed: ${pn(x)}`));
+      if(c.updates.length>o.updates.length)logHist(c,"Posted an update");
+      const newCol=c.column;c.column=o.column; // the column change goes through moveCard so the card lands at the end of its new column
+      S.cards[S.cards.indexOf(o)]=c;closeModal();
+      if(newCol!==o.column)moveCard(c.id,newCol,null);else{save();render()}
+      toast("Saved")}
+    else if(m==="carddel")askConfirm(`Delete “${modalState.orig.title}”? This cannot be undone.`,"Delete").then(ok=>{if(!ok)return;
+      S.cards=S.cards.filter(x=>x.id!==c.id);save();closeModal();render();toast("Deleted")});
+    return;
+  }
   if(modalState.kind==="goal"){
     const g=modalState.obj;
     if(m==="savegoal"){const t=$("#f-title").value.trim();if(!t){$("#f-title").focus();return}
@@ -1150,7 +1442,7 @@ $("#modal").addEventListener("keydown",e=>{
   // Enter in a milestone name: jump to the next one, or add a new one at the end
   if(e.key==="Enter"&&e.target.matches(".msr input.mt")){e.preventDefault();const all=[...document.querySelectorAll("#modal .msr input.mt")],i=all.indexOf(e.target);i<all.length-1?all[i+1].focus():addModalMilestone()}
 });
-$("#modal").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="f-newupd"&&modalState?.kind==="rock"){e.preventDefault();$('[data-m="updadd"]').click()}});
+$("#modal").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="f-newupd"&&(modalState?.kind==="rock"||modalState?.kind==="card")){e.preventDefault();$('[data-m="updadd"]').click()}});
 
 render();
 </script>
