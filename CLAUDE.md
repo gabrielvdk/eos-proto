@@ -12,7 +12,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
 - **One Year Plan** tab: goals at three levels (Company → Department → Team), each linked to a parent goal.
   - List view (sortable by title/type/team/linked-to) and Tree view (collapsible hierarchy).
   - Filter by level; goals not linked to a Company goal are grouped separately.
-  - Goal modal: title, type, team, searchable nested "Linked to" picker (only higher levels allowed, no cycles), description, deliverables, change history.
+  - Goal modal: title, **Team** (Hoogendoorn, a department or a team — the goal's level is derived from it via `levelOf()`, shown as a pill; there is no Type field), "Linked to goal" picker, description, deliverables, change history.
 - **Rocks** tab: 90-day rocks per quarter (`QUARTERS` constant), filterable by team.
   - Owner avatar, status (Not Set / On-Track / Off-Track / Off-Track Escalate / Done / Cancelled), milestone progress bar (done / overdue / to do), last update, linked goal (tooltip shows full goal chain).
   - Expand a rock to edit milestones inline (title, done toggle, deadline, per-milestone updates, delete).
@@ -28,7 +28,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
   - `syncRockFields()` is a no-op when the Details tab isn't rendered; call it before every redraw.
   - Goal pickers share one component, `initGoalPicker(id, {get, set, groups, emptyText})`:
     - Rock "Contributes to goal" (`rockGoalGroups`): all goals — own team → own department → Company → own department's other teams → other departments (each with its department + team goals). Writes `r.goalId` directly.
-    - Goal "Linked to" (`initLinkedPicker`): only higher levels, never self/descendants. Team goal → own department → Company → other departments; Department goal → Company; Company goal → nothing.
+    - Goal "Linked to goal" (`initLinkedPicker`): only higher levels, never self/descendants. Team goal → own department → Company → other departments; Department goal → Company; Company goal → nothing.
     - They only filter once the user types (`typed` flag), not on the pre-filled current value.
 - Status is changed via a custom menu (`#stmenu`, `openStatusMenu()` / `setStatus()`), not a native `<select>` — the Windows select popup can't be styled.
 - Light/dark theme follows the OS (`prefers-color-scheme`).
@@ -37,8 +37,8 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
 - All state lives in one object `S = {people, departments, goals, rocks, quarter}`.
 - Persisted to the browser's `localStorage` under key `goals-rocks-v7`. Data is per browser/per device — **not shared** between users. Bump the key when the data shape changes.
 - **Organisation (real):** `S.departments = [{name, teams[]}]` — Product & Technology (Data Science, Research, LG Dev, IIVO Dev, Hardware, Controls), Operations (Engineering, IIVO Helpdesk, LG Service Desk, Customer Success, Contracts, T&C), Sales (Project Sales, Direct Sales), Finance (Legal, Accounting, Business Strategy), HR (HR). Above them: "Company".
-  - Goals and rocks store a *unit* name in `.team`: "Company", a department name, or a team name. "HR" is both a department and a team.
-  - Helpers: `deptOf(unit)`, `isDept(unit)`, `unitMatches(unit, filter)` (a department filter includes its teams), `unitOptions(selected, level)` (grouped `<option>`s; goal Team field depends on the goal's level).
+  - Goals and rocks store a *unit* name in `.team`: `COMPANY` ("Hoogendoorn" — the single company; the *level* is still called "Company"), a department name, or a team name. A team named like its department (HR) counts as the department and is listed once. `migrate()` renames the old "Company" unit on load.
+  - Helpers: `deptOf(unit)`, `isDept(unit)`, `unitMatches(unit, filter)` (a department filter includes its teams), `levelOf(unit)`, `unitOptions(selected)` (all units as grouped `<option>`s).
 - `seed()` contains sample goals/rocks (fictional content, real team names) and fictional people; "Reset sample data" restores it.
 - People and the org structure are hard-coded in `seed()`; there is no UI to manage them yet.
 - `ME = "p1"` is a placeholder for the current user (used in history entries). There is no login.

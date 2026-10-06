@@ -387,6 +387,7 @@ tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
 <script>
 /* ---------- data ---------- */
 const LEVELS=["Company","Department","Team"];
+const COMPANY="Hoogendoorn"; // the one company-level unit (above all departments)
 const STATUSES=[["Not Set","st-not"],["On-Track","st-on"],["Off-Track","st-off"],["Off-Track Escalate","st-esc"],["Done","st-done"],["Cancelled","st-can"]];
 const YEAR=2026;
 const QUARTERS=["Q1 2026","Q2 2026","Q3 2026","Q4 2026","Q1 2027"];
@@ -402,7 +403,7 @@ function seed(){
     {id:"p7",name:"Jonas Müller",color:"#7C4DFF"},{id:"p8",name:"Eva Smit",color:"#00897B"},
     {id:"p9",name:"Noor Haddad",color:"#C2185B"},{id:"p10",name:"Pieter van Dijk",color:"#5D4037"}
   ];
-  // organisation: departments and the teams that belong to them ("Company" is the level above all departments)
+  // organisation: departments and the teams that belong to them (COMPANY is the level above all departments)
   const departments=[
     {name:"Product & Technology",teams:["Data Science","Research","LG Dev","IIVO Dev","Hardware","Controls"]},
     {name:"Operations",teams:["Engineering","IIVO Helpdesk","LG Service Desk","Customer Success","Contracts","T&C"]},
@@ -412,9 +413,9 @@ function seed(){
   ];
   const G=(id,level,team,title,parent,desc,deliv)=>({id,level,team,title,parentId:parent,description:desc,deliverables:deliv});
   const goals=[
-    G("g1","Company","Company","Profitable growth",null,"Grow revenue 25% while keeping EBITDA above 15%.","Revenue €12M • EBITDA ≥15% • Net revenue retention >105%"),
-    G("g2","Company","Company","Customer value",null,"Customers measurably get more out of the product every quarter.","NPS ≥45 • Churn <6% • Two value-tracking dashboards live"),
-    G("g3","Company","Company","A place people want to work",null,"Attract and keep the people we need for the next phase.","eNPS ≥30 • Voluntary attrition <10% • Hiring plan filled"),
+    G("g1","Company",COMPANY,"Profitable growth",null,"Grow revenue 25% while keeping EBITDA above 15%.","Revenue €12M • EBITDA ≥15% • Net revenue retention >105%"),
+    G("g2","Company",COMPANY,"Customer value",null,"Customers measurably get more out of the product every quarter.","NPS ≥45 • Churn <6% • Two value-tracking dashboards live"),
+    G("g3","Company",COMPANY,"A place people want to work",null,"Attract and keep the people we need for the next phase.","eNPS ≥30 • Voluntary attrition <10% • Hiring plan filled"),
     G("g4","Department","Sales","Standardised, repeatable sales motion","g1","One way of selling across all markets, from first call to signed contract.","Sales playbook v2 • Standard packages & pricing • Win-rate 28%"),
     G("g5","Department","Sales","Open the DACH market","g1","First 15 paying customers in Germany, Austria and Switzerland.","15 customers • Local partner signed • German collateral"),
     G("g6","Department","Operations","Onboard in under 30 days","g2","Every new customer live and getting value within a month.","Median onboarding 28 days • Onboarding checklist • Success criteria per segment"),
@@ -472,7 +473,7 @@ function seed(){
     {id:"r10",team:"IIVO Dev",quarter:"Q4 2026",title:"Component library v1",ownerId:"p4",status:"Cancelled",goalId:"g13",
      description:"Superseded by adopting an open-source system instead of building our own.",deliverables:"—",
      milestones:[M("Audit existing components",true,d(9,18)),M("Build core set",false,d(10,30))],updates:[U(9,24,"Cancelled: we are adopting an existing open-source design system instead.")]},
-    {id:"r11",team:"Company",quarter:"Q4 2026",title:"Team offsite and engagement survey",ownerId:"p5",status:"On-Track",goalId:null,
+    {id:"r11",team:COMPANY,quarter:"Q4 2026",title:"Team offsite and engagement survey",ownerId:"p5",status:"On-Track",goalId:null,
      description:"Run the autumn offsite and the engagement survey, publish the follow-ups.",deliverables:"Offsite held • Survey results shared • 3 actions agreed",
      milestones:[M("Book venue",true,d(9,5)),M("Send survey",false,d(10,10)),M("Offsite",false,d(10,24)),M("Share results and actions",false,d(11,7))],updates:[]},
     // Direct Sales
@@ -523,10 +524,14 @@ const KEY="goals-rocks-v7"; // v7: teams replaced by S.departments (real org str
 const ME="p1"; // placeholder for the signed-in user
 let S;
 function load(){
-  try{const raw=localStorage.getItem(KEY); if(raw){S=JSON.parse(raw);return}}catch(e){}
+  try{const raw=localStorage.getItem(KEY); if(raw){S=JSON.parse(raw);migrate();return}}catch(e){}
   S=seed();
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+// bring older saved data up to date (runs before the helpers below exist, so keep it self-contained)
+function migrate(){
+  [...S.goals,...S.rocks].forEach(x=>{if(x.team==="Company")x.team=COMPANY}); // the company unit was renamed to its real name
+}
 load();
 
 /* ---------- ui state ---------- */
@@ -550,18 +555,18 @@ const parseD=s=>new Date(s+"T00:00:00");
 const mondayOf=dt=>{const x=new Date(dt);x.setHours(0,0,0,0);x.setDate(x.getDate()-(x.getDay()+6)%7);return x};
 const isoWeek=dt=>{const x=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));x.setUTCDate(x.getUTCDate()+4-(x.getUTCDay()||7));return Math.ceil(((x-Date.UTC(x.getUTCFullYear(),0,1))/864e5+1)/7)};
 const quarterRange=q=>{const [,n,y]=q.match(/Q(\d) (\d{4})/).map(Number);return [new Date(y,(n-1)*3,1),new Date(y,n*3,0)]};
-/* organisation helpers. A "unit" is what goals and rocks store in .team: "Company", a department name, or a team name.
-   Note "HR" is both a department and its only team; deptOf() resolves it to the department, which is the same name. */
+/* organisation helpers. A "unit" is what goals and rocks store in .team: COMPANY, a department name, or a team name.
+   A goal's level follows from its unit (levelOf). A team named like its own department (HR) counts as the department. */
 const isDept=u=>S.departments.some(d=>d.name===u);
-const deptOf=u=>u==="Company"?null:(S.departments.find(d=>d.name===u)||S.departments.find(d=>d.teams.includes(u)))?.name||null;
+const deptOf=u=>u===COMPANY?null:(S.departments.find(d=>d.name===u)||S.departments.find(d=>d.teams.includes(u)))?.name||null;
+const levelOf=u=>u===COMPANY?"Company":isDept(u)?"Department":"Team";
 const unitMatches=(u,filter)=>!filter||u===filter||(isDept(filter)&&deptOf(u)===filter); // a department filter includes its teams
-function unitOptions(sel,level,keepUnknown=true){ // level: "Company" | "Department" | "Team" | null (any unit)
+function unitOptions(sel,keepUnknown=true){
   const o=v=>`<option value="${esc(v)}" ${v===sel?"selected":""}>${esc(v)}</option>`;
-  const grp=(label,vals)=>`<optgroup label="${esc(label)}">${vals.map(o).join("")}</optgroup>`;
-  const depts=S.departments.map(d=>d.name),teamGroups=S.departments.map(d=>grp(d.name,d.teams)).join("");
-  const html=level==="Company"?o("Company"):level==="Department"?depts.map(o).join(""):level==="Team"?teamGroups
-    :grp("Company",["Company"])+grp("Departments",depts)+S.departments.map(d=>grp(`${d.name} teams`,d.teams)).join("");
-  const known=["Company",...depts,...S.departments.flatMap(d=>d.teams)];
+  const grp=(label,vals)=>vals.length?`<optgroup label="${esc(label)}">${vals.map(o).join("")}</optgroup>`:"";
+  const depts=S.departments.map(d=>d.name),teamsOf=d=>d.teams.filter(t=>t!==d.name);
+  const html=grp("Company",[COMPANY])+grp("Departments",depts)+S.departments.map(d=>grp(`${d.name} teams`,teamsOf(d))).join("");
+  const known=[COMPANY,...depts,...S.departments.flatMap(d=>d.teams)];
   return keepUnknown&&sel&&!known.includes(sel)?o(sel)+html:html; // keep a legacy value selectable instead of silently changing it
 }
 const statusClass=st=>(STATUSES.find(x=>x[0]===st)||STATUSES[0])[1];
@@ -622,7 +627,7 @@ function renderPlan(){
     <button class="btn primary" data-act="newgoal">+ New goal</button></div>`;
   goalRow.ctx=ctx;
   const th=(key,label,w)=>`<th class="sortable" style="width:${w}" data-sort="${key}" aria-sort="${sortCol===key?(sortDir>0?"ascending":"descending"):"none"}">${label}<span class="arr"></span></th>`;
-  const cols=`<thead><tr>${th("title","Title","44%")}${th("type","Type","14%")}${th("team","Team","16%")}${th("linked","Linked to","26%")}</tr></thead>`;
+  const cols=`<thead><tr>${th("title","Title","44%")}${th("type","Type","14%")}${th("team","Team","16%")}${th("linked","Linked to goal","26%")}</tr></thead>`;
   const cmp=(key,dir)=>(a,b)=>dir*(key==="type"?(LEVELS.indexOf(a.level)-LEVELS.indexOf(b.level)||a.title.localeCompare(b.title)):key==="team"?(a.team.localeCompare(b.team)||a.title.localeCompare(b.title)):a.title.localeCompare(b.title));
   const az=(a,b)=>a.title.localeCompare(b.title);
   let rows="";
@@ -766,7 +771,7 @@ function render(){
   }
   $("#app").classList.toggle("wide",view!=="plan");
   const tfw=$("#teamFilterWrap");tfw.hidden=view==="plan";
-  if(view!=="plan"){const sel=$("#teamFilter");sel.innerHTML=`<option value="">All teams</option>`+unitOptions(teamFilter,null,false);sel.classList.toggle("active",!!teamFilter)}
+  if(view!=="plan"){const sel=$("#teamFilter");sel.innerHTML=`<option value="">All teams</option>`+unitOptions(teamFilter,false);sel.classList.toggle("active",!!teamFilter)}
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===view));
   const ta=$("[data-pop-text]");if(ta){
     const pop=$("[data-pop]"),btn=$('.updbtn.on');if(pop&&btn){const r=btn.getBoundingClientRect();const w=Math.min(320,window.innerWidth-16);pop.style.width=w+"px";pop.style.top=(r.bottom+6)+"px";pop.style.left=Math.max(8,Math.min(r.right-w,window.innerWidth-w-8))+"px"}
@@ -800,10 +805,9 @@ function drawGoalModal(){
   const body=tab==="history"?`<div class="body">${historyHTML(g)}</div>`:`<div class="body">
     ${field("Title",`<input id="f-title" value="${esc(g.title)}" placeholder="What do we want to be true at the end of the year?">`)}
     <div class="grid2">
-      ${field("Type",`<select id="f-level">${opt(LEVELS,g.level)}</select>`)}
-      ${field("Team",`<select id="f-team">${unitOptions(g.team,g.level)}</select>`)}
+      <div class="field"><label for="f-team">Team <span class="pill lvl-${levelOf(g.team)}" id="f-level-pill" title="The goal's level follows from the team">${levelOf(g.team)} goal</span></label><select id="f-team">${unitOptions(g.team)}</select></div>
+      ${field("Linked to goal",pickerHTML("f-parent"))}
     </div>
-    ${field("Linked to",pickerHTML("f-parent"))}
     ${field("Description",`<textarea id="f-desc">${esc(g.description)}</textarea>`)}
     ${field("Deliverables",`<textarea id="f-deliv" placeholder="How we'll know it's done">${esc(g.deliverables)}</textarea>`)}
   </div>`;
@@ -852,20 +856,22 @@ function initGoalPicker(id,{get,set,groups,emptyText}){
 function initLinkedPicker(g){
   const descendants=(id,acc=new Set())=>{S.goals.filter(x=>x.parentId===id).forEach(x=>{acc.add(x.id);descendants(x.id,acc)});return acc};
   const blocked=descendants(g.id);
-  const level=()=>$("#f-level").value,unit=()=>$("#f-team").value;
+  const unit=()=>$("#f-team").value,level=()=>levelOf(unit());
   const allowed=x=>x.id!==g.id&&!blocked.has(x.id)&&LEVELS.indexOf(x.level)<LEVELS.indexOf(level());
   const groups=()=>{
     const cand=S.goals.filter(allowed).sort(byLevelTitle),company=cand.filter(x=>x.level==="Company");
-    if(level()!=="Team")return [{name:"Company",goals:company}];
+    if(level()!=="Team")return [{name:COMPANY,goals:company}];
     const dept=deptOf(unit()),own=cand.filter(x=>x.level==="Department"&&x.team===dept);
     const others=cand.filter(x=>x.level==="Department"&&x.team!==dept).sort((a,b)=>a.team.localeCompare(b.team)||a.title.localeCompare(b.title));
-    return [{name:`${dept} · your department`,goals:own},{name:"Company",goals:company},{name:"Other departments",goals:others,label:x=>x.team}];
+    return [{name:`${dept} · your department`,goals:own},{name:COMPANY,goals:company},{name:"Other departments",goals:others,label:x=>x.team}];
   };
   const picker=initGoalPicker("f-parent",{get:()=>modalState.parentId,set:v=>{modalState.parentId=v},groups,
-    emptyText:()=>level()==="Company"?"Company goals are the top level, so they don't link to another goal.":"No higher-level goals yet."});
-  const dropInvalid=()=>{const p=modalState.parentId?goal(modalState.parentId):null;if(p&&!allowed(p))modalState.parentId=null;picker.refresh()};
-  $("#f-level").addEventListener("change",e=>{$("#f-team").innerHTML=unitOptions($("#f-team").value,e.target.value,false);dropInvalid()});
-  $("#f-team").addEventListener("change",picker.refresh);
+    emptyText:()=>level()==="Company"?`${COMPANY} goals are the top level, so they don't link to another goal.`:"No higher-level goals yet."});
+  $("#f-team").addEventListener("change",()=>{
+    const lv=level(),pill=$("#f-level-pill");pill.className=`pill lvl-${lv}`;pill.textContent=`${lv} goal`;
+    const p=modalState.parentId?goal(modalState.parentId):null;if(p&&!allowed(p))modalState.parentId=null; // e.g. became a Department goal while linked to a Department goal
+    picker.refresh();
+  });
 }
 function rockModal(r){
   const isNew=!r; r=r||{id:uid(),team:teamFilter||S.departments[0].teams[0],quarter:quarterFilter||QUARTERS[0],title:"",ownerId:S.people[0].id,status:"Not Set",goalId:null,description:"",deliverables:"",milestones:[],updates:[]};
@@ -880,11 +886,11 @@ function rockGoalGroups(unit){
   const take=gs=>gs.filter(g=>!used.has(g.id)).sort(byLevelTitle).filter(g=>used.add(g.id));
   const where=g=>g.level==="Department"?"Department":g.team; // shown on the right in the "other" groups
   const groups=[];
-  if(unit==="Company")groups.push({name:"Company",goals:take(S.goals.filter(g=>g.level==="Company"))});
+  if(unit===COMPANY)groups.push({name:COMPANY,goals:take(S.goals.filter(g=>g.level==="Company"))});
   else{
     groups.push({name:`${unit} · ${isDept(unit)?"your department":"your team"}`,goals:take(S.goals.filter(g=>g.team===unit))});
     if(dept&&dept!==unit)groups.push({name:`${dept} · your department`,goals:take(S.goals.filter(g=>g.team===dept))});
-    groups.push({name:"Company",goals:take(S.goals.filter(g=>g.level==="Company"))});
+    groups.push({name:COMPANY,goals:take(S.goals.filter(g=>g.level==="Company"))});
   }
   const order=[...S.departments].sort((a,b)=>(b.name===dept)-(a.name===dept)); // own department's other teams first
   order.forEach(d=>groups.push({name:d.name===dept?`${d.name} · other teams`:d.name,goals:take(S.goals.filter(g=>deptOf(g.team)===d.name)),label:where}));
@@ -919,7 +925,7 @@ function drawRockModal(){
     ${field("Title",`<input id="f-title" value="${esc(r.title)}" placeholder="What will be done in 90 days?">`)}
     <div class="grid3">
       ${field("Owner",`<select id="f-owner">${opt(S.people,r.ownerId,p=>p.name,p=>p.id)}</select>`)}
-      ${field("Team",`<select id="f-team">${unitOptions(r.team,null)}</select>`)}
+      ${field("Team",`<select id="f-team">${unitOptions(r.team)}</select>`)}
       ${field("Quarter",`<select id="f-quarter">${opt(QUARTERS,r.quarter)}</select>`)}
     </div>
     <div class="grid12">
@@ -1071,9 +1077,9 @@ $("#modal").addEventListener("click",e=>{
   if(modalState.kind==="goal"){
     const g=modalState.obj;
     if(m==="savegoal"){const t=$("#f-title").value.trim();if(!t){$("#f-title").focus();return}
-      const next={title:t,level:$("#f-level").value,team:$("#f-team").value,parentId:modalState.parentId,description:$("#f-desc").value,deliverables:$("#f-deliv").value};
+      const next={title:t,level:levelOf($("#f-team").value),team:$("#f-team").value,parentId:modalState.parentId,description:$("#f-desc").value,deliverables:$("#f-deliv").value};
       const nm=id=>id?(goal(id)||{}).title||"?":"none";
-      const changes=diffHist(g,next,{title:(a,b)=>`Title changed to “${b}”`,level:(a,b)=>`Type changed from ${a} to ${b}`,team:(a,b)=>`Team changed from ${a} to ${b}`,parentId:(a,b)=>`Linked to changed from ${nm(a)} to ${nm(b)}`,description:()=>"Description updated",deliverables:()=>"Deliverables updated"});
+      const changes=diffHist(g,next,{title:(a,b)=>`Title changed to “${b}”`,level:(a,b)=>`Type changed from ${a} to ${b}`,team:(a,b)=>`Team changed from ${a} to ${b}`,parentId:(a,b)=>`Linked to goal changed from ${nm(a)} to ${nm(b)}`,description:()=>"Description updated",deliverables:()=>"Deliverables updated"});
       Object.assign(g,next);
       if(modalState.isNew){g.history=[];logHist(g,"Created");S.goals.push(g)}else changes.forEach(c=>logHist(g,c));
       save();closeModal();render();toast("Goal saved")}
