@@ -350,7 +350,6 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .kcol header{display:flex;align-items:center;gap:8px;padding:0 4px}
 .kcol h2{margin:0;font-size:13.5px;font-weight:700}
 .kcol header .n{font-size:12px;color:var(--ink-3);font-weight:600;background:var(--surface);border-radius:999px;padding:0 7px}
-.ksub{font-size:12px;color:var(--ink-3);margin:-6px 4px 0}
 .klist{display:flex;flex-direction:column;gap:8px;min-height:30px}
 .kcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;cursor:pointer;box-shadow:0 1px 2px rgba(28,36,48,.07);display:grid;gap:6px}
 .kcard:hover{border-color:var(--line-strong);box-shadow:0 2px 8px rgba(28,36,48,.1)}
@@ -856,7 +855,7 @@ function syncReviewRows(){
 /* ---------- Level 10 meeting view ---------- */
 const AGENDA=[["Segue",5],["Scorecard",5],["Rock Review",5,"review"],["Customer / Employee Headlines",5],["To-Do List",5,"todo"],["IDS",60,"ids"],
   ["Conclude",5,null,["Recap To-Do List","Cascading Messages","Rating (1–10)"]]];
-const COLS=[["ids","IDS","Identify, Discuss, Solve"],["todo","To Do","7-day commitments"],["done","Done","Dealt with"]];
+const COLS=[["ids","IDS"],["todo","To Do"],["done","Done"]];
 const colName=k=>(COLS.find(c=>c[0]===k)||[])[1]||k;
 const isBoardTeam=u=>S.departments.some(d=>d.teams.includes(u)); // boards exist per team only (HR is a team of HR too)
 const card=id=>S.cards.find(c=>c.id===id);
@@ -877,12 +876,12 @@ function renderL10(){
       <div class="kmeta">${imgs?`<span title="${imgs} image${imgs>1?"s":""}">${ICON_IMG}${imgs}</span>`:""}${upd?`<span title="${upd} update${upd>1?"s":""}">${ICONS.note}${upd}</span>`:""}
         <span class="own">${own.length?own.map(id=>ownerHTML(id)).join(""):c.column==="todo"?'<span class="noown">No owner</span>':""}</span></div></div>`;
   };
-  const cols=COLS.map(([key,name,sub])=>{
+  const cols=COLS.map(([key,name])=>{
     const cs=cards.filter(c=>c.column===key);
     const add=key==="done"?"":l10Add===key
       ?`<div class="kcompose"><textarea placeholder="${key==="ids"?"Issue to discuss…":"What needs to be done?"}" aria-label="New card title"></textarea><div class="row"><button class="btn sm primary" data-act="kaddsave" data-col="${key}">Add card</button><button class="btn sm ghost" data-act="kaddcancel">Cancel</button></div></div>`
       :`<button class="kadd" data-act="kadd" data-col="${key}">+ Add ${key==="ids"?"issue":"to-do"}</button>`;
-    return `<section class="kcol k-${key}" data-col="${key}"><header><h2>${name}</h2><span class="n">${cs.length}</span></header><div class="ksub">${sub}</div>
+    return `<section class="kcol k-${key}" data-col="${key}"><header><h2>${name}</h2><span class="n">${cs.length}</span></header>
       <div class="klist">${cs.map(cardHTML).join("")}</div>${add}</section>`;
   }).join("");
   return head+`<div class="l10">${agenda}<div class="kboard">${cols}</div></div>`;
