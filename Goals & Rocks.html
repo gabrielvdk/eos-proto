@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Goals & Rocks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --canvas:#F3F5F9; --surface:#FFFFFF; --line:#E3E7EE; --line-strong:#C9D0DB;
+  --ink:#1C2430; --ink-2:#5B6778; --ink-3:#8A95A6;
+  --accent:#2F6FE4; --accent-soft:#E6EEFC;
+  --green:#19A974; --green-deep:#0E7A5A; --green-soft:#DDF5EA;
+  --red:#D93B4F; --red-deep:#A51E35; --red-soft:#FBE4E7;
+  --amber:#E29A1C; --amber-soft:#FCF0D8;
+  --grey-pill:#C7CDD7; --grey-fill:#8A95A6;
+  --company:#5B4BDB; --department:#1F8FD1; --team:#19A974;
+  --shadow:0 10px 30px rgba(28,36,48,.14);
+  --radius:10px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --canvas:#141922; --surface:#1C232E; --line:#2A3340; --line-strong:#3A4556;
+    --ink:#EDF1F7; --ink-2:#AEB8C8; --ink-3:#7D8898;
+    --accent:#6B9BFF; --accent-soft:#213353;
+    --green-soft:#17382C; --red-soft:#3F1F26; --amber-soft:#3E3119;
+    --grey-pill:#3A4556; --grey-fill:#7D8898;
+    --shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --canvas:#141922; --surface:#1C232E; --line:#2A3340; --line-strong:#3A4556;
+  --ink:#EDF1F7; --ink-2:#AEB8C8; --ink-3:#7D8898;
+  --accent:#6B9BFF; --accent-soft:#213353;
+  --green-soft:#17382C; --red-soft:#3F1F26; --amber-soft:#3E3119;
+  --grey-pill:#3A4556; --grey-fill:#7D8898;
+  --shadow:0 10px 30px rgba(0,0,0,.5);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;height:100%}
+body{font-family:Figtree,"Segoe UI",system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.45;color:var(--ink);background:var(--canvas)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* top bar */
+.topbar{display:flex;align-items:center;gap:20px;padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:5;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.brand svg{width:26px;height:26px}
+.tabs{display:flex;gap:4px;background:var(--canvas);padding:4px;border-radius:12px}
+.tab{border:0;background:transparent;padding:7px 14px;border-radius:9px;font-weight:600;color:var(--ink-2)}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(28,36,48,.12)}
+.spacer{flex:1}
+.btn{border:1px solid var(--line-strong);background:var(--surface);padding:7px 12px;border-radius:9px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{background:var(--canvas)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--red)}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--canvas);color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 12px;font-weight:600;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+select.ctl{border:1px solid var(--line-strong);background:var(--surface);border-radius:9px;padding:6px 10px;font-weight:600}
+select.ctl.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.checks{display:inline-flex;border:1px solid var(--line-strong);border-radius:9px;overflow:hidden}
+.checks label{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;font-weight:600;color:var(--ink-2);cursor:pointer;border-right:1px solid var(--line);user-select:none}
+.checks label:last-child{border-right:0}
+.checks label:has(input:checked){color:var(--ink)}
+.checks input{accent-color:var(--accent);margin:0;width:14px;height:14px}
+.checks .dot{width:7px;height:7px}
+tr.ctx td{opacity:.45}
+tr.ctx td .pill,tr.ctx td .dot{filter:grayscale(1)}
+
+main{max-width:1280px;margin:0 auto;padding:22px 24px 40px}
+footer.site{max-width:1280px;margin:0 auto;padding:0 24px 40px;display:flex;justify-content:flex-end;color:var(--ink-3);font-size:12.5px}
+.topfilter{display:inline-flex;align-items:center;gap:8px;font-weight:600;color:var(--ink-2)}
+.topfilter[hidden]{display:none}
+#tip{position:fixed;z-index:40;max-width:360px;background:var(--ink);color:var(--surface);padding:7px 10px;border-radius:8px;font-size:12.5px;line-height:1.4;box-shadow:var(--shadow);pointer-events:none;display:none;white-space:pre-line}
+#tip.show{display:block}
+main.wide{max-width:none}
+.viewhead{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.viewhead h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.015em}
+.viewhead .count{color:var(--ink-3);font-weight:500}
+
+/* tables */
+.board{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:820px}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--accent)}
+th.sortable .arr{display:inline-block;width:12px;margin-left:4px;color:var(--ink-3);font-size:11px}
+th.sortable[aria-sort="ascending"] .arr::after{content:"▲";color:var(--accent)}
+th.sortable[aria-sort="descending"] .arr::after{content:"▼";color:var(--accent)}
+thead th{text-align:left;font-weight:700;color:var(--ink);font-size:13px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface);white-space:nowrap}
+tbody td{padding:0 12px;height:46px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tr.row:hover td{background:color-mix(in srgb,var(--canvas) 60%,var(--surface))}
+td.title{font-weight:400}
+.titlebtn{border:0;background:none;padding:0;text-align:left;font-weight:400;color:var(--ink);display:inline-flex;align-items:center;gap:8px;max-width:100%}
+.titlebtn:hover{color:var(--accent)}
+.titlebtn .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.muted{color:var(--ink-3)}
+.dim{color:var(--ink-2)}
+.cell-link{font-size:13px;color:var(--ink-2);display:inline-flex;align-items:center;gap:7px}
+.chev{width:24px;height:24px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);display:inline-flex;align-items:center;justify-content:center;color:var(--ink-2);flex:none;padding:0}
+.chev svg{width:12px;height:12px;transition:transform .18s}
+.chev[aria-expanded="true"] svg{transform:rotate(90deg)}
+.chev.leaf{visibility:hidden}
+.chev.lone{visibility:visible;border-style:dashed;border-color:var(--line);background:transparent;cursor:default;pointer-events:none}
+.chev.lone svg{display:none}
+.addrow td{height:40px;color:var(--ink-3)}
+.addrow button{border:0;background:none;color:var(--ink-3);font-weight:500;padding:0}
+.addrow button:hover{color:var(--accent)}
+
+/* pills */
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.lvl-Company{background:color-mix(in srgb,var(--company) 14%,transparent);color:var(--company)}
+.lvl-Department{background:color-mix(in srgb,var(--department) 14%,transparent);color:var(--department)}
+.lvl-Team{background:color-mix(in srgb,var(--team) 16%,transparent);color:var(--team)}
+.goalpill{background:var(--accent-soft);color:var(--accent)}
+.teampill{background:var(--canvas);color:var(--ink-2);border:1px solid var(--line)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+
+/* status select styled as colored block */
+.status{position:relative;display:inline-block}
+.status select{appearance:none;-webkit-appearance:none;border:0;border-radius:7px;padding:5px 26px 5px 11px;font-weight:600;font-size:13px;min-width:132px;color:#fff;cursor:pointer}
+.status::after{content:"";position:absolute;right:10px;top:50%;width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-70%) rotate(45deg);color:rgba(255,255,255,.85);pointer-events:none}
+.st-not{background:var(--grey-pill)!important;color:var(--ink-2)!important}
+.status:has(.st-not)::after{color:var(--ink-2)}
+.st-on{background:var(--green)!important}
+.st-off{background:var(--red)!important}
+.st-esc{background:var(--red-deep)!important}
+.st-done{background:var(--green-deep)!important}
+.st-can{background:repeating-linear-gradient(135deg,var(--grey-pill) 0 6px,color-mix(in srgb,var(--grey-pill) 70%,var(--surface)) 6px 12px)!important;color:var(--ink-2)!important;text-decoration:line-through}
+.status:has(.st-can)::after{color:var(--ink-2)}
+/* milestone toggle */
+.ms-toggle{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:4px 10px;font-weight:600;font-size:12.5px;color:var(--ink-2);min-width:68px}
+.ms-toggle.done{background:var(--green);border-color:var(--green);color:#fff}
+
+/* progress bar */
+.prog{display:inline-flex;align-items:center;gap:8px}
+.prog .bar{display:flex;height:16px;width:110px;border-radius:4px;overflow:hidden;background:var(--grey-pill)}
+.prog .done{background:var(--green)}
+.prog .over{background:var(--red)}
+.prog .lbl{display:none}
+.prog.none .bar{background:transparent;border:1px dashed var(--line-strong)}
+
+/* owner */
+.owner{display:inline-flex;align-items:center;gap:8px}
+.avatar{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+
+/* last update */
+.lastupd{display:flex;align-items:center;gap:8px;min-width:0}
+.lastupd .txt{flex:1 1 auto;min-width:0}
+table.rocks{table-layout:auto}
+table.rocks td.title,table.rocks th.fit,table.rocks td.fit{white-space:nowrap;width:1%}
+table.rocks td.updcell{width:auto;min-width:220px;max-width:0}
+table.rocks .treeline .titlebtn{flex:0 0 auto;min-width:0}
+table.rocks .titlebtn .t{display:inline-block;max-width:420px;vertical-align:bottom}
+.teamtag{font-size:11.5px;color:var(--ink-3);background:var(--canvas);border:1px solid var(--line);border-radius:999px;padding:1px 7px;margin-left:4px;font-weight:500;white-space:nowrap}
+.lastupd .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2);font-size:13px}
+.lastupd .when{font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+.updbtn{border:0;background:none;color:var(--ink-3);padding:2px;border-radius:5px;display:inline-flex;flex:none}
+.updbtn:hover{color:var(--accent);background:var(--accent-soft)}
+.updbtn svg{width:16px;height:16px}
+.updbtn.on{color:var(--accent);background:var(--accent-soft)}
+td.updcell{position:relative}
+.pop{position:fixed;z-index:8;width:320px;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:var(--shadow);padding:10px;display:grid;gap:8px}
+.pop textarea{border:1px solid var(--line-strong);border-radius:8px;padding:8px;min-height:64px;resize:vertical;background:var(--surface);width:100%}
+.pop textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.pop .row{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.pop .hint{font-size:11.5px;color:var(--ink-3);margin-right:auto}
+
+/* milestones subtable */
+tr.sub>td{padding:0;background:var(--canvas)}
+.subwrap{padding:10px 12px 12px 48px;border-left:4px solid var(--green);margin-left:14px}
+.subwrap table{min-width:0;table-layout:fixed;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.subwrap thead th{font-size:12px;padding:8px 10px;font-weight:700;background:var(--surface)}
+.subwrap tbody td{height:40px;padding:0 10px;background:var(--surface)}
+.subwrap tr.overdue td{background:var(--red-soft)}
+.subwrap .del{border:0;background:none;color:var(--ink-3);padding:4px;border-radius:6px;display:inline-flex;opacity:.55}
+.subwrap tr:hover .del{opacity:1}
+.subwrap .del:hover{color:var(--red);background:var(--red-soft)}
+.subwrap .del svg{width:15px;height:15px}
+.subwrap tr.overdue td{background:var(--red-soft)}
+.subwrap tr.overdue .dl{color:var(--red);font-weight:600}
+.dl{font-variant-numeric:tabular-nums;white-space:nowrap}
+.dl.soon{color:var(--amber)}
+input.inline{border:1px solid transparent;background:transparent;padding:4px 6px;border-radius:6px;width:100%}
+input.inline:hover{border-color:var(--line-strong)}
+input.inline:focus{border-color:var(--accent);background:var(--surface);outline:none}
+input.inline.date{width:auto}
+
+/* tree */
+.treeline{display:flex;align-items:center;gap:8px;min-width:0}
+.treeline .titlebtn{min-width:0;flex:1 1 auto}
+.treeline .titlebtn .t{display:block}
+table.tree{table-layout:fixed}
+table.tree tbody td{height:36px;padding-top:0;padding-bottom:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table.tree .cell-link{max-width:100%}
+table.tree .cell-link span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tr.group td{height:30px;background:var(--canvas);color:var(--ink-2);font-size:12px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;padding-left:12px;white-space:nowrap}
+tr.group td .n{font-weight:500;text-transform:none;letter-spacing:0;margin-left:6px;color:var(--ink-3)}
+table.tree td.title{padding-left:calc(12px + var(--depth,0) * 20px)}
+table.tree .chev{width:20px;height:20px}
+table.tree .pill{padding:2px 9px;font-size:12px}
+
+/* searchable nested combobox */
+.combo{position:relative}
+.combo input{width:100%}
+.combo .list{position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:240px;overflow:auto;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;box-shadow:var(--shadow);z-index:9;display:none;padding:4px}
+.combo.open .list{display:block}
+.combo .item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:13.5px}
+.combo .item:hover,.combo .item.active{background:var(--accent-soft)}
+.combo .item.sel{font-weight:600}
+.combo .item.dis{color:var(--ink-3);cursor:default}
+.combo .item.dis:hover{background:transparent}
+.combo .item .lvl{font-size:11.5px;color:var(--ink-3);margin-left:auto;white-space:nowrap}
+.combo .none{padding:8px 10px;color:var(--ink-3);font-size:13px}
+.mtabs{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid var(--line)}
+.mtabs button{border:0;background:none;padding:10px 12px;font-weight:600;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.mtabs button[aria-selected="true"]{color:var(--ink);border-color:var(--accent)}
+.hist{display:grid;gap:0}
+.hist .h{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);align-items:start}
+.hist .h:last-child{border-bottom:0}
+.hist .h .what{font-size:13.5px}
+.hist .h .meta{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+/* modal */
+.backdrop{position:fixed;inset:0;background:rgba(14,18,26,.45);display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:20;overflow:auto}
+.backdrop.open{display:flex}
+.modal{background:var(--surface);border-radius:16px;width:100%;max-width:720px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.modal header{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.modal header h2{margin:0;font-size:17px;font-weight:700;flex:1}
+.modal .body{padding:18px 20px;display:grid;gap:14px}
+.modal footer{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--line);justify-content:flex-end}
+.field{display:grid;gap:5px}
+.field label{font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.field input,.field select,.field textarea{border:1px solid var(--line-strong);background:var(--surface);border-radius:9px;padding:8px 10px;width:100%}
+.field textarea{min-height:72px;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media (max-width:640px){.grid2,.grid3{grid-template-columns:1fr}}
+.modal.wide{max-width:1040px}
+.twocol{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0}
+.twocol>.body{border-right:1px solid var(--line)}
+.twocol>.side{display:flex;flex-direction:column;min-height:0}
+.side .mtabs{padding:0 20px}
+.side .pane{padding:16px 20px;display:grid;gap:10px;align-content:start;max-height:560px;overflow:auto}
+@media (max-width:860px){.twocol{grid-template-columns:1fr}.twocol>.body{border-right:0;border-bottom:1px solid var(--line)}}
+.section{border-top:1px solid var(--line);padding-top:12px}
+.section h3{margin:0 0 8px;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+.section h3 .count{font-weight:500;color:var(--ink-3)}
+.mlist{display:grid;gap:6px}
+.mitem{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center}
+.mitem input[type=text],.mitem input[type=date]{border:1px solid var(--line-strong);border-radius:8px;padding:6px 8px;background:var(--surface)}
+.mitem .x{border:0;background:none;color:var(--ink-3);padding:4px;border-radius:6px}
+.mitem .x:hover{color:var(--red);background:var(--red-soft)}
+.updates{display:grid;gap:8px;max-height:220px;overflow:auto}
+.upd{display:grid;gap:2px;padding:8px 10px;border-radius:9px;background:var(--canvas)}
+.upd .meta{font-size:11.5px;color:var(--ink-3)}
+.addupd{display:flex;gap:8px}
+.addupd input{flex:1;border:1px solid var(--line-strong);border-radius:9px;padding:8px 10px;background:var(--surface)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--surface);padding:9px 14px;border-radius:9px;font-weight:600;opacity:0;transition:.2s;pointer-events:none;z-index:30}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.empty{padding:40px;text-align:center;color:var(--ink-2)}
+.empty b{display:block;color:var(--ink);margin-bottom:4px}
+.legend{display:flex;gap:14px;align-items:center;color:var(--ink-3);font-size:12px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M4 18 L9 7 L14 13 L18 9 L23 18 Z" fill="var(--green)"/><path d="M2 20h22" stroke="var(--ink-3)" stroke-width="2" stroke-linecap="round"/></svg>
+    Goals &amp; Rocks
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-view="plan" aria-selected="true">One Year Plan</button>
+    <button class="tab" role="tab" data-view="rocks" aria-selected="false">Rocks</button>
+  </div>
+  <div class="spacer"></div>
+  <label class="topfilter" id="teamFilterWrap" hidden>Team <select class="ctl" id="teamFilter" aria-label="Filter rocks by team"></select></label>
+</div>
+
+<main id="app"></main>
+<footer class="site"><button class="btn ghost sm" id="resetBtn" title="Restore the sample data">Reset sample data</button></footer>
+<div id="tip" role="tooltip"></div>
+
+<div class="backdrop" id="backdrop"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- data ---------- */
+const LEVELS=["Company","Department","Team"];
+const STATUSES=[["Not Set","st-not"],["On-Track","st-on"],["Off-Track","st-off"],["Off-Track Escalate","st-esc"],["Done","st-done"],["Cancelled","st-can"]];
+const YEAR=2026;
+const QUARTERS=["Q1 2026","Q2 2026","Q3 2026","Q4 2026","Q1 2027"];
+const TODAY=new Date(); TODAY.setHours(0,0,0,0);
+const uid=()=>Math.random().toString(36).slice(2,9);
+const d=(m,day,y=YEAR)=>`${y}-${String(m).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+
+function seed(){
+  const people=[
+    {id:"p1",name:"Mara Visser",color:"#5B4BDB"},{id:"p2",name:"Tom Bakker",color:"#1F8FD1"},
+    {id:"p3",name:"Lena Groen",color:"#19A974"},{id:"p4",name:"Daan de Wit",color:"#E29A1C"},
+    {id:"p5",name:"Sofie Jansen",color:"#D93B4F"},{id:"p6",name:"Ravi Patel",color:"#0E7A5A"},
+    {id:"p7",name:"Jonas Müller",color:"#7C4DFF"},{id:"p8",name:"Eva Smit",color:"#00897B"},
+    {id:"p9",name:"Noor Haddad",color:"#C2185B"},{id:"p10",name:"Pieter van Dijk",color:"#5D4037"}
+  ];
+  const teams=["Company","Sales","Operations","Product","Sales NL","Sales DE","Support","Platform","Design"];
+  const G=(id,level,team,title,parent,desc,deliv)=>({id,level,team,title,parentId:parent,description:desc,deliverables:deliv});
+  const goals=[
+    G("g1","Company","Company","Profitable growth",null,"Grow revenue 25% while keeping EBITDA above 15%.","Revenue €12M • EBITDA ≥15% • Net revenue retention >105%"),
+    G("g2","Company","Company","Customer value",null,"Customers measurably get more out of the product every quarter.","NPS ≥45 • Churn <6% • Two value-tracking dashboards live"),
+    G("g3","Company","Company","A place people want to work",null,"Attract and keep the people we need for the next phase.","eNPS ≥30 • Voluntary attrition <10% • Hiring plan filled"),
+    G("g4","Department","Sales","Standardised, repeatable sales motion","g1","One way of selling across all markets, from first call to signed contract.","Sales playbook v2 • Standard packages & pricing • Win-rate 28%"),
+    G("g5","Department","Sales","Open the DACH market","g1","First 15 paying customers in Germany, Austria and Switzerland.","15 customers • Local partner signed • German collateral"),
+    G("g6","Department","Operations","Onboard in under 30 days","g2","Every new customer live and getting value within a month.","Median onboarding 28 days • Onboarding checklist • Success criteria per segment"),
+    G("g7","Department","Product","Self-serve where it matters","g2","Customers can do the top 10 everyday tasks without asking us.","10 tasks self-serve • Support tickets −30% • In-app guidance"),
+    G("g8","Department","Product","A platform we can build on","g1","Reduce time to ship and cost per feature.","Deploy weekly • Monolith split for billing & reporting • Error budget met"),
+    G("g9","Team","Sales NL","Win the mid-market in the Netherlands","g4","Focus the NL team on 50–250 employee companies.","20 new mid-market logos • Average deal size €18k"),
+    G("g10","Team","Sales DE","First German reference customers","g5","Land three reference customers willing to speak publicly.","3 references • 2 case studies published"),
+    G("g11","Team","Support","Answer within the hour","g6","First response on every ticket within 60 minutes during business hours.","Median first response 45 min • CSAT ≥4.6"),
+    G("g12","Team","Platform","Weekly releases without drama","g8","Release every week with zero rollback-worthy incidents.","52 releases • ≤2 rollbacks • Automated smoke tests"),
+    G("g13","Team","Design","A design system teams actually use","g3","Shared components adopted across all product squads.","Component library v1 • 80% of new screens use it"),
+    G("g14","Department","Operations","ISO 27001 certified",null,"Pass the certification audit so enterprise deals stop stalling on security questionnaires.","Certificate issued • ISMS policies approved • Internal audit completed"),
+    G("g15","Department","Product","Retire the legacy reporting module",null,"Switch off the old reporting module and its database.","All customers migrated • Module removed • €40k/year hosting saved"),
+    G("g16","Team","Support","Knowledge base customers actually find",null,"Rewrite and restructure the help centre around real search queries.","Top 50 articles rewritten • Self-service rate +15%"),
+    G("g17","Team","Platform","Clean up on-call",null,"Fewer, more actionable alerts and a fair rotation.","Alert volume −50% • Runbook for every alert • Rotation of 6 people"),
+    G("g18","Team","Support","Security awareness for everyone who talks to customers","g14","Support and onboarding staff trained and tested on the new security policies.","100% trained • Phishing test pass rate >90%"),
+    G("g19","Team","Platform","Move reporting data to the new warehouse","g15","Migrate the legacy reporting data so the old module can be switched off.","All datasets migrated • Legacy database decommissioned"),
+    G("g20","Team","Design","Redesign the reporting screens","g15","New reporting screens built on the design system, replacing the legacy module's UI.","8 screens shipped • Usability score ≥80"),
+    G("g21","Department","Sales","Launch a partner referral programme",null,"Existing customers and partners refer new business and get rewarded for it.","Programme live • 10 referred deals • Referral terms published"),
+  ];
+  const M=(title,done,deadline,upd)=>({id:uid(),title,done,deadline,updates:upd?[{at:d(9,22),text:upd}]:[]});
+  const U=(m,day,text)=>({at:d(m,day),text});
+  const rocks=[
+    {id:"r1",team:"Sales",quarter:"Q3 2026",title:"Packages and pricing",ownerId:"p1",status:"Done",goalId:"g4",
+     description:"Define the three standard packages and publish price bands per market.",deliverables:"Package sheet • Price bands • Internal guidance",
+     milestones:[M("Confirm package structure",true,d(7,15)),M("Publish internal guidance",true,d(8,1)),M("Inventory current sales assets",true,d(8,8)),M("Validate price bands",true,d(8,29)),M("Draft standard sales kit",true,d(9,12)),M("Run sales enablement session",true,d(9,26))],
+     updates:[U(9,26,"Enablement session done, all AMs trained on the new packages."),U(8,30,"Price bands validated with 6 customers, no pushback.")]},
+    {id:"r2",team:"Sales",quarter:"Q4 2026",title:"Standardise the sales process",ownerId:"p2",status:"On-Track",goalId:"g4",
+     description:"One pipeline, one set of stages and exit criteria, used by every AM.",deliverables:"Pipeline stages • Exit criteria • CRM configured",
+     milestones:[M("Agree pipeline stages",true,d(10,2)),M("Write exit criteria per stage",false,d(10,16),"Draft is with the sales leads for review."),M("Configure CRM",false,d(11,6)),M("Migrate open deals",false,d(11,20)),M("Review first month of data",false,d(12,18))],
+     updates:[U(10,1,"Stages agreed in Monday's sales meeting, moving to exit criteria.")]},
+    {id:"r3",team:"Operations",quarter:"Q4 2026",title:"Customer journey map",ownerId:"p3",status:"Off-Track",goalId:"g2",
+     description:"Map the full journey from first contact to renewal and identify the three biggest friction points.",deliverables:"Journey map • Top-3 friction list • Owner per friction point",
+     milestones:[M("Map current customer journey",true,d(9,18)),M("Interview 8 customers",false,d(9,30),"Only 4 interviews done, two customers rescheduled to next week."),M("Validate journey with teams",false,d(10,14)),M("Prioritise friction points",false,d(10,28))],
+     updates:[U(10,2,"Slipping a week because of customer interview reschedules. Still achievable this quarter.")]},
+    {id:"r4",team:"Sales",quarter:"Q4 2026",title:"Sales deck and proposal v1",ownerId:"p4",status:"Not Set",goalId:"g4",
+     description:"A single deck and proposal template built on the new packages.",deliverables:"Deck • Proposal template",
+     milestones:[M("Collect best existing slides",false,d(10,9)),M("Draft new deck",false,d(10,30)),M("Proposal template",false,d(11,13))],updates:[]},
+    {id:"r5",team:"Sales DE",quarter:"Q4 2026",title:"Sign DACH partner",ownerId:"p5",status:"Off-Track Escalate",goalId:"g5",
+     description:"Sign a reseller or implementation partner for the German market.",deliverables:"Signed partner agreement • Joint go-to-market plan",
+     milestones:[M("Shortlist 5 partners",true,d(8,22)),M("First conversations",true,d(9,12)),M("Term sheet with preferred partner",false,d(9,26),"Partner's legal team pushed back on exclusivity."),M("Agreement signed",false,d(11,27))],
+     updates:[U(10,2,"Need a decision on exclusivity from the leadership team, otherwise we lose the preferred partner."),U(9,19,"Two partners remain, preferred one wants exclusivity for Austria.")]},
+    {id:"r6",team:"Operations",quarter:"Q4 2026",title:"Onboarding checklist and kickoff kit",ownerId:"p6",status:"On-Track",goalId:"g6",
+     description:"A standard checklist and kickoff deck so onboarding does not depend on who runs it.",deliverables:"Checklist • Kickoff deck • Success criteria template",
+     milestones:[M("Checklist v1",true,d(9,25)),M("Kickoff deck",false,d(10,16)),M("Pilot with 3 new customers",false,d(11,13)),M("Roll out to all onboarding leads",false,d(12,4))],
+     updates:[U(9,29,"Checklist v1 is being used by two onboarding leads already.")]},
+    {id:"r7",team:"Platform",quarter:"Q4 2026",title:"Billing service split",ownerId:"p6",status:"On-Track",goalId:"g12",
+     description:"Move billing out of the monolith so it can be deployed independently.",deliverables:"Billing service in production • Monolith billing code removed",
+     milestones:[M("Define service boundary",true,d(9,11)),M("Build service behind feature flag",false,d(10,23)),M("Shadow traffic for two weeks",false,d(11,13)),M("Cut over",false,d(12,4))],updates:[]},
+    {id:"r8",team:"Sales DE",quarter:"Q4 2026",title:"Hiring: two German account managers",ownerId:"p1",status:"On-Track",goalId:"g10",
+     description:"Hire two experienced AMs based in Germany.",deliverables:"2 signed offers • Start dates before January",
+     milestones:[M("Job profile agreed",true,d(9,4)),M("Agency briefed",true,d(9,11)),M("First-round interviews",false,d(10,17)),M("Offers out",false,d(11,14))],updates:[U(9,30,"Agency has 9 candidates in the pipeline.")]},
+    {id:"r9",team:"Support",quarter:"Q4 2026",title:"Support macros and triage rules",ownerId:"p3",status:"Not Set",goalId:"g11",
+     description:"Templates and triage rules so first response fits within the hour.",deliverables:"20 macros • Triage rules live",
+     milestones:[],updates:[]},
+    {id:"r10",team:"Design",quarter:"Q4 2026",title:"Component library v1",ownerId:"p4",status:"Cancelled",goalId:"g13",
+     description:"Superseded by adopting an open-source system instead of building our own.",deliverables:"—",
+     milestones:[M("Audit existing components",true,d(9,18)),M("Build core set",false,d(10,30))],updates:[U(9,24,"Cancelled: we are adopting an existing open-source design system instead.")]},
+    {id:"r11",team:"Company",quarter:"Q4 2026",title:"Team offsite and engagement survey",ownerId:"p5",status:"On-Track",goalId:null,
+     description:"Run the autumn offsite and the engagement survey, publish the follow-ups.",deliverables:"Offsite held • Survey results shared • 3 actions agreed",
+     milestones:[M("Book venue",true,d(9,5)),M("Send survey",false,d(10,10)),M("Offsite",false,d(10,24)),M("Share results and actions",false,d(11,7))],updates:[]},
+    // Sales NL
+    {id:"r12",team:"Sales NL",quarter:"Q4 2026",title:"Mid-market target list and outreach",ownerId:"p8",status:"On-Track",goalId:"g9",
+     description:"Build the list of 200 NL mid-market accounts and run the first outreach wave.",deliverables:"200-account list • 60 first meetings booked",
+     milestones:[M("Define ICP for mid-market",true,d(9,19)),M("Build 200-account list",true,d(10,2)),M("First outreach wave",false,d(10,23)),M("30 meetings booked",false,d(11,13)),M("60 meetings booked",false,d(12,11))],
+     updates:[U(10,2,"List is complete, outreach sequences go live Monday.")]},
+    {id:"r13",team:"Sales NL",quarter:"Q4 2026",title:"Two mid-market case studies",ownerId:"p2",status:"Off-Track",goalId:"g9",
+     description:"Publish two Dutch mid-market customer stories to use in outreach.",deliverables:"2 case studies published",
+     milestones:[M("Select customers",true,d(9,12)),M("Interviews",false,d(9,26),"One customer went quiet, chasing a replacement."),M("Draft and approve",false,d(10,30)),M("Publish",false,d(11,13))],
+     updates:[U(9,30,"Second customer dropped out, approaching two alternatives this week.")]},
+    // Sales DE
+    {id:"r14",team:"Sales DE",quarter:"Q4 2026",title:"German sales collateral",ownerId:"p7",status:"On-Track",goalId:"g10",
+     description:"Translate and localise the deck, one-pager and proposal template.",deliverables:"Deck DE • One-pager DE • Proposal DE",
+     milestones:[M("Translate deck",true,d(9,26)),M("Localise pricing examples",false,d(10,10)),M("One-pager",false,d(10,24)),M("Proposal template",false,d(11,7))],
+     updates:[U(10,1,"Deck translated and reviewed by the agency; pricing examples next.")]},
+    // Support
+    {id:"r15",team:"Support",quarter:"Q4 2026",title:"Rewrite the top 20 help articles",ownerId:"p9",status:"On-Track",goalId:"g16",
+     description:"Rewrite the 20 most-searched articles around what customers actually type in search.",deliverables:"20 articles rewritten • Search success rate measured",
+     milestones:[M("Pull search query report",true,d(9,18)),M("First 10 rewritten",false,d(10,16)),M("Second 10 rewritten",false,d(11,6)),M("Measure search success",false,d(11,27))],
+     updates:[U(9,25,"Report pulled, 6 of the first 10 drafted.")]},
+    {id:"r16",team:"Support",quarter:"Q4 2026",title:"Security awareness training for support",ownerId:"p9",status:"Not Set",goalId:"g18",
+     description:"Everyone on the support team completes the new security training and phishing test.",deliverables:"100% trained • Phishing pass rate >90%",
+     milestones:[M("Schedule training sessions",false,d(10,9)),M("All sessions held",false,d(11,6)),M("Phishing test",false,d(11,20))],updates:[]},
+    // Platform
+    {id:"r17",team:"Platform",quarter:"Q4 2026",title:"Alert clean-up: halve the noise",ownerId:"p10",status:"Off-Track Escalate",goalId:"g17",
+     description:"Delete or tune the noisiest alerts and write a runbook for every remaining one.",deliverables:"Alert volume −50% • Runbook per alert",
+     milestones:[M("Alert inventory",true,d(9,11)),M("Remove top 20 noisy alerts",true,d(9,25)),M("Runbooks for remaining alerts",false,d(9,30),"Blocked: no time allocated because of the billing split."),M("Measure volume",false,d(11,13))],
+     updates:[U(10,2,"Need a decision: pause this rock or pull a second engineer off the billing split.")]},
+    {id:"r18",team:"Platform",quarter:"Q4 2026",title:"Migrate reporting datasets to the warehouse",ownerId:"p6",status:"On-Track",goalId:"g19",
+     description:"Move all legacy reporting datasets into the new warehouse with parity checks.",deliverables:"All datasets migrated • Parity report signed off",
+     milestones:[M("Dataset inventory",true,d(9,18)),M("Migrate first 5 datasets",false,d(10,16)),M("Migrate remaining datasets",false,d(11,20)),M("Parity sign-off",false,d(12,11))],updates:[]},
+    // Product / Operations
+    {id:"r19",team:"Product",quarter:"Q4 2026",title:"Self-serve for the top 3 tasks",ownerId:"p4",status:"On-Track",goalId:"g7",
+     description:"Ship in-app flows for the three tasks that generate the most support tickets.",deliverables:"3 flows live • Related tickets −30%",
+     milestones:[M("Confirm top 3 tasks from ticket data",true,d(9,11)),M("Flow 1 shipped",true,d(10,2)),M("Flow 2 shipped",false,d(10,30)),M("Flow 3 shipped",false,d(11,27))],
+     updates:[U(10,2,"Flow 1 (export) is live, tickets about exports already down.")]},
+    {id:"r20",team:"Operations",quarter:"Q4 2026",title:"ISO 27001 internal audit",ownerId:"p3",status:"On-Track",goalId:"g14",
+     description:"Run the internal audit and close the findings before the certification audit.",deliverables:"Internal audit report • All major findings closed",
+     milestones:[M("Audit plan",true,d(9,18)),M("Fieldwork",false,d(10,16)),M("Report and findings",false,d(10,30)),M("Findings closed",false,d(12,4))],updates:[]},
+  ];
+  goals.forEach(g=>{g.history=[{at:d(1,12),who:"p1",text:"Created"},{at:d(1,19),who:"p2",text:"Deliverables updated"}]});
+  rocks.forEach((r,i)=>{r.history=[{at:r.quarter==="Q3 2026"?d(7,1):d(9,29),who:r.ownerId,text:"Created"}].concat(r.status!=="Not Set"?[{at:d(10,1),who:r.ownerId,text:`Status set to ${r.status}`}]:[])});
+  return {people,teams,goals,rocks,quarter:"Q4 2026"};
+}
+
+const KEY="goals-rocks-v6";
+const ME="p1"; // placeholder for the signed-in user
+let S;
+function load(){
+  try{const raw=localStorage.getItem(KEY); if(raw){S=JSON.parse(raw);return}}catch(e){}
+  S=seed();
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+load();
+
+/* ---------- ui state ---------- */
+let view="plan", planMode="list", quarterFilter=null, updOpen=null, teamFilter="";
+let sortCol="type", sortDir=1; // plan list sort
+const fTypes=new Set(LEVELS); // plan type filter (checked types)
+const collapsed=new Set(), expanded=new Set();
+
+const $=(s,el=document)=>el.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const goal=id=>S.goals.find(g=>g.id===id);
+const person=id=>S.people.find(p=>p.id===id);
+const initials=n=>n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+const fmtDate=s=>{if(!s)return"";const dt=new Date(s+"T00:00:00");return dt.toLocaleDateString("en-GB",{day:"numeric",month:"short"})};
+const isPast=s=>s&&new Date(s+"T00:00:00")<TODAY;
+const isSoon=s=>{if(!s)return false;const dt=new Date(s+"T00:00:00");const diff=(dt-TODAY)/864e5;return diff>=0&&diff<=7};
+const todayISO=()=>TODAY.toISOString().slice(0,10);
+const statusClass=st=>(STATUSES.find(x=>x[0]===st)||STATUSES[0])[1];
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),1600)}
+
+const ICONS={
+  chev:'<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2l4 4-4 4"/></svg>',
+  note:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h10v7H7l-3 3v-3H3z"/><path d="M8 5v3M6.5 6.5h3"/></svg>',
+  trash:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 9h5.6l.7-9"/></svg>',
+  link:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 3v5a3 3 0 0 0 3 3h5"/><path d="M10 9l2 2-2 2"/></svg>'
+};
+
+/* ---------- shared renderers ---------- */
+function lastUpdateHTML(obj,kind){
+  const u=(obj.updates||[])[0];
+  const on=updOpen&&updOpen.kind===kind&&updOpen.id===obj.id;
+  const btn=`<button class="updbtn ${on?"on":""}" title="Add update" data-act="addupd" data-kind="${kind}" data-id="${obj.id}">${ICONS.note}</button>`;
+  const pop=on?`<div class="pop" data-pop><textarea data-pop-text placeholder="What's the latest on “${esc(obj.title)}”?"></textarea><div class="row"><span class="hint">Enter to post · Esc to close</span><button class="btn sm" data-act="updcancel">Cancel</button><button class="btn sm primary" data-act="updpost" data-kind="${kind}" data-id="${obj.id}">Post</button></div></div>`:"";
+  if(!u) return `<div class="lastupd"><span class="txt muted">No updates yet</span>${btn}</div>${pop}`;
+  return `<div class="lastupd"><span class="txt" data-tip="${esc(u.text)}&#10;— ${fmtDate(u.at)}">${esc(u.text)}</span><span class="when">${fmtDate(u.at)}</span>${btn}</div>${pop}`;
+}
+function progressHTML(r){
+  const ms=r.milestones||[];
+  if(!ms.length) return `<div class="prog none" data-tip="No milestones yet"><div class="bar"></div></div>`;
+  const done=ms.filter(m=>m.done).length, over=ms.filter(m=>!m.done&&isPast(m.deadline)).length, n=ms.length;
+  return `<div class="prog" data-tip="${done} of ${n} done${over?`, ${over} overdue`:""}"><div class="bar"><span class="done" style="width:${done/n*100}%"></span><span class="over" style="width:${over/n*100}%"></span></div><span class="lbl">${done}/${n}</span></div>`;
+}
+function statusSelect(r){
+  return `<span class="status"><select class="${statusClass(r.status)}" data-act="status" data-id="${r.id}" aria-label="Status">${STATUSES.map(([s])=>`<option ${s===r.status?"selected":""}>${s}</option>`).join("")}</select></span>`;
+}
+function goalChainText(g){
+  const chain=[];let cur=g,guard=0;while(cur&&guard++<10){chain.unshift(cur);cur=cur.parentId?goal(cur.parentId):null}
+  return chain.map((x,i)=>`${"\u00a0\u00a0\u00a0".repeat(i)}${i?"↳ ":""}${x.title}  (${x.level} · ${x.team})`).join("\n");
+}
+function ownerHTML(id){const p=person(id);if(!p)return`<span class="muted">—</span>`;return`<span class="avatar" style="background:${p.color}" data-tip="${esc(p.name)}" aria-label="${esc(p.name)}">${initials(p.name)}</span>`}
+
+/* ---------- plan view ---------- */
+function renderPlan(){
+  const all=S.goals;
+  const match=g=>fTypes.has(g.level);
+  const filtering=fTypes.size<LEVELS.length;
+  let goals=all.filter(match);
+  const ctx=new Set(); // ancestors shown for context in tree view
+  if(planMode==="tree"&&filtering){
+    const keep=new Set(goals.map(g=>g.id));
+    goals.forEach(g=>{let p=g.parentId;while(p&&!keep.has(p)){ctx.add(p);keep.add(p);p=(goal(p)||{}).parentId}});
+    goals=all.filter(g=>keep.has(g.id));
+  }
+  const matched=goals.length-ctx.size;
+  const head=`<div class="viewhead"><h1>One Year Plan ${YEAR}</h1><span class="count">${filtering?`${matched} of ${all.length}`:all.length} goals</span><div class="spacer"></div>
+    <div class="checks" role="group" aria-label="Filter by type">${LEVELS.map(l=>`<label><input type="checkbox" data-filter="type" value="${l}" ${fTypes.has(l)?"checked":""}><span class="dot" style="background:var(--${l.toLowerCase()})"></span>${l}</label>`).join("")}</div>
+    ${planMode==="tree"?`<button class="btn sm" data-act="toggleall">${collapsed.size?"Expand all":"Collapse all"}</button>`:""}
+    <div class="seg" role="group" aria-label="View"><button data-mode="list" aria-pressed="${planMode==="list"}">List</button><button data-mode="tree" aria-pressed="${planMode==="tree"}">Tree</button></div>
+    <button class="btn primary" data-act="newgoal">+ New goal</button></div>`;
+  goalRow.ctx=ctx;
+  const th=(key,label,w)=>`<th class="sortable" style="width:${w}" data-sort="${key}" aria-sort="${sortCol===key?(sortDir>0?"ascending":"descending"):"none"}">${label}<span class="arr"></span></th>`;
+  const cols=`<thead><tr>${th("title","Title","44%")}${th("type","Type","14%")}${th("team","Team","16%")}${th("linked","Linked to","26%")}</tr></thead>`;
+  const cmp=(key,dir)=>(a,b)=>dir*(key==="type"?(LEVELS.indexOf(a.level)-LEVELS.indexOf(b.level)||a.title.localeCompare(b.title)):key==="team"?(a.team.localeCompare(b.team)||a.title.localeCompare(b.title)):a.title.localeCompare(b.title));
+  const az=(a,b)=>a.title.localeCompare(b.title);
+  let rows="";
+  if(planMode==="list"){
+    if(sortCol==="linked"){
+      // hierarchy-aware: roots in chosen direction, each followed by its children A→Z, then theirs
+      const kids=p=>goals.filter(g=>(g.parentId||null)===p).sort(az);
+      const flat=(g)=>[g,...kids(g.id).flatMap(flat)];
+      const inSet=new Set(goals.map(g=>g.id));
+      const roots=goals.filter(g=>!g.parentId||!inSet.has(g.parentId)).sort((a,b)=>sortDir*az(a,b));
+      const companyRoots=roots.filter(g=>g.level==="Company");
+      const orphanParents=roots.filter(g=>g.level!=="Company"&&kids(g.id).length);
+      const loners=roots.filter(g=>g.level!=="Company"&&!kids(g.id).length);
+      rows=companyRoots.flatMap(flat).map(g=>goalRow(g,0,false)).join("");
+      const orphanCount=orphanParents.length+loners.length;
+      if(orphanCount) rows+=`<tr class="group"><td colspan="4">Not linked to a Company goal<span class="n">${orphanCount}</span></td></tr>`+[...orphanParents.flatMap(flat),...loners].map(g=>goalRow(g,0,false)).join("");
+    }else rows=[...goals].sort(cmp(sortCol,sortDir)).map(g=>goalRow(g,0,false)).join("");
+  }else{
+    const sib=sortCol==="linked"?(a,b)=>az(a,b):cmp(sortCol,sortDir);
+    const kids=p=>goals.filter(g=>(g.parentId||null)===p).sort(sib);
+    const node=(g,depth)=>{const ch=kids(g.id);return goalRow(g,depth,ch.length>0)+(collapsed.has(g.id)?"":ch.map(c=>node(c,depth+1)).join(""))};
+    const rootSort=sortCol==="linked"?(a,b)=>sortDir*az(a,b):cmp(sortCol,sortDir);
+    const roots=goals.filter(g=>!g.parentId).sort(rootSort), companyRoots=roots.filter(g=>g.level==="Company");
+    const orphanParents=roots.filter(g=>g.level!=="Company"&&kids(g.id).length), loners=roots.filter(g=>g.level!=="Company"&&!kids(g.id).length);
+    rows=companyRoots.map(g=>node(g,0)).join("");
+    const orphanCount=orphanParents.length+loners.length;
+    if(orphanCount) rows+=`<tr class="group"><td colspan="4">Not linked to a Company goal<span class="n">${orphanCount}</span></td></tr>`+orphanParents.map(g=>node(g,0)).join("")+loners.map(g=>node(g,0)).join("");
+  }
+  if(!goals.length) rows=`<tr><td colspan="4"><div class="empty"><b>No goals match these filters</b>Try a different type or team, or clear the filters.</div></td></tr>`;
+  rows+=`<tr class="addrow"><td colspan="4"><button data-act="newgoal">+ Add goal</button></td></tr>`;
+  return head+`<div class="board"><div class="scroll"><table class="${planMode==="tree"?"tree":""}">${cols}<tbody>${rows}</tbody></table></div></div>`;
+}
+function goalRow(g,depth,hasKids){
+  const parent=g.parentId?goal(g.parentId):null;
+  const tree=planMode==="tree";
+  const chev=tree?`<button class="chev ${hasKids?"":"leaf"}${!hasKids&&!g.parentId&&g.level!=="Company"?" lone":""}" data-act="collapse" data-id="${g.id}" aria-expanded="${!collapsed.has(g.id)}" aria-label="Toggle children">${ICONS.chev}</button>`:"";
+  const isCtx=goalRow.ctx&&goalRow.ctx.has(g.id);
+  return `<tr class="row ${isCtx?"ctx":""}" ${isCtx?'title="Shown for context — does not match the filter"':""}><td class="title" style="--depth:${depth}"><span class="treeline">${chev}<button class="titlebtn" data-act="editgoal" data-id="${g.id}"><span class="t">${esc(g.title)}</span></button></span></td>
+    <td><span class="pill lvl-${g.level}">${g.level}</span></td>
+    <td><span class="pill teampill">${esc(g.team)}</span></td>
+    <td>${parent?`<span class="cell-link"><span class="dot" style="background:var(--${parent.level.toLowerCase()})"></span>${esc(parent.title)}</span>`:`<span class="muted">—</span>`}</td></tr>`;
+}
+
+/* ---------- rocks view ---------- */
+function renderRocks(){
+  if(!quarterFilter) quarterFilter=S.quarter||QUARTERS[0];
+  const rocks=S.rocks.filter(r=>r.quarter===quarterFilter&&(!teamFilter||r.team===teamFilter));
+  const head=`<div class="viewhead"><h1>Rocks${teamFilter?` <span class="dim">· ${esc(teamFilter)}</span>`:""}</h1><span class="count">${rocks.length} this quarter</span><div class="spacer"></div>
+    <select class="ctl" data-act="quarter" aria-label="Quarter">${QUARTERS.map(q=>`<option ${q===quarterFilter?"selected":""}>${q}</option>`).join("")}</select>
+    <button class="btn primary" data-act="newrock">+ New rock</button></div>`;
+  const cols=`<thead><tr><th class="fit">Title</th><th class="fit">Owner</th><th class="fit">Status</th><th class="fit">Progress</th><th>Last update</th><th class="fit">Goal</th></tr></thead>`;
+  let rows=rocks.map(rockRow).join("");
+  if(!rocks.length) rows=`<tr><td colspan="6"><div class="empty"><b>No rocks for ${esc(quarterFilter)}${teamFilter?` in ${esc(teamFilter)}`:""} yet</b>Add the first 90-day rock for this quarter.</div></td></tr>`;
+  rows+=`<tr class="addrow"><td colspan="6"><button data-act="newrock">+ Add rock</button></td></tr>`;
+  const legend=`<div class="legend" style="margin-top:10px"><span><i class="sw" style="background:var(--green)"></i> done</span><span><i class="sw" style="background:var(--red)"></i> overdue</span><span><i class="sw" style="background:var(--grey-pill)"></i> to do</span></div>`;
+  return head+`<div class="board"><div class="scroll"><table class="rocks">${cols}<tbody>${rows}</tbody></table></div></div>`+legend;
+}
+function rockRow(r){
+  const g=r.goalId?goal(r.goalId):null;
+  const open=expanded.has(r.id);
+  const n=(r.milestones||[]).length;
+  const main=`<tr class="row"><td class="title"><span class="treeline"><button class="chev" data-act="expand" data-id="${r.id}" aria-expanded="${open}" aria-label="Show milestones">${ICONS.chev}</button><button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${n?`<span class="muted" style="font-size:12px">${n}</span>`:""}${!teamFilter&&r.team?`<span class="teamtag">${esc(r.team)}</span>`:""}</span></td>
+    <td class="fit">${ownerHTML(r.ownerId)}</td><td class="fit">${statusSelect(r)}</td><td class="fit">${progressHTML(r)}</td>
+    <td class="updcell">${lastUpdateHTML(r,"rock")}</td>
+    <td class="fit">${g?`<span class="pill goalpill" data-tip="${esc(goalChainText(g))}">${esc(g.title)}</span>`:`<span class="muted">—</span>`}</td></tr>`;
+  if(!open) return main;
+  const ms=(r.milestones||[]).map(m=>{
+    const over=!m.done&&isPast(m.deadline);
+    return `<tr class="${over?"overdue":""}"><td><input class="inline" value="${esc(m.title)}" data-act="mtitle" data-rock="${r.id}" data-id="${m.id}" aria-label="Milestone title"></td>
+      <td><button class="ms-toggle ${m.done?"done":""}" data-act="mtoggle" data-rock="${r.id}" data-id="${m.id}">${m.done?"Done":"To do"}</button></td>
+      <td><input type="date" class="inline date dl ${over?"":(isSoon(m.deadline)&&!m.done?"soon":"")}" value="${m.deadline||""}" data-act="mdate" data-rock="${r.id}" data-id="${m.id}" aria-label="Deadline"></td>
+      <td class="updcell">${lastUpdateHTML(m,"ms:"+r.id)}</td>
+      <td><button class="del" data-act="msdel" data-rock="${r.id}" data-id="${m.id}" aria-label="Delete milestone" data-tip="Delete milestone">${ICONS.trash}</button></td></tr>`;
+  }).join("");
+  const sub=`<tr class="sub"><td colspan="6"><div class="subwrap"><table><colgroup><col style="width:34%"><col style="width:96px"><col style="width:160px"><col><col style="width:44px"></colgroup><thead><tr><th>Milestone</th><th>Status</th><th>Deadline</th><th>Last update</th><th></th></tr></thead><tbody>${ms}
+    <tr class="addrow"><td colspan="5"><button data-act="newms" data-id="${r.id}">+ Add milestone</button></td></tr></tbody></table></div></td></tr>`;
+  return main+sub;
+}
+
+/* ---------- render ---------- */
+function render(){
+  $("#app").innerHTML=view==="plan"?renderPlan():renderRocks();
+  $("#app").classList.toggle("wide",view==="rocks");
+  const tfw=$("#teamFilterWrap");tfw.hidden=view!=="rocks";
+  if(view==="rocks"){const sel=$("#teamFilter");sel.innerHTML=`<option value="">All teams</option>`+S.teams.map(t=>`<option value="${esc(t)}" ${t===teamFilter?"selected":""}>${esc(t)}</option>`).join("");sel.classList.toggle("active",!!teamFilter)}
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===view));
+  const ta=$("[data-pop-text]");if(ta){
+    const pop=$("[data-pop]"),btn=$('.updbtn.on');if(pop&&btn){const r=btn.getBoundingClientRect();const w=Math.min(320,window.innerWidth-16);pop.style.width=w+"px";pop.style.top=(r.bottom+6)+"px";pop.style.left=Math.max(8,Math.min(r.right-w,window.innerWidth-w-8))+"px"}
+    if(updOpen.draft)ta.value=updOpen.draft;ta.focus()}
+}
+
+function logHist(obj,text){(obj.history=obj.history||[]).unshift({at:todayISO(),who:ME,text})}
+function diffHist(before,after,labels){
+  const out=[];for(const k in labels){const a=before[k]??"",b=after[k]??"";if(a!==b)out.push(labels[k](a,b))}return out;
+}
+function historyHTML(obj){
+  const h=obj.history||[];if(!h.length)return`<div class="muted">No changes recorded yet.</div>`;
+  return `<div class="hist">${h.map(e=>{const p=person(e.who);return`<div class="h"><span class="avatar" style="background:${p?p.color:"var(--grey-fill)"}">${p?initials(p.name):"?"}</span><div><div class="what">${esc(e.text)}</div><div class="meta">${p?esc(p.name):"Unknown"} · ${fmtDate(e.at)}</div></div></div>`}).join("")}</div>`;
+}
+/* ---------- modals ---------- */
+let modalState=null;
+function openModal(html){$("#modal").classList.remove("wide");$("#modal").innerHTML=html;$("#backdrop").classList.add("open");const f=$("#modal input,#modal textarea,#modal select");f&&f.focus()}
+function closeModal(){$("#backdrop").classList.remove("open");modalState=null}
+const opt=(list,val,label=x=>x,value=x=>x)=>list.map(x=>`<option value="${esc(value(x))}" ${value(x)===val?"selected":""}>${esc(label(x))}</option>`).join("");
+const field=(l,inner)=>`<div class="field"><label>${l}</label>${inner}</div>`;
+
+function goalModal(g){
+  const isNew=!g; g=g||{id:uid(),level:"Team",team:S.teams[1],title:"",parentId:null,description:"",deliverables:""};
+  modalState={kind:"goal",obj:g,isNew};
+  modalState.parentId=g.parentId;modalState.tab="details";
+  drawGoalModal();
+}
+function drawGoalModal(){
+  const g=modalState.obj,isNew=modalState.isNew,tab=modalState.tab;
+  const tabs=isNew?"":`<div class="mtabs" role="tablist"><button role="tab" data-m="tab" data-tab="details" aria-selected="${tab==="details"}">Details</button><button role="tab" data-m="tab" data-tab="history" aria-selected="${tab==="history"}">History <span class="muted">${(g.history||[]).length}</span></button></div>`;
+  const body=tab==="history"?`<div class="body">${historyHTML(g)}</div>`:`<div class="body">
+    ${field("Title",`<input id="f-title" value="${esc(g.title)}" placeholder="What do we want to be true at the end of the year?">`)}
+    <div class="grid3">
+      ${field("Type",`<select id="f-level">${opt(LEVELS,g.level)}</select>`)}
+      ${field("Team",`<select id="f-team">${opt(S.teams,g.team)}</select>`)}
+      ${field("Linked to",`<div class="combo" id="f-parent"><input id="f-parent-in" placeholder="Search goals…" autocomplete="off" role="combobox" aria-expanded="false"><div class="list" id="f-parent-list"></div></div>`)}
+    </div>
+    ${field("Description",`<textarea id="f-desc">${esc(g.description)}</textarea>`)}
+    ${field("Deliverables",`<textarea id="f-deliv" placeholder="How we'll know it's done">${esc(g.deliverables)}</textarea>`)}
+  </div>`;
+  openModal(`<header><h2>${isNew?"New goal":"Goal"}</h2><button class="btn ghost sm" data-m="close">✕</button></header>${tabs}${body}
+  <footer>${isNew?"":`<button class="btn danger" data-m="delgoal">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button>${tab==="details"?`<button class="btn primary" data-m="savegoal">${isNew?"Create goal":"Save changes"}</button>`:""}</footer>`);
+  if(tab==="details")initParentCombo(g);
+}
+/* nested, searchable "Linked to" picker */
+function initParentCombo(g){
+  const box=$("#f-parent"),inp=$("#f-parent-in"),list=$("#f-parent-list");
+  const level=()=>$("#f-level").value;
+  const allowed=x=>x.id!==g.id&&LEVELS.indexOf(x.level)<LEVELS.indexOf(level());
+  const descendants=(id,acc=new Set())=>{S.goals.filter(x=>x.parentId===id).forEach(x=>{acc.add(x.id);descendants(x.id,acc)});return acc};
+  const blocked=descendants(g.id);
+  const flat=()=>{const out=[];const kids=p=>S.goals.filter(x=>(x.parentId||null)===p);const walk=(p,dep)=>kids(p).forEach(x=>{out.push({g:x,dep});walk(x.id,dep+1)});walk(null,0);return out};
+  const setLabel=()=>{const p=modalState.parentId?goal(modalState.parentId):null;inp.value=p?p.title:"";inp.placeholder=p?"":"None — type to search";};
+  let active=-1;
+  const draw=()=>{
+    const q=inp.value.trim().toLowerCase();
+    const rows=flat().filter(({g:x})=>!blocked.has(x.id)&&x.id!==g.id&&(!q||x.title.toLowerCase().includes(q)||x.team.toLowerCase().includes(q)));
+    const items=[`<div class="item ${!modalState.parentId?"sel":""}" data-id="">— none —</div>`].concat(rows.map(({g:x,dep},i)=>{
+      const ok=allowed(x);return`<div class="item ${ok?"":"dis"} ${x.id===modalState.parentId?"sel":""}" data-id="${ok?x.id:""}" data-dis="${!ok}" style="padding-left:${10+(q?0:dep*18)}px"><span class="dot" style="background:var(--${x.level.toLowerCase()})"></span><span>${esc(x.title)}</span><span class="lvl">${x.level}${ok?"":" · not a higher level"}</span></div>`}));
+    list.innerHTML=rows.length||!q?items.join(""):`<div class="none">No goals match “${esc(inp.value)}”</div>`;active=-1;
+  };
+  const open=()=>{box.classList.add("open");inp.setAttribute("aria-expanded","true");draw()};
+  const close=()=>{box.classList.remove("open");inp.setAttribute("aria-expanded","false");setLabel()};
+  inp.addEventListener("focus",()=>{inp.select();open()});
+  inp.addEventListener("input",()=>{open()});
+  inp.addEventListener("keydown",e=>{
+    const its=[...list.querySelectorAll(".item:not(.dis)")];
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();active=Math.max(0,Math.min(its.length-1,active+(e.key==="ArrowDown"?1:-1)));its.forEach((it,i)=>it.classList.toggle("active",i===active));its[active]?.scrollIntoView({block:"nearest"})}
+    else if(e.key==="Enter"){e.preventDefault();const it=its[active]||its.find(x=>x.dataset.id)||its[0];if(it){modalState.parentId=it.dataset.id||null;close()}}
+    else if(e.key==="Escape"){e.stopPropagation();close()}
+  });
+  list.addEventListener("mousedown",e=>{const it=e.target.closest(".item");if(!it||it.dataset.dis==="true")return;e.preventDefault();modalState.parentId=it.dataset.id||null;close()});
+  inp.addEventListener("blur",()=>setTimeout(close,120));
+  $("#f-level").addEventListener("change",()=>{const p=modalState.parentId?goal(modalState.parentId):null;if(p&&!allowed(p))modalState.parentId=null;setLabel()});
+  setLabel();
+}
+function rockModal(r){
+  const isNew=!r; r=r||{id:uid(),team:teamFilter||S.teams[1],quarter:quarterFilter||QUARTERS[0],title:"",ownerId:S.people[0].id,status:"Not Set",goalId:null,description:"",deliverables:"",milestones:[],updates:[]};
+  const work=JSON.parse(JSON.stringify(r));
+  modalState={kind:"rock",obj:work,isNew,orig:r,tab:"updates"};
+  drawRockModal();
+}
+function goalOptionsFor(team,currentId){
+  let list=S.goals.filter(g=>g.level==="Team"&&g.team===team);
+  if(!list.length) list=S.goals.filter(g=>g.team===team);
+  const cur=currentId?goal(currentId):null;
+  if(cur&&!list.includes(cur)) list=[cur,...list];
+  return list;
+}
+function drawRockModal(){
+  const r=modalState.obj,isNew=modalState.isNew,tab=modalState.tab;
+  const updHTML=r.updates.length?r.updates.map(u=>`<div class="upd"><div>${esc(u.text)}</div><div class="meta">${fmtDate(u.at)}</div></div>`).join(""):`<div class="muted">No updates yet.</div>`;
+  const goalOpts=goalOptionsFor(r.team,r.goalId);
+  const side=`<div class="side">
+    <div class="mtabs" role="tablist"><button role="tab" data-m="tab" data-tab="updates" aria-selected="${tab==="updates"}">Updates <span class="muted">${r.updates.length}</span></button><button role="tab" data-m="tab" data-tab="history" aria-selected="${tab==="history"}">History <span class="muted">${(r.history||[]).length}</span></button></div>
+    ${tab==="updates"?`<div class="pane"><div class="addupd"><input id="f-newupd" placeholder="What's the latest?"><button class="btn" data-m="updadd">Post</button></div><div class="updates">${updHTML}</div></div>`
+      :`<div class="pane">${historyHTML(r)}</div>`}
+  </div>`;
+  openModal(`<header><h2>${isNew?"New rock":"Rock"}</h2><button class="btn ghost sm" data-m="close">✕</button></header>
+  <div class="twocol">
+  <div class="body">
+    ${field("Title",`<input id="f-title" value="${esc(r.title)}" placeholder="What will be done in 90 days?">`)}
+    <div class="grid3">
+      ${field("Owner",`<select id="f-owner">${opt(S.people,r.ownerId,p=>p.name,p=>p.id)}</select>`)}
+      ${field("Team",`<select id="f-team">${opt(S.teams,r.team)}</select>`)}
+      ${field("Quarter",`<select id="f-quarter">${opt(QUARTERS,r.quarter)}</select>`)}
+    </div>
+    <div class="grid2">
+      ${field("Status",`<select id="f-status">${opt(STATUSES.map(s=>s[0]),r.status)}</select>`)}
+      ${field("Contributes to goal",`<select id="f-goal"><option value="">— none —</option>${opt(goalOpts,r.goalId,g=>g.level==="Team"?g.title:`${g.title} (${g.level})`,g=>g.id)}</select>`)}
+    </div>
+    ${field("Description",`<textarea id="f-desc">${esc(r.description)}</textarea>`)}
+    ${field("Deliverables",`<textarea id="f-deliv">${esc(r.deliverables)}</textarea>`)}
+    <div class="muted" style="font-size:12.5px">Milestones are managed in the list: expand the rock to add, complete or delete them.</div>
+  </div>
+  ${side}
+  </div>
+  <footer>${isNew?"":`<button class="btn danger" data-m="delrock">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="saverock">${isNew?"Create rock":"Save changes"}</button></footer>`);
+  $("#modal").classList.add("wide");
+  $("#f-team").addEventListener("change",e=>{const sel=$("#f-goal");const cur=sel.value;const list=goalOptionsFor(e.target.value,null);sel.innerHTML=`<option value="">— none —</option>`+opt(list,list.some(g=>g.id===cur)?cur:"",g=>g.level==="Team"?g.title:`${g.title} (${g.level})`,g=>g.id)});
+}
+function syncRockFields(){
+  const r=modalState.obj;
+  r.title=$("#f-title").value;r.ownerId=$("#f-owner").value;r.team=$("#f-team").value;r.quarter=$("#f-quarter").value;r.status=$("#f-status").value;r.goalId=$("#f-goal").value||null;
+  r.description=$("#f-desc").value;r.deliverables=$("#f-deliv").value;
+}
+function updateModal(kind,id){
+  const [k,rockId]=kind.split(":");
+  const target=k==="rock"?S.rocks.find(r=>r.id===id):S.rocks.find(r=>r.id===rockId).milestones.find(m=>m.id===id);
+  modalState={kind:"quickupd",target};
+  openModal(`<header><h2>Update on “${esc(target.title)}”</h2><button class="btn ghost sm" data-m="close">✕</button></header>
+  <div class="body">${field("What's the latest?",`<textarea id="f-newupd" placeholder="One or two sentences is enough."></textarea>`)}
+  ${target.updates.length?`<div class="section"><h3>Earlier updates</h3><div class="updates">${target.updates.map(u=>`<div class="upd"><div>${esc(u.text)}</div><div class="meta">${fmtDate(u.at)}</div></div>`).join("")}</div></div>`:""}</div>
+  <footer><button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="quickpost">Post update</button></footer>`);
+}
+
+/* ---------- events ---------- */
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{view=t.dataset.view;render()}));
+$("#teamFilter").addEventListener("change",e=>{teamFilter=e.target.value;render()});
+// instant tooltips
+const tip=$("#tip");let tipEl=null;
+function showTip(el){const t=el.getAttribute("data-tip");if(!t)return;tip.textContent=t;tip.classList.add("show");const r=el.getBoundingClientRect(),tw=tip.offsetWidth,th=tip.offsetHeight;
+  let x=r.left,y=r.bottom+6;if(x+tw>window.innerWidth-8)x=window.innerWidth-tw-8;if(y+th>window.innerHeight-8)y=r.top-th-6;tip.style.left=x+"px";tip.style.top=y+"px";tipEl=el}
+function hideTip(){tip.classList.remove("show");tipEl=null}
+document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el!==tipEl){el?showTip(el):hideTip()}});
+document.addEventListener("scroll",hideTip,true);
+$("#resetBtn").addEventListener("click",()=>{if(confirm("Replace everything with the sample data?")){S=seed();save();quarterFilter=null;render();toast("Sample data restored")}});
+
+$("#app").addEventListener("click",e=>{
+  const b=e.target.closest("[data-act],[data-mode],[data-sort]");if(!b)return;
+  if(b.dataset.mode){planMode=b.dataset.mode;render();return}
+  if(b.dataset.sort){const k=b.dataset.sort;if(sortCol===k)sortDir=-sortDir;else{sortCol=k;sortDir=1}render();return}
+  if(b.dataset.act==="toggleall"){if(collapsed.size)collapsed.clear();else S.goals.filter(g=>S.goals.some(c=>c.parentId===g.id)).forEach(g=>collapsed.add(g.id));render();return}
+  const {act,id}=b.dataset;
+  if(act==="collapse"){collapsed.has(id)?collapsed.delete(id):collapsed.add(id);render()}
+  else if(act==="expand"){expanded.has(id)?expanded.delete(id):expanded.add(id);render()}
+  else if(act==="newgoal")goalModal(null);
+  else if(act==="editgoal")goalModal(goal(id));
+  else if(act==="newrock")rockModal(null);
+  else if(act==="editrock")rockModal(S.rocks.find(r=>r.id===id));
+  else if(act==="addupd"){const same=updOpen&&updOpen.kind===b.dataset.kind&&updOpen.id===id;updOpen=same?null:{kind:b.dataset.kind,id};render()}
+  else if(act==="updcancel"){updOpen=null;render()}
+  else if(act==="updpost")postQuickUpdate();
+  else if(act==="mtoggle"){const r=S.rocks.find(r=>r.id===b.dataset.rock);const m=r.milestones.find(x=>x.id===id);m.done=!m.done;logHist(r,`Milestone “${m.title}” marked ${m.done?"done":"to do"}`);save();render()}
+  else if(act==="msdel"){const r=S.rocks.find(x=>x.id===b.dataset.rock);const m=r.milestones.find(x=>x.id===id);if(!confirm(`Delete milestone “${m.title}”?`))return;r.milestones=r.milestones.filter(x=>x.id!==id);logHist(r,`Milestone “${m.title}” removed`);hideTip();save();render();toast("Milestone deleted")}
+  else if(act==="newms"){const r=S.rocks.find(x=>x.id===id);r.milestones.push({id:uid(),title:"New milestone",done:false,deadline:"",updates:[]});expanded.add(id);save();render();
+    const inp=document.querySelector(`[data-act="mtitle"][data-id="${r.milestones[r.milestones.length-1].id}"]`);inp&&(inp.focus(),inp.select())}
+});
+$("#app").addEventListener("change",e=>{
+  const el=e.target;const {act,id}=el.dataset;
+  if(el.dataset.filter==="type"){el.checked?fTypes.add(el.value):fTypes.delete(el.value);render();return}
+  if(act==="status"){const r=S.rocks.find(x=>x.id===id);const old=r.status;r.status=el.value;logHist(r,`Status changed from ${old} to ${r.status}`);save();render();toast(`Status: ${r.status}`)}
+  else if(act==="quarter"){quarterFilter=el.value;S.quarter=el.value;save();render()}
+  else if(act==="mtitle"||act==="mdate"){const m=S.rocks.find(r=>r.id===el.dataset.rock).milestones.find(x=>x.id===id);
+    if(act==="mtitle")m.title=el.value.trim()||m.title;else m.deadline=el.value;save();render()}
+});
+$("#app").addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&e.target.matches("input.inline"))e.target.blur();
+  if(e.target.matches("[data-pop-text]")){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();postQuickUpdate()}else if(e.key==="Escape"){updOpen=null;render()}}
+});
+$("#app").addEventListener("input",e=>{if(e.target.matches("[data-pop-text]")&&updOpen)updOpen.draft=e.target.value});
+window.addEventListener("scroll",()=>{if(updOpen){updOpen=null;render()}},{passive:true});
+document.addEventListener("mousedown",e=>{if(updOpen&&!e.target.closest("[data-pop]")&&!e.target.closest('[data-act="addupd"]')){updOpen=null;render()}});
+function postQuickUpdate(){
+  const ta=$("[data-pop-text]");if(!ta||!updOpen)return;const t=ta.value.trim();if(!t){ta.focus();return}
+  const [k,rockId]=updOpen.kind.split(":");
+  const rock=S.rocks.find(r=>r.id===(k==="rock"?updOpen.id:rockId));
+  const target=k==="rock"?rock:rock.milestones.find(m=>m.id===updOpen.id);
+  (target.updates=target.updates||[]).unshift({at:todayISO(),text:t});
+  logHist(rock,k==="rock"?"Posted an update":`Posted an update on milestone “${target.title}”`);
+  updOpen=null;save();render();toast("Update posted");
+}
+
+$("#backdrop").addEventListener("click",e=>{if(e.target===e.currentTarget)closeModal()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#backdrop").classList.contains("open"))closeModal()});
+$("#modal").addEventListener("click",e=>{
+  const b=e.target.closest("[data-m]");if(!b)return;const m=b.dataset.m,id=b.dataset.id;
+  if(m==="close")return closeModal();
+  if(m==="tab"){if(modalState.kind==="rock")syncRockFields();modalState.tab=b.dataset.tab;modalState.kind==="goal"?drawGoalModal():drawRockModal();return}
+  if(modalState.kind==="goal"){
+    const g=modalState.obj;
+    if(m==="savegoal"){const t=$("#f-title").value.trim();if(!t){$("#f-title").focus();return}
+      const next={title:t,level:$("#f-level").value,team:$("#f-team").value,parentId:modalState.parentId,description:$("#f-desc").value,deliverables:$("#f-deliv").value};
+      const nm=id=>id?(goal(id)||{}).title||"?":"none";
+      const changes=diffHist(g,next,{title:(a,b)=>`Title changed to “${b}”`,level:(a,b)=>`Type changed from ${a} to ${b}`,team:(a,b)=>`Team changed from ${a} to ${b}`,parentId:(a,b)=>`Linked to changed from ${nm(a)} to ${nm(b)}`,description:()=>"Description updated",deliverables:()=>"Deliverables updated"});
+      Object.assign(g,next);
+      if(modalState.isNew){g.history=[];logHist(g,"Created");S.goals.push(g)}else changes.forEach(c=>logHist(g,c));
+      save();closeModal();render();toast("Goal saved")}
+    if(m==="delgoal"&&confirm("Delete this goal? Rocks and child goals linked to it will be unlinked.")){
+      S.goals=S.goals.filter(x=>x.id!==g.id);S.goals.forEach(x=>{if(x.parentId===g.id)x.parentId=null});S.rocks.forEach(r=>{if(r.goalId===g.id)r.goalId=null});save();closeModal();render();toast("Goal deleted")}
+  }else if(modalState.kind==="rock"){
+    const r=modalState.obj;
+    if(m==="updadd"){const t=$("#f-newupd").value.trim();if(!t)return;syncRockFields();r.updates.unshift({at:todayISO(),text:t});drawRockModal()}
+    else if(m==="saverock"){syncRockFields();if(!r.title.trim()){$("#f-title").focus();return}
+      r.milestones=modalState.orig.milestones||r.milestones;
+      const o=modalState.orig,pn=id=>id?(person(id)||{}).name||"?":"none",gn=id=>id?(goal(id)||{}).title||"?":"none";
+      if(modalState.isNew){r.history=[];logHist(r,"Created")}else{
+        diffHist(o,r,{title:(a,b)=>`Title changed to “${b}”`,ownerId:(a,b)=>`Owner changed from ${pn(a)} to ${pn(b)}`,team:(a,b)=>`Team changed from ${a} to ${b}`,quarter:(a,b)=>`Moved from ${a} to ${b}`,status:(a,b)=>`Status changed from ${a} to ${b}`,goalId:(a,b)=>`Goal changed from ${gn(a)} to ${gn(b)}`,description:()=>"Description updated",deliverables:()=>"Deliverables updated"}).forEach(c=>logHist(r,c));
+        if(r.updates.length>(o.updates||[]).length)logHist(r,"Posted an update");
+      }
+      const i=S.rocks.findIndex(x=>x.id===r.id);i>=0?S.rocks[i]=r:S.rocks.push(r);quarterFilter=r.quarter;S.quarter=r.quarter;save();closeModal();render();toast("Rock saved")}
+    else if(m==="delrock"&&confirm("Delete this rock and its milestones?")){S.rocks=S.rocks.filter(x=>x.id!==r.id);save();closeModal();render();toast("Rock deleted")}
+  }else if(modalState.kind==="quickupd"&&m==="quickpost"){
+    const t=$("#f-newupd").value.trim();if(!t){$("#f-newupd").focus();return}
+    modalState.target.updates.unshift({at:todayISO(),text:t});save();closeModal();render();toast("Update posted")
+  }
+});
+$("#modal").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="f-newupd"&&modalState?.kind==="rock"){e.preventDefault();$('[data-m="updadd"]').click()}});
+
+render();
+</script>
+</body>
+</html>
