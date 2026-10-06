@@ -1,4 +1,4 @@
-# EOS Tracker — "Goals & Rocks"
+# EOS Tracker
 
 A single-page tool for tracking EOS (Entrepreneurial Operating System) goals and quarterly Rocks.
 Originally built as a Claude.ai artifact; the original conversation is not available, so this file is the source of context.
