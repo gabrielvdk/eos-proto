@@ -65,6 +65,7 @@ data/seed → load/save → UI state → helpers → shared renderers → `rende
 Rendering is "re-render everything": change `S`, call `save()` and `render()`.
 
 ## Conventions
+- **Look and feel follows [DESIGN.md](DESIGN.md)**, shared with Roadmapper (`gabrielvdk/roadmap-proto`). This app is its source of truth: when you change a token or style recipe, update DESIGN.md here **and** in `../Roadmapper`. Fonts: Figtree for everything (`--font-body`), Titillium Web only for titles (`--font-title`: app name, view `h1`, modal title).
 - Colors are CSS variables on `:root`, with dark-mode overrides; use the tokens rather than hard-coded colors.
 - Always escape user text with `esc()` when building HTML strings.
 - Log meaningful changes to an item's history with `logHist(obj, text)`.
