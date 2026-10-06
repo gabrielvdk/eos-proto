@@ -6,6 +6,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
 ## What it is
 - One self-contained file: `Goals & Rocks.html` (HTML + CSS + vanilla JS, no build step, no dependencies except the Figtree Google Font).
 - Open it by double-clicking; it runs in any modern browser.
+- **Preview in Claude Code's browser pane:** it can't open `file://` URLs, so serve the folder with `serve.ps1` (plain PowerShell, no Node/Python installed on this machine): run `powershell -NoProfile -ExecutionPolicy Bypass -File serve.ps1 -Port 8080` in the background, then open `http://localhost:8080`. Config is also in `.claude/launch.json` (`eos-tracker`). The server sends `no-store`, so a reload shows the latest edit.
 
 ## Features
 - **One Year Plan** tab: goals at three levels (Company → Department → Team), each linked to a parent goal.
@@ -37,4 +38,5 @@ Rendering is "re-render everything": change `S`, call `save()` and `render()`.
 - Log meaningful changes to an item's history with `logHist(obj, text)`.
 
 ## Open ideas / next steps
-_(To be filled in with the user.)_
+- Current phase: **prototype** — iterate on features and UX in the single HTML file.
+- Later: possibly convert into a real (multi-user) application; keep that in mind but don't over-engineer the prototype.
