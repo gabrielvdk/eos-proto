@@ -18,7 +18,7 @@
   --red:#D93B4F; --red-deep:#A51E35; --red-soft:#FBE4E7;
   --amber:#E29A1C; --amber-soft:#FCF0D8;
   --grey-pill:#C7CDD7; --grey-fill:#8A95A6;
-  --company:#5B4BDB; --department:#1F8FD1; --team:#19A974;
+  --company:#5B4BDB; --department:#1F8FD1; --team:#19A974; --forum:#E2741C;
   --shadow:0 10px 30px rgba(28,36,48,.14);
   --radius:10px;
 }
@@ -130,6 +130,10 @@ td.title{font-weight:400}
 .lvl-Company{background:color-mix(in srgb,var(--company) 14%,transparent);color:var(--company)}
 .lvl-Department{background:color-mix(in srgb,var(--department) 14%,transparent);color:var(--department)}
 .lvl-Team{background:color-mix(in srgb,var(--team) 16%,transparent);color:var(--team)}
+.brtag{font-size:10.5px;font-weight:700;letter-spacing:.03em;color:var(--forum);background:color-mix(in srgb,var(--forum) 14%,transparent);border-radius:5px;padding:1px 5px;margin-left:4px;white-space:nowrap}
+.chkrow{display:flex;align-items:flex-start;gap:9px;font-size:13px;cursor:pointer;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--canvas)}
+.chkrow input{accent-color:var(--forum);width:16px;height:16px;margin:1px 0 0;flex:none}
+.chkrow:has(input:checked){border-color:color-mix(in srgb,var(--forum) 45%,transparent);background:color-mix(in srgb,var(--forum) 8%,var(--surface))}
 .goalpill{background:var(--accent-soft);color:var(--accent)}
 .teampill{background:var(--canvas);color:var(--ink-2);border:1px solid var(--line)}
 .dot{width:8px;height:8px;border-radius:50%;flex:none}
@@ -594,7 +598,12 @@ function seed(){
   ];
   goals.forEach(g=>{g.history=[{at:d(1,12),who:"p1",text:"Created"},{at:d(1,19),who:"p2",text:"Deliverables updated"}]});
   rocks.forEach((r,i)=>{r.history=[{at:r.quarter==="Q3 2026"?d(7,1):d(9,29),who:r.ownerId,text:"Created"}].concat(r.status!=="Not Set"?[{at:d(10,1),who:r.ownerId,text:`Status set to ${r.status}`}]:[])});
-  return {people,departments,goals,rocks,cards:seedCards(),quarter:"Q4 2026"};
+  rocks.forEach(r=>{if(r.id==="r3"||r.id==="r19")r.trackBR=true}); // sample: two rocks tracked in Business Review
+  return {people,departments,forums:seedForums(),goals,rocks,cards:seedCards(),quarter:"Q4 2026"};
+}
+/* forums: meetings that act like a team (own rocks + Level 10 board, no goals) and also pull in rocks from other teams */
+function seedForums(){
+  return [{name:"Business Review",includeTracked:true,includeEscalated:true}]; // every 4 weeks, team leaders
 }
 /* Level 10 board cards (IDS / To Do / Done), per team. Same card type in every column, so an IDS item can become a to-do. */
 function seedCards(){
@@ -626,6 +635,7 @@ function save(){
 function migrate(){
   [...S.goals,...S.rocks].forEach(x=>{if(x.team==="Company")x.team=COMPANY}); // the company unit was renamed to its real name
   if(!S.cards)S.cards=seedCards(); // Level 10 boards were added later
+  if(!S.forums){S.forums=seedForums();S.rocks.forEach(r=>{if(r.id==="r3"||r.id==="r19")r.trackBR=true})} // Business Review was added later (sample rocks tracked)
   S.rocks.forEach(r=>{if(r.status==="Off-Track Escalate")r.status="OT - Escalate"}); // shorter label keeps the status column narrow
 }
 load();
@@ -657,8 +667,18 @@ const quarterRange=q=>{const [,n,y]=q.match(/Q(\d) (\d{4})/).map(Number);return 
    A goal's level follows from its unit (levelOf). A team named like its own department (HR) counts as the department. */
 const isDept=u=>S.departments.some(d=>d.name===u);
 const deptOf=u=>u===COMPANY?null:(S.departments.find(d=>d.name===u)||S.departments.find(d=>d.teams.includes(u)))?.name||null;
-const levelOf=u=>u===COMPANY?"Company":isDept(u)?"Department":"Team";
+const forum=u=>(S.forums||[]).find(f=>f.name===u);
+const isForum=u=>!!forum(u);
+const levelOf=u=>u===COMPANY?"Company":isDept(u)?"Department":isForum(u)?"Forum":"Team"; // "Forum" only colours dots; goals never have it
 const unitMatches=(u,filter)=>!filter||u===filter||(isDept(filter)&&deptOf(u)===filter); // a department filter includes its teams
+// rocks: a forum shows its own rocks plus the rocks its rule pulls in from other teams
+function rockMatches(r,filter){
+  const f=forum(filter);
+  if(!f)return unitMatches(r.team,filter);
+  return r.team===filter||(f.includeTracked&&r.trackBR)||(f.includeEscalated&&r.status==="OT - Escalate");
+}
+const goalFilter=()=>isForum(teamFilter)?"":teamFilter; // forums have no goals: the plan shows everything
+const brTag=r=>r.trackBR?`<span class="brtag" title="Tracked in Business Review">BR</span>`:"";
 const statusClass=st=>(STATUSES.find(x=>x[0]===st)||STATUSES[0])[1];
 function toast(msg,ms=1600){
   const t=$("#toast");if(Date.now()<(t._lock||0))return; // a long (warning) toast isn't overwritten by a routine "saved" toast
@@ -703,8 +723,8 @@ function ownerHTML(id){const p=person(id);if(!p)return`<span class="muted">—</
 /* ---------- plan view ---------- */
 function renderPlan(){
   const all=S.goals;
-  const match=g=>fTypes.has(g.level)&&unitMatches(g.team,teamFilter);
-  const filtering=fTypes.size<LEVELS.length||!!teamFilter;
+  const match=g=>fTypes.has(g.level)&&unitMatches(g.team,goalFilter());
+  const filtering=fTypes.size<LEVELS.length||!!goalFilter();
   let goals=all.filter(match);
   const ctx=new Set(); // ancestors shown for context in tree view
   if(planMode==="tree"&&filtering){
@@ -713,7 +733,7 @@ function renderPlan(){
     goals=all.filter(g=>keep.has(g.id));
   }
   const matched=goals.length-ctx.size;
-  const head=`<div class="viewhead"><h1>One Year Plan ${YEAR}${teamFilter?` <span class="dim">· ${esc(teamFilter)}</span>`:""}</h1><span class="count">${filtering?`${matched} of ${all.length}`:all.length} goals</span><div class="spacer"></div>
+  const head=`<div class="viewhead"><h1>One Year Plan ${YEAR}${goalFilter()?` <span class="dim">· ${esc(teamFilter)}</span>`:""}</h1>${isForum(teamFilter)?`<span class="muted" style="font-size:12.5px">${esc(teamFilter)} has no goals, so all goals are shown ·</span>`:""}<span class="count">${filtering?`${matched} of ${all.length}`:all.length} goals</span><div class="spacer"></div>
     <div class="checks" role="group" aria-label="Filter by type">${LEVELS.map(l=>`<label><input type="checkbox" data-filter="type" value="${l}" ${fTypes.has(l)?"checked":""}><span class="dot" style="background:var(--${l.toLowerCase()})"></span>${l}</label>`).join("")}</div>
     ${planMode==="tree"?`<button class="btn sm" data-act="toggleall">${collapsed.size?"Expand all":"Collapse all"}</button>`:""}
     <div class="seg" role="group" aria-label="View"><button data-mode="list" aria-pressed="${planMode==="list"}">List</button><button data-mode="tree" aria-pressed="${planMode==="tree"}">Tree</button></div>
@@ -767,7 +787,7 @@ function goalRow(g,depth,hasKids){
 /* ---------- rocks view ---------- */
 function renderRocks(){
   if(!quarterFilter) quarterFilter=S.quarter||QUARTERS[0];
-  const rocks=S.rocks.filter(r=>r.quarter===quarterFilter&&unitMatches(r.team,teamFilter));
+  const rocks=S.rocks.filter(r=>r.quarter===quarterFilter&&rockMatches(r,teamFilter));
   const head=`<div class="viewhead"><h1>Rocks${teamFilter?` <span class="dim">· ${esc(teamFilter)}</span>`:""}</h1><span class="count">${rocks.length} this quarter</span><div class="spacer"></div>
     <select class="ctl" data-act="quarter" aria-label="Quarter">${QUARTERS.map(q=>`<option ${q===quarterFilter?"selected":""}>${q}</option>`).join("")}</select>
     <button class="btn primary" data-act="newrock">+ New rock</button></div>`;
@@ -782,7 +802,7 @@ function rockRow(r){
   const g=r.goalId?goal(r.goalId):null;
   const open=expanded.has(r.id);
   const n=(r.milestones||[]).length;
-  const main=`<tr class="row"><td class="title"><span class="treeline"><button class="chev" data-act="expand" data-id="${r.id}" aria-expanded="${open}" aria-label="Show milestones">${ICONS.chev}</button><button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${n?`<span class="muted" style="font-size:12px">${n}</span>`:""}${r.team&&r.team!==teamFilter?`<span class="teamtag">${esc(r.team)}</span>`:""}</span></td>
+  const main=`<tr class="row"><td class="title"><span class="treeline"><button class="chev" data-act="expand" data-id="${r.id}" aria-expanded="${open}" aria-label="Show milestones">${ICONS.chev}</button><button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${n?`<span class="muted" style="font-size:12px">${n}</span>`:""}${r.team&&r.team!==teamFilter?`<span class="teamtag">${esc(r.team)}</span>`:""}${brTag(r)}</span></td>
     <td class="fit">${ownerHTML(r.ownerId)}</td><td class="fit">${statusSelect(r)}</td><td class="fit">${progressHTML(r)}</td>
     <td class="updcell">${lastUpdateHTML(r,"rock")}</td>
     <td class="fit">${g?`<span class="pill goalpill" data-tip="${esc(goalChainText(g))}">${esc(g.title)}</span>`:`<span class="muted">—</span>`}</td></tr>`;
@@ -803,7 +823,7 @@ function rockRow(r){
 /* ---------- rock review view ---------- */
 function renderReview(){
   if(!quarterFilter) quarterFilter=S.quarter||QUARTERS[0];
-  const rocks=S.rocks.filter(r=>r.quarter===quarterFilter&&unitMatches(r.team,teamFilter));
+  const rocks=S.rocks.filter(r=>r.quarter===quarterFilter&&rockMatches(r,teamFilter));
   // weeks span the quarter, widened to include every milestone deadline of the shown rocks
   let [start,end]=quarterRange(quarterFilter);
   rocks.forEach(r=>(r.milestones||[]).forEach(m=>{if(!m.deadline)return;const dt=parseD(m.deadline);if(dt<start)start=dt;if(dt>end)end=dt}));
@@ -830,7 +850,7 @@ function renderReview(){
   let left=rocks.map(r=>{
     const undated=(r.milestones||[]).filter(m=>!m.deadline).length;
     return `<tr class="${rowCls(r)}"><td class="rk"><div class="rkcell">
-      <div class="rkhead">${ownerHTML(r.ownerId)}<button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${r.team&&r.team!==teamFilter?`<span class="teamtag">${esc(r.team)}</span>`:""}${updBtn(r)}</div>
+      <div class="rkhead">${ownerHTML(r.ownerId)}<button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${r.team&&r.team!==teamFilter?`<span class="teamtag">${esc(r.team)}</span>`:""}${brTag(r)}${updBtn(r)}</div>
       <div class="rkmeta">${statusSelect(r)}${progressHTML(r)}${undated?`<span class="muted" style="font-size:12px">${undated} undated</span>`:""}</div>
     </div></td></tr>`;
   }).join("");
@@ -858,7 +878,7 @@ const AGENDA=[["Segue",5],["Scorecard",5],["Rock Review",5,"review"],["Customer 
   ["Conclude",5,null,["Recap To-Do List","Cascading Messages","Rating (1–10)"]]];
 const COLS=[["ids","IDS"],["todo","To Do"],["done","Done"]];
 const colName=k=>(COLS.find(c=>c[0]===k)||[])[1]||k;
-const isBoardTeam=u=>S.departments.some(d=>d.teams.includes(u)); // boards exist per team only (HR is a team of HR too)
+const isBoardTeam=u=>isForum(u)||S.departments.some(d=>d.teams.includes(u)); // boards exist per team (HR is a team of HR too) and per forum
 const card=id=>S.cards.find(c=>c.id===id);
 const imgCount=html=>(String(html||"").match(/<img/g)||[]).length;
 const ICON_IMG='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="6" cy="6.5" r="1.2"/><path d="M14 11l-3.5-3.5L4 13"/></svg>';
@@ -891,8 +911,11 @@ function renderL10Pick(){
   const d0=teamFilter?(isDept(teamFilter)?teamFilter:null):null; // a selected department is listed first
   const depts=[...S.departments].sort((a,b)=>(b.name===d0)-(a.name===d0));
   const openCount=t=>S.cards.filter(c=>c.team===t&&c.column!=="done").length;
+  const forums=S.forums||[];
   return `<div class="viewhead"><h1>Level 10</h1></div><div class="board l10pick">
     <p><b>Level 10 meetings are held per team.</b> ${teamFilter?`You're viewing <b>${esc(teamFilter)}</b>, which isn't a team. `:""}Pick a team to open its board:</p>
+    ${forums.length?`<div class="pdept"><div class="grp">Meetings</div><div class="pteams">${forums.map(f=>{const n=openCount(f.name);
+      return `<button class="pteam" data-act="pickteam" data-team="${esc(f.name)}"><span class="dot" style="background:var(--forum)"></span>${esc(f.name)}${n?`<span class="n">${n} open</span>`:""}</button>`}).join("")}</div></div>`:""}
     ${depts.map(d=>`<div class="pdept"><div class="grp">${esc(d.name)}</div><div class="pteams">${d.teams.map(t=>{const n=openCount(t);
       return `<button class="pteam" data-act="pickteam" data-team="${esc(t)}"><span class="dot" style="background:var(--team)"></span>${esc(t)}${n?`<span class="n">${n} open</span>`:""}</button>`}).join("")}</div></div>`).join("")}
   </div>`;
@@ -947,7 +970,7 @@ const opt=(list,val,label=x=>x,value=x=>x)=>list.map(x=>`<option value="${esc(va
 const field=(l,inner)=>`<div class="field"><label>${l}</label>${inner}</div>`;
 
 function goalModal(g){
-  const isNew=!g; g=g||{id:uid(),level:levelOf(teamFilter||S.departments[0].teams[0]),team:teamFilter||S.departments[0].teams[0],title:"",parentId:null,description:"",deliverables:""};
+  const isNew=!g; g=g||{id:uid(),level:levelOf(goalFilter()||S.departments[0].teams[0]),team:goalFilter()||S.departments[0].teams[0],title:"",parentId:null,description:"",deliverables:""};
   modalState={kind:"goal",obj:g,isNew};
   modalState.parentId=g.parentId;modalState.tab="details";
   drawGoalModal();
@@ -966,7 +989,7 @@ function drawGoalModal(){
   </div>`;
   openModal(`<header><h2>${isNew?"New goal":"Goal"}</h2><button class="btn ghost sm" data-m="close">✕</button></header>${tabs}${body}
   <footer>${isNew?"":`<button class="btn danger" data-m="delgoal">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button>${tab==="details"?`<button class="btn primary" data-m="savegoal">${isNew?"Create goal":"Save changes"}</button>`:""}</footer>`);
-  if(tab==="details"){initUnitPicker();initLinkedPicker(g)}
+  if(tab==="details"){initUnitPicker(false);initLinkedPicker(g)}
 }
 /* ---------- shared, searchable picker ----------
    Used for a goal's "Linked to goal", a rock's "Contributes to goal" and the Team field of both modals.
@@ -1013,14 +1036,15 @@ function initPicker(id,{get,set,groups,emptyText,display,dotOf,noun="items",allo
 }
 /* Team field: Hoogendoorn, then each department followed by its teams (indented); the dot shows the level.
    The value lives in a hidden #f-team input that fires "change", so the rest of the modal code reads it like the old <select>. */
-const unitItem=(u,indent=0)=>({id:u,title:u,level:levelOf(u),indent,label:indent?"":levelOf(u),search:`${u} ${deptOf(u)||""}`});
-const unitGroups=()=>[{name:"Company",items:[unitItem(COMPANY)]},
+const unitItem=(u,indent=0)=>({id:u,title:u,level:levelOf(u),indent,label:indent?"":levelOf(u)==="Forum"?"Meeting":levelOf(u),search:`${u} ${deptOf(u)||""}`});
+const unitGroups=(withForums=true)=>[{name:"Company",items:[unitItem(COMPANY)]},
+  ...(withForums&&(S.forums||[]).length?[{name:"Meetings",items:S.forums.map(f=>unitItem(f.name))}]:[]),
   {name:"Departments & teams",items:S.departments.flatMap(d=>[unitItem(d.name),...d.teams.filter(t=>t!==d.name).map(t=>unitItem(t,1))])}];
 const unitPickerHTML=sel=>pickerHTML("f-unit",{dot:true,hidden:{id:"f-team",value:sel}});
-function initUnitPicker(){
+function initUnitPicker(withForums){ // goals can't belong to a forum, rocks can
   const hid=$("#f-team");
   initPicker("f-unit",{get:()=>hid.value,set:v=>{if(v&&v!==hid.value){hid.value=v;hid.dispatchEvent(new Event("change"))}},
-    groups:unitGroups,display:v=>v,dotOf:levelOf,noun:"teams",allowNone:false});
+    groups:()=>unitGroups(withForums),display:v=>v,dotOf:levelOf,noun:"teams",allowNone:false});
 }
 /* goal "Linked to": only higher-level goals (and never the goal itself or its descendants).
    Team goal → its department's goals, Company, other departments. Department goal → Company. */
@@ -1103,6 +1127,7 @@ function drawRockModal(){
       ${field("Status",`<select id="f-status">${opt(STATUSES.map(s=>s[0]),r.status)}</select>`)}
       ${field("Contributes to goal",pickerHTML("f-goal"))}
     </div>
+    <label class="chkrow"><input type="checkbox" id="f-trackbr" ${r.trackBR?"checked":""}><span><b>Track in Business Review</b><span class="muted"> — shown in Business Review alongside OT - Escalate rocks</span></span></label>
     ${field("Description",`<textarea id="f-desc">${esc(r.description)}</textarea>`)}
     ${field("Deliverables",`<textarea id="f-deliv">${esc(r.deliverables)}</textarea>`)}
   </div>`}
@@ -1111,13 +1136,13 @@ function drawRockModal(){
   </div>
   <footer>${isNew?"":`<button class="btn danger" data-m="delrock">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="saverock">${isNew?"Create rock":"Save changes"}</button></footer>`);
   $("#modal").classList.add("wide");
-  if($("#f-goal")){initUnitPicker();initRockGoalPicker(r)}
+  if($("#f-goal")){initUnitPicker(true);initRockGoalPicker(r)}
 }
 const msDateCls=m=>!m.deadline?"empty":m.done?"":isPast(m.deadline)?"over":isSoon(m.deadline)?"soon":"";
 function syncRockFields(){
   const r=modalState.obj;
   if(!$("#f-title"))return; // Details tab not shown; its values were synced when leaving it
-  r.title=$("#f-title").value;r.ownerId=$("#f-owner").value;r.team=$("#f-team").value;r.quarter=$("#f-quarter").value;r.status=$("#f-status").value; // goalId is set directly by the goal picker
+  r.title=$("#f-title").value;r.ownerId=$("#f-owner").value;r.team=$("#f-team").value;r.quarter=$("#f-quarter").value;r.status=$("#f-status").value;r.trackBR=$("#f-trackbr").checked||undefined; /* unset, not false, so untouched rocks log no change */ // goalId is set directly by the goal picker
   r.description=$("#f-desc").value;r.deliverables=$("#f-deliv").value;
 }
 function updateModal(kind,id){
@@ -1221,7 +1246,7 @@ document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{vie
 document.addEventListener("scroll",e=>{const el=e.target;if(!el.classList||!el.classList.contains("rr-scroll"))return;if(Math.abs(el.scrollLeft-(rrScroll??0))<1)return;rrScroll=el.scrollLeft;if(updOpen){updOpen=null;render()}},true);
 // team filter in the top bar (all views): same picker as the Team field, plus "All teams"
 $("#teamFilterWrap").innerHTML=`<label for="tf-in">Team</label>`+pickerHTML("tf",{dot:true});
-tfPicker=initPicker("tf",{get:()=>teamFilter,set:v=>{teamFilter=v||"";rrScroll=null;render()},groups:unitGroups,display:v=>v,dotOf:levelOf,noun:"teams",noneText:"All teams"});
+tfPicker=initPicker("tf",{get:()=>teamFilter,set:v=>{teamFilter=v||"";rrScroll=null;render()},groups:()=>unitGroups(true),display:v=>v,dotOf:levelOf,noun:"teams",noneText:"All teams"});
 // instant tooltips
 const tip=$("#tip");let tipEl=null;
 function showTip(el){const t=el.getAttribute("data-tip");if(!t)return;tip.textContent=t;tip.classList.add("show");const r=el.getBoundingClientRect(),tw=tip.offsetWidth,th=tip.offsetHeight;
@@ -1409,7 +1434,7 @@ $("#modal").addEventListener("click",e=>{
       r.milestones=r.milestones.map(x=>({...x,title:x.title.trim()})).filter(x=>x.title);
       const o=modalState.orig,pn=id=>id?(person(id)||{}).name||"?":"none",gn=id=>id?(goal(id)||{}).title||"?":"none";
       if(modalState.isNew){r.history=[];logHist(r,"Created")}else{
-        diffHist(o,r,{title:(a,b)=>`Title changed to “${b}”`,ownerId:(a,b)=>`Owner changed from ${pn(a)} to ${pn(b)}`,team:(a,b)=>`Team changed from ${a} to ${b}`,quarter:(a,b)=>`Moved from ${a} to ${b}`,status:(a,b)=>`Status changed from ${a} to ${b}`,goalId:(a,b)=>`Goal changed from ${gn(a)} to ${gn(b)}`,description:()=>"Description updated",deliverables:()=>"Deliverables updated"}).forEach(c=>logHist(r,c));
+        diffHist(o,r,{title:(a,b)=>`Title changed to “${b}”`,ownerId:(a,b)=>`Owner changed from ${pn(a)} to ${pn(b)}`,team:(a,b)=>`Team changed from ${a} to ${b}`,quarter:(a,b)=>`Moved from ${a} to ${b}`,status:(a,b)=>`Status changed from ${a} to ${b}`,goalId:(a,b)=>`Goal changed from ${gn(a)} to ${gn(b)}`,trackBR:(a,b)=>b?"Now tracked in Business Review":"No longer tracked in Business Review",description:()=>"Description updated",deliverables:()=>"Deliverables updated"}).forEach(c=>logHist(r,c));
         if(r.updates.length>(o.updates||[]).length)logHist(r,"Posted an update");
         const before=new Map((o.milestones||[]).map(x=>[x.id,x]));
         r.milestones.forEach(x=>{const b=before.get(x.id);

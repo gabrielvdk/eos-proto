@@ -38,10 +38,14 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
   - Kanban columns `COLS`: IDS · To Do · Done. Inline composer (`l10Add`, Enter adds and stays open). HTML5 drag & drop (`moveCard(id, col, beforeId)` — order = order in `S.cards`), logs "Moved from X to Y".
   - Card modal (`cardModal`/`drawCardModal`, `modalState.kind="card"`): title, column switch, owners (multi, empty by default, creator is `createdBy`), description editor, Updates/History. Edits apply on Save.
   - Description is a contenteditable (`initRichText`): text pastes as plain text; pasted/dropped images are downscaled (≤1600px, PNG or JPEG if large) and embedded as data URLs. **Always pass stored HTML through `sanitizeHTML()`** (allows simple tags + `data:image/(png|jpeg|gif|webp)` only). Click an image → `openLightbox`.
+- **Business Review** (4-weekly team-leaders meeting) is a **forum**: `S.forums = [{name, includeTracked, includeEscalated}]`. A forum behaves like a team for rocks and the Level 10 board (same agenda), but has **no goals**.
+  - Rocks shown for a forum (`rockMatches`): its own rocks + rocks with `trackBR` (checkbox "Track in Business Review" in the rock modal, "BR" tag in lists) + rocks with status "OT - Escalate". They stay owned by their own team; edits change the real rock.
+  - With a forum selected the One Year Plan shows all goals (`goalFilter()` returns ""); new goals don't default to it; the goal Team picker hides "Meetings" (`initUnitPicker(false)`).
+  - `levelOf(forum)` is "Forum" (orange `--forum` dot) — only for colouring, never stored on goals.
 - Light/dark theme follows the OS (`prefers-color-scheme`).
 
 ## Data & storage
-- All state lives in one object `S = {people, departments, goals, rocks, cards, quarter}`.
+- All state lives in one object `S = {people, departments, forums, goals, rocks, cards, quarter}`.
 - `S.cards = [{id, team, column: "ids"|"todo"|"done", title, description (sanitized HTML), owners[], createdBy, createdAt, updates[], history[]}]`; `migrate()` adds sample cards to older data.
 - Persisted to the browser's `localStorage` under key `goals-rocks-v7`. Data is per browser/per device — **not shared** between users. Bump the key when the data shape changes, or add a step to `migrate()` to keep the user's data.
 - localStorage holds ~5 MB; pasted images eat it. `save()` returns false and shows a warning toast when the quota is exceeded.
