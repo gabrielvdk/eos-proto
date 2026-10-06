@@ -54,7 +54,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
 - **Organisation (real):** `S.departments = [{name, teams[]}]` — Product & Technology (Data Science, Research, LG Dev, IIVO Dev, Hardware, Controls), Operations (Engineering, IIVO Helpdesk, LG Service Desk, Customer Success, Contracts, T&C), Sales (Project Sales, Direct Sales), Finance (Legal, Accounting, Business Strategy), HR (HR). Above them: "Company".
   - Goals and rocks store a *unit* name in `.team`: `COMPANY` ("Hoogendoorn" — the single company; the *level* is still called "Company"), a department name, or a team name. A team named like its department (HR) counts as the department and is listed once. `migrate()` renames the old "Company" unit on load.
   - Helpers: `deptOf(unit)`, `isDept(unit)`, `unitMatches(unit, filter)` (a department filter includes its teams), `levelOf(unit)`.
-- `seed()` contains sample goals/rocks (fictional content, real team names) and fictional people; "Reset sample data" restores it.
+- `seed()` contains sample goals/rocks (fictional content, real team names) and fictional people. It is only used for a browser with no saved data (there is no reset button; clearing site data starts fresh).
 - People and the org structure are hard-coded in `seed()`; there is no UI to manage them yet.
 - `ME = "p1"` is a placeholder for the current user (used in history entries). There is no login.
 - `YEAR` and `QUARTERS` are hard-coded constants.

@@ -84,8 +84,7 @@ select.ctl.active{border-color:var(--accent);background:var(--accent-soft);color
 tr.ctx td{opacity:.45}
 tr.ctx td .pill,tr.ctx td .dot{filter:grayscale(1)}
 
-main{max-width:1280px;margin:0 auto;padding:22px 24px 40px}
-footer.site{max-width:1280px;margin:0 auto;padding:0 72px 40px 24px;display:flex;justify-content:flex-end;color:var(--ink-3);font-size:12.5px}
+main{max-width:1280px;margin:0 auto;padding:22px 24px 72px} /* bottom room for the fixed theme toggle */
 .topfilter{display:inline-flex;align-items:center;gap:8px;font-weight:600;color:var(--ink-2)}
 .topfilter .combo input{width:220px;border:1px solid var(--line-strong);background:var(--surface);border-radius:9px;padding:6px 10px;font-weight:600;cursor:pointer}
 .topfilter .combo input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft);cursor:text}
@@ -469,7 +468,6 @@ try{const t=localStorage.getItem("eos-theme");if(t==="light"||t==="dark")documen
 </div>
 
 <main id="app"></main>
-<footer class="site"><button class="btn ghost sm" id="resetBtn" title="Restore the sample data">Reset sample data</button></footer>
 <button class="themebtn" id="themeBtn" type="button"></button>
 <div id="tip" role="tooltip"></div>
 
@@ -1293,7 +1291,6 @@ function showTip(el){const t=el.getAttribute("data-tip");if(!t)return;tip.textCo
 function hideTip(){tip.classList.remove("show");tipEl=null}
 document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el!==tipEl){el?showTip(el):hideTip()}});
 document.addEventListener("scroll",hideTip,true);
-$("#resetBtn").addEventListener("click",()=>askConfirm("Replace everything with the sample data? All your changes will be lost.","Reset").then(ok=>{if(ok){S=seed();save();quarterFilter=null;render();toast("Sample data restored")}}));
 /* status menu (one shared element, positioned under the clicked status button) */
 const stMenu={id:null,btn:null};
 const CHECK='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg>';
