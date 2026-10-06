@@ -85,7 +85,7 @@ tr.ctx td{opacity:.45}
 tr.ctx td .pill,tr.ctx td .dot{filter:grayscale(1)}
 
 main{max-width:1280px;margin:0 auto;padding:22px 24px 40px}
-footer.site{max-width:1280px;margin:0 auto;padding:0 24px 40px;display:flex;justify-content:flex-end;color:var(--ink-3);font-size:12.5px}
+footer.site{max-width:1280px;margin:0 auto;padding:0 72px 40px 24px;display:flex;justify-content:flex-end;color:var(--ink-3);font-size:12.5px}
 .topfilter{display:inline-flex;align-items:center;gap:8px;font-weight:600;color:var(--ink-2)}
 .topfilter .combo input{width:220px;border:1px solid var(--line-strong);background:var(--surface);border-radius:9px;padding:6px 10px;font-weight:600;cursor:pointer}
 .topfilter .combo input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft);cursor:text}
@@ -441,7 +441,15 @@ tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
 .chip.done{border-left-color:var(--green);background:var(--green-soft);color:var(--ink-2);text-decoration:line-through}
 .chip.over{border-left-color:var(--red);background:var(--red-soft)}
 .chip.soon{border-left-color:var(--amber)}
+/* light/dark toggle, fixed bottom right (DESIGN.md §2) */
+.themebtn{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:12;width:38px;height:38px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(28,36,48,.10);padding:0}
+.themebtn:hover{color:var(--accent);border-color:var(--accent)}
+.themebtn svg{width:18px;height:18px}
 </style>
+<script>
+/* apply a saved theme before first paint, so there is no light flash in dark mode */
+try{const t=localStorage.getItem("eos-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}
+</script>
 </head>
 <body>
 
@@ -462,6 +470,7 @@ tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
 
 <main id="app"></main>
 <footer class="site"><button class="btn ghost sm" id="resetBtn" title="Restore the sample data">Reset sample data</button></footer>
+<button class="themebtn" id="themeBtn" type="button"></button>
 <div id="tip" role="tooltip"></div>
 
 <div class="backdrop" id="backdrop"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
@@ -1261,6 +1270,19 @@ function openLightbox(src){
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{view=t.dataset.view;if(view==="review")rrScroll=null;render()}));
 // Rock Review: remember horizontal scroll across re-renders; a real scroll closes the update popover (it is positioned to its button)
 document.addEventListener("scroll",e=>{const el=e.target;if(!el.classList||!el.classList.contains("rr-scroll"))return;if(Math.abs(el.scrollLeft-(rrScroll??0))<1)return;rrScroll=el.scrollLeft;if(updOpen){updOpen=null;render()}},true);
+/* light/dark toggle: follows the OS until clicked, then remembers the choice in this browser */
+const THEME_KEY="eos-theme",darkMQ=matchMedia("(prefers-color-scheme: dark)");
+const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==="dark":darkMQ.matches};
+const ICON_SUN='<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2M16.2 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/></svg>';
+const ICON_MOON='<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M16.5 12.3A7 7 0 0 1 7.7 3.5a7 7 0 1 0 8.8 8.8z"/></svg>';
+function drawThemeBtn(){const b=$("#themeBtn"),d=isDark();b.innerHTML=d?ICON_SUN:ICON_MOON;b.setAttribute("aria-label",d?"Switch to light mode":"Switch to dark mode");b.dataset.tip=d?"Light mode":"Dark mode"}
+$("#themeBtn").addEventListener("click",()=>{
+  const next=isDark()?"light":"dark";document.documentElement.dataset.theme=next;
+  try{localStorage.setItem(THEME_KEY,next)}catch(e){}
+  hideTip();drawThemeBtn();
+});
+darkMQ.addEventListener("change",drawThemeBtn); // OS switch while no choice is saved
+drawThemeBtn();
 // team filter in the top bar (all views): same picker as the Team field, plus "All teams"
 $("#teamFilterWrap").innerHTML=`<label for="tf-in">Team</label>`+pickerHTML("tf",{dot:true});
 tfPicker=initPicker("tf",{get:()=>teamFilter,set:v=>{teamFilter=v||"";rrScroll=null;render()},groups:()=>unitGroups(true),display:v=>v,dotOf:levelOf,noun:"teams",noneText:"All teams"});

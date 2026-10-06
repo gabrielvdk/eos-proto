@@ -44,7 +44,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
   - Rocks shown for a forum (`rockMatches`): its own rocks + rocks with `trackBR` (checkbox "Track in Business Review" in the rock modal, "BR" tag in lists) + rocks with status "OT - Escalate". They stay owned by their own team; edits change the real rock.
   - With a forum selected the One Year Plan shows all goals (`goalFilter()` returns ""); new goals don't default to it; the goal Team picker hides "Meetings" (`initUnitPicker(false)`).
   - `levelOf(forum)` is "Forum" (orange `--forum` dot) — only for colouring, never stored on goals.
-- Light/dark theme follows the OS (`prefers-color-scheme`).
+- Light/dark theme follows the OS (`prefers-color-scheme`) until the round toggle (fixed bottom right, `#themeBtn`) is clicked; the choice is saved in localStorage key `eos-theme` and applied by a tiny script in `<head>` before first paint.
 
 ## Data & storage
 - All state lives in one object `S = {people, departments, forums, goals, rocks, cards, quarter}`.

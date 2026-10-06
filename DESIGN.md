@@ -16,9 +16,9 @@ When you change a token or recipe, update this file in **both** repos.
 | Titles (corporate identity) | **Titillium Web** | 600 / 700 | see below |
 
 **Titillium Web is for titles only:**
-- app name in the top bar (17-18px, 700)
+- app name in the top bar (18px, 700)
 - view or page heading (`h1`, 22px, 700)
-- modal title (20-22px, 700)
+- modal title (20px, 700)
 
 Column, group, table and section headers stay in Figtree (700) so dense views stay compact.
 
@@ -36,8 +36,9 @@ Column, group, table and section headers stay in Figtree (700) so dense views st
 
 | Size | Use |
 |---|---|
-| 22px / 700 | view heading |
-| 17px / 700 | modal header (EOS), app name |
+| 22px / 700 | view heading (Titillium) |
+| 20px / 700 | modal title (Titillium) |
+| 18px / 700 | app name (Titillium) |
 | 14px | body, buttons, inputs |
 | 13.5px | menu items, card titles, history text |
 | 13px | table headers (700), small buttons, secondary cells |
@@ -76,7 +77,7 @@ Define these on `:root` and use them everywhere. Never hard-code colors in compo
 | `--grey-pill` | `#C7CDD7` | `#3A4556` | not set, empty progress |
 | `--grey-fill` | `#8A95A6` | `#7D8898` | neutral markers |
 
-**Dark mode** follows the OS, with an explicit override:
+**Dark mode** follows the OS, with an explicit override. A small round toggle fixed at the bottom right switches light/dark; it sets `data-theme` on `<html>` and remembers the choice per browser (`localStorage`, one key per app, applied in `<head>` to avoid a flash).
 
 ```css
 @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ /* dark values */ } }
