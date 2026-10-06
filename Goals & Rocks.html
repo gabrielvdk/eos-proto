@@ -227,17 +227,17 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 /* searchable nested combobox */
 .combo{position:relative}
 .combo input{width:100%}
-.combo .list{position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:240px;overflow:auto;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;box-shadow:var(--shadow);z-index:9;display:none;padding:4px}
+.combo .list{position:absolute;left:auto;right:0;width:max(100%,380px);top:calc(100% + 4px);max-height:320px;overflow-y:auto;overflow-x:hidden;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;box-shadow:var(--shadow);z-index:9;display:none;padding:4px}
 .combo.open .list{display:block}
 .combo .item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:13.5px}
 .combo .item:hover,.combo .item.active{background:var(--accent-soft)}
 .combo .item.sel{font-weight:600}
 .combo .item.dis{color:var(--ink-3);cursor:default}
 .combo .item.dis:hover{background:transparent}
-.combo .item .lvl{font-size:11.5px;color:var(--ink-3);margin-left:auto;white-space:nowrap}
+.combo .item .t{flex:1 1 auto;min-width:0}
+.combo .item .lvl{font-size:11.5px;color:var(--ink-3);margin-left:auto;white-space:nowrap;padding-left:8px}
 .combo .none{padding:8px 10px;color:var(--ink-3);font-size:13px}
 .combo .grp{padding:9px 10px 3px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}
-#f-goal .list{max-height:320px}
 .grid12{display:grid;grid-template-columns:1fr 2fr;gap:12px}
 @media (max-width:640px){.grid12{grid-template-columns:1fr}}
 .mtabs{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid var(--line)}
@@ -402,7 +402,14 @@ function seed(){
     {id:"p7",name:"Jonas Müller",color:"#7C4DFF"},{id:"p8",name:"Eva Smit",color:"#00897B"},
     {id:"p9",name:"Noor Haddad",color:"#C2185B"},{id:"p10",name:"Pieter van Dijk",color:"#5D4037"}
   ];
-  const teams=["Company","Sales","Operations","Product","Sales NL","Sales DE","Support","Platform","Design"];
+  // organisation: departments and the teams that belong to them ("Company" is the level above all departments)
+  const departments=[
+    {name:"Product & Technology",teams:["Data Science","Research","LG Dev","IIVO Dev","Hardware","Controls"]},
+    {name:"Operations",teams:["Engineering","IIVO Helpdesk","LG Service Desk","Customer Success","Contracts","T&C"]},
+    {name:"Sales",teams:["Project Sales","Direct Sales"]},
+    {name:"Finance",teams:["Legal","Accounting","Business Strategy"]},
+    {name:"HR",teams:["HR"]},
+  ];
   const G=(id,level,team,title,parent,desc,deliv)=>({id,level,team,title,parentId:parent,description:desc,deliverables:deliv});
   const goals=[
     G("g1","Company","Company","Profitable growth",null,"Grow revenue 25% while keeping EBITDA above 15%.","Revenue €12M • EBITDA ≥15% • Net revenue retention >105%"),
@@ -411,20 +418,20 @@ function seed(){
     G("g4","Department","Sales","Standardised, repeatable sales motion","g1","One way of selling across all markets, from first call to signed contract.","Sales playbook v2 • Standard packages & pricing • Win-rate 28%"),
     G("g5","Department","Sales","Open the DACH market","g1","First 15 paying customers in Germany, Austria and Switzerland.","15 customers • Local partner signed • German collateral"),
     G("g6","Department","Operations","Onboard in under 30 days","g2","Every new customer live and getting value within a month.","Median onboarding 28 days • Onboarding checklist • Success criteria per segment"),
-    G("g7","Department","Product","Self-serve where it matters","g2","Customers can do the top 10 everyday tasks without asking us.","10 tasks self-serve • Support tickets −30% • In-app guidance"),
-    G("g8","Department","Product","A platform we can build on","g1","Reduce time to ship and cost per feature.","Deploy weekly • Monolith split for billing & reporting • Error budget met"),
-    G("g9","Team","Sales NL","Win the mid-market in the Netherlands","g4","Focus the NL team on 50–250 employee companies.","20 new mid-market logos • Average deal size €18k"),
-    G("g10","Team","Sales DE","First German reference customers","g5","Land three reference customers willing to speak publicly.","3 references • 2 case studies published"),
-    G("g11","Team","Support","Answer within the hour","g6","First response on every ticket within 60 minutes during business hours.","Median first response 45 min • CSAT ≥4.6"),
-    G("g12","Team","Platform","Weekly releases without drama","g8","Release every week with zero rollback-worthy incidents.","52 releases • ≤2 rollbacks • Automated smoke tests"),
-    G("g13","Team","Design","A design system teams actually use","g3","Shared components adopted across all product squads.","Component library v1 • 80% of new screens use it"),
+    G("g7","Department","Product & Technology","Self-serve where it matters","g2","Customers can do the top 10 everyday tasks without asking us.","10 tasks self-serve • Support tickets −30% • In-app guidance"),
+    G("g8","Department","Product & Technology","A platform we can build on","g1","Reduce time to ship and cost per feature.","Deploy weekly • Monolith split for billing & reporting • Error budget met"),
+    G("g9","Team","Direct Sales","Win the mid-market in the Netherlands","g4","Focus the NL team on 50–250 employee companies.","20 new mid-market logos • Average deal size €18k"),
+    G("g10","Team","Project Sales","First German reference customers","g5","Land three reference customers willing to speak publicly.","3 references • 2 case studies published"),
+    G("g11","Team","LG Service Desk","Answer within the hour","g6","First response on every ticket within 60 minutes during business hours.","Median first response 45 min • CSAT ≥4.6"),
+    G("g12","Team","LG Dev","Weekly releases without drama","g8","Release every week with zero rollback-worthy incidents.","52 releases • ≤2 rollbacks • Automated smoke tests"),
+    G("g13","Team","IIVO Dev","A design system teams actually use","g3","Shared components adopted across all product squads.","Component library v1 • 80% of new screens use it"),
     G("g14","Department","Operations","ISO 27001 certified",null,"Pass the certification audit so enterprise deals stop stalling on security questionnaires.","Certificate issued • ISMS policies approved • Internal audit completed"),
-    G("g15","Department","Product","Retire the legacy reporting module",null,"Switch off the old reporting module and its database.","All customers migrated • Module removed • €40k/year hosting saved"),
-    G("g16","Team","Support","Knowledge base customers actually find",null,"Rewrite and restructure the help centre around real search queries.","Top 50 articles rewritten • Self-service rate +15%"),
-    G("g17","Team","Platform","Clean up on-call",null,"Fewer, more actionable alerts and a fair rotation.","Alert volume −50% • Runbook for every alert • Rotation of 6 people"),
-    G("g18","Team","Support","Security awareness for everyone who talks to customers","g14","Support and onboarding staff trained and tested on the new security policies.","100% trained • Phishing test pass rate >90%"),
-    G("g19","Team","Platform","Move reporting data to the new warehouse","g15","Migrate the legacy reporting data so the old module can be switched off.","All datasets migrated • Legacy database decommissioned"),
-    G("g20","Team","Design","Redesign the reporting screens","g15","New reporting screens built on the design system, replacing the legacy module's UI.","8 screens shipped • Usability score ≥80"),
+    G("g15","Department","Product & Technology","Retire the legacy reporting module",null,"Switch off the old reporting module and its database.","All customers migrated • Module removed • €40k/year hosting saved"),
+    G("g16","Team","IIVO Helpdesk","Knowledge base customers actually find",null,"Rewrite and restructure the help centre around real search queries.","Top 50 articles rewritten • Self-service rate +15%"),
+    G("g17","Team","IIVO Dev","Clean up on-call",null,"Fewer, more actionable alerts and a fair rotation.","Alert volume −50% • Runbook for every alert • Rotation of 6 people"),
+    G("g18","Team","IIVO Helpdesk","Security awareness for everyone who talks to customers","g14","Support and onboarding staff trained and tested on the new security policies.","100% trained • Phishing test pass rate >90%"),
+    G("g19","Team","Data Science","Move reporting data to the new warehouse","g15","Migrate the legacy reporting data so the old module can be switched off.","All datasets migrated • Legacy database decommissioned"),
+    G("g20","Team","LG Dev","Redesign the reporting screens","g15","New reporting screens built on the design system, replacing the legacy module's UI.","8 screens shipped • Usability score ≥80"),
     G("g21","Department","Sales","Launch a partner referral programme",null,"Existing customers and partners refer new business and get rewarded for it.","Programme live • 10 referred deals • Referral terms published"),
   ];
   const M=(title,done,deadline,upd)=>({id:uid(),title,done,deadline,updates:upd?[{at:d(9,22),text:upd}]:[]});
@@ -445,7 +452,7 @@ function seed(){
     {id:"r4",team:"Sales",quarter:"Q4 2026",title:"Sales deck and proposal v1",ownerId:"p4",status:"Not Set",goalId:"g4",
      description:"A single deck and proposal template built on the new packages.",deliverables:"Deck • Proposal template",
      milestones:[M("Collect best existing slides",false,d(10,9)),M("Draft new deck",false,d(10,30)),M("Proposal template",false,d(11,13))],updates:[]},
-    {id:"r5",team:"Sales DE",quarter:"Q4 2026",title:"Sign DACH partner",ownerId:"p5",status:"Off-Track Escalate",goalId:"g5",
+    {id:"r5",team:"Project Sales",quarter:"Q4 2026",title:"Sign DACH partner",ownerId:"p5",status:"Off-Track Escalate",goalId:"g5",
      description:"Sign a reseller or implementation partner for the German market.",deliverables:"Signed partner agreement • Joint go-to-market plan",
      milestones:[M("Shortlist 5 partners",true,d(8,22)),M("First conversations",true,d(9,12)),M("Term sheet with preferred partner",false,d(9,26),"Partner's legal team pushed back on exclusivity."),M("Agreement signed",false,d(11,27))],
      updates:[U(10,2,"Need a decision on exclusivity from the leadership team, otherwise we lose the preferred partner."),U(9,19,"Two partners remain, preferred one wants exclusivity for Austria.")]},
@@ -453,53 +460,53 @@ function seed(){
      description:"A standard checklist and kickoff deck so onboarding does not depend on who runs it.",deliverables:"Checklist • Kickoff deck • Success criteria template",
      milestones:[M("Checklist v1",true,d(9,25)),M("Kickoff deck",false,d(10,16)),M("Pilot with 3 new customers",false,d(11,13)),M("Roll out to all onboarding leads",false,d(12,4))],
      updates:[U(9,29,"Checklist v1 is being used by two onboarding leads already.")]},
-    {id:"r7",team:"Platform",quarter:"Q4 2026",title:"Billing service split",ownerId:"p6",status:"On-Track",goalId:"g12",
+    {id:"r7",team:"LG Dev",quarter:"Q4 2026",title:"Billing service split",ownerId:"p6",status:"On-Track",goalId:"g12",
      description:"Move billing out of the monolith so it can be deployed independently.",deliverables:"Billing service in production • Monolith billing code removed",
      milestones:[M("Define service boundary",true,d(9,11)),M("Build service behind feature flag",false,d(10,23)),M("Shadow traffic for two weeks",false,d(11,13)),M("Cut over",false,d(12,4))],updates:[]},
-    {id:"r8",team:"Sales DE",quarter:"Q4 2026",title:"Hiring: two German account managers",ownerId:"p1",status:"On-Track",goalId:"g10",
+    {id:"r8",team:"Project Sales",quarter:"Q4 2026",title:"Hiring: two German account managers",ownerId:"p1",status:"On-Track",goalId:"g10",
      description:"Hire two experienced AMs based in Germany.",deliverables:"2 signed offers • Start dates before January",
      milestones:[M("Job profile agreed",true,d(9,4)),M("Agency briefed",true,d(9,11)),M("First-round interviews",false,d(10,17)),M("Offers out",false,d(11,14))],updates:[U(9,30,"Agency has 9 candidates in the pipeline.")]},
-    {id:"r9",team:"Support",quarter:"Q4 2026",title:"Support macros and triage rules",ownerId:"p3",status:"Not Set",goalId:"g11",
+    {id:"r9",team:"LG Service Desk",quarter:"Q4 2026",title:"Support macros and triage rules",ownerId:"p3",status:"Not Set",goalId:"g11",
      description:"Templates and triage rules so first response fits within the hour.",deliverables:"20 macros • Triage rules live",
      milestones:[],updates:[]},
-    {id:"r10",team:"Design",quarter:"Q4 2026",title:"Component library v1",ownerId:"p4",status:"Cancelled",goalId:"g13",
+    {id:"r10",team:"IIVO Dev",quarter:"Q4 2026",title:"Component library v1",ownerId:"p4",status:"Cancelled",goalId:"g13",
      description:"Superseded by adopting an open-source system instead of building our own.",deliverables:"—",
      milestones:[M("Audit existing components",true,d(9,18)),M("Build core set",false,d(10,30))],updates:[U(9,24,"Cancelled: we are adopting an existing open-source design system instead.")]},
     {id:"r11",team:"Company",quarter:"Q4 2026",title:"Team offsite and engagement survey",ownerId:"p5",status:"On-Track",goalId:null,
      description:"Run the autumn offsite and the engagement survey, publish the follow-ups.",deliverables:"Offsite held • Survey results shared • 3 actions agreed",
      milestones:[M("Book venue",true,d(9,5)),M("Send survey",false,d(10,10)),M("Offsite",false,d(10,24)),M("Share results and actions",false,d(11,7))],updates:[]},
-    // Sales NL
-    {id:"r12",team:"Sales NL",quarter:"Q4 2026",title:"Mid-market target list and outreach",ownerId:"p8",status:"On-Track",goalId:"g9",
+    // Direct Sales
+    {id:"r12",team:"Direct Sales",quarter:"Q4 2026",title:"Mid-market target list and outreach",ownerId:"p8",status:"On-Track",goalId:"g9",
      description:"Build the list of 200 NL mid-market accounts and run the first outreach wave.",deliverables:"200-account list • 60 first meetings booked",
      milestones:[M("Define ICP for mid-market",true,d(9,19)),M("Build 200-account list",true,d(10,2)),M("First outreach wave",false,d(10,23)),M("30 meetings booked",false,d(11,13)),M("60 meetings booked",false,d(12,11))],
      updates:[U(10,2,"List is complete, outreach sequences go live Monday.")]},
-    {id:"r13",team:"Sales NL",quarter:"Q4 2026",title:"Two mid-market case studies",ownerId:"p2",status:"Off-Track",goalId:"g9",
+    {id:"r13",team:"Direct Sales",quarter:"Q4 2026",title:"Two mid-market case studies",ownerId:"p2",status:"Off-Track",goalId:"g9",
      description:"Publish two Dutch mid-market customer stories to use in outreach.",deliverables:"2 case studies published",
      milestones:[M("Select customers",true,d(9,12)),M("Interviews",false,d(9,26),"One customer went quiet, chasing a replacement."),M("Draft and approve",false,d(10,30)),M("Publish",false,d(11,13))],
      updates:[U(9,30,"Second customer dropped out, approaching two alternatives this week.")]},
-    // Sales DE
-    {id:"r14",team:"Sales DE",quarter:"Q4 2026",title:"German sales collateral",ownerId:"p7",status:"On-Track",goalId:"g10",
+    // Project Sales
+    {id:"r14",team:"Project Sales",quarter:"Q4 2026",title:"German sales collateral",ownerId:"p7",status:"On-Track",goalId:"g10",
      description:"Translate and localise the deck, one-pager and proposal template.",deliverables:"Deck DE • One-pager DE • Proposal DE",
      milestones:[M("Translate deck",true,d(9,26)),M("Localise pricing examples",false,d(10,10)),M("One-pager",false,d(10,24)),M("Proposal template",false,d(11,7))],
      updates:[U(10,1,"Deck translated and reviewed by the agency; pricing examples next.")]},
-    // Support
-    {id:"r15",team:"Support",quarter:"Q4 2026",title:"Rewrite the top 20 help articles",ownerId:"p9",status:"On-Track",goalId:"g16",
+    // IIVO Helpdesk
+    {id:"r15",team:"IIVO Helpdesk",quarter:"Q4 2026",title:"Rewrite the top 20 help articles",ownerId:"p9",status:"On-Track",goalId:"g16",
      description:"Rewrite the 20 most-searched articles around what customers actually type in search.",deliverables:"20 articles rewritten • Search success rate measured",
      milestones:[M("Pull search query report",true,d(9,18)),M("First 10 rewritten",false,d(10,16)),M("Second 10 rewritten",false,d(11,6)),M("Measure search success",false,d(11,27))],
      updates:[U(9,25,"Report pulled, 6 of the first 10 drafted.")]},
-    {id:"r16",team:"Support",quarter:"Q4 2026",title:"Security awareness training for support",ownerId:"p9",status:"Not Set",goalId:"g18",
+    {id:"r16",team:"IIVO Helpdesk",quarter:"Q4 2026",title:"Security awareness training for support",ownerId:"p9",status:"Not Set",goalId:"g18",
      description:"Everyone on the support team completes the new security training and phishing test.",deliverables:"100% trained • Phishing pass rate >90%",
      milestones:[M("Schedule training sessions",false,d(10,9)),M("All sessions held",false,d(11,6)),M("Phishing test",false,d(11,20))],updates:[]},
-    // Platform
-    {id:"r17",team:"Platform",quarter:"Q4 2026",title:"Alert clean-up: halve the noise",ownerId:"p10",status:"Off-Track Escalate",goalId:"g17",
+    // IIVO Dev / Data Science
+    {id:"r17",team:"IIVO Dev",quarter:"Q4 2026",title:"Alert clean-up: halve the noise",ownerId:"p10",status:"Off-Track Escalate",goalId:"g17",
      description:"Delete or tune the noisiest alerts and write a runbook for every remaining one.",deliverables:"Alert volume −50% • Runbook per alert",
      milestones:[M("Alert inventory",true,d(9,11)),M("Remove top 20 noisy alerts",true,d(9,25)),M("Runbooks for remaining alerts",false,d(9,30),"Blocked: no time allocated because of the billing split."),M("Measure volume",false,d(11,13))],
      updates:[U(10,2,"Need a decision: pause this rock or pull a second engineer off the billing split.")]},
-    {id:"r18",team:"Platform",quarter:"Q4 2026",title:"Migrate reporting datasets to the warehouse",ownerId:"p6",status:"On-Track",goalId:"g19",
+    {id:"r18",team:"Data Science",quarter:"Q4 2026",title:"Migrate reporting datasets to the warehouse",ownerId:"p6",status:"On-Track",goalId:"g19",
      description:"Move all legacy reporting datasets into the new warehouse with parity checks.",deliverables:"All datasets migrated • Parity report signed off",
      milestones:[M("Dataset inventory",true,d(9,18)),M("Migrate first 5 datasets",false,d(10,16)),M("Migrate remaining datasets",false,d(11,20)),M("Parity sign-off",false,d(12,11))],updates:[]},
     // Product / Operations
-    {id:"r19",team:"Product",quarter:"Q4 2026",title:"Self-serve for the top 3 tasks",ownerId:"p4",status:"On-Track",goalId:"g7",
+    {id:"r19",team:"Product & Technology",quarter:"Q4 2026",title:"Self-serve for the top 3 tasks",ownerId:"p4",status:"On-Track",goalId:"g7",
      description:"Ship in-app flows for the three tasks that generate the most support tickets.",deliverables:"3 flows live • Related tickets −30%",
      milestones:[M("Confirm top 3 tasks from ticket data",true,d(9,11)),M("Flow 1 shipped",true,d(10,2)),M("Flow 2 shipped",false,d(10,30)),M("Flow 3 shipped",false,d(11,27))],
      updates:[U(10,2,"Flow 1 (export) is live, tickets about exports already down.")]},
@@ -509,10 +516,10 @@ function seed(){
   ];
   goals.forEach(g=>{g.history=[{at:d(1,12),who:"p1",text:"Created"},{at:d(1,19),who:"p2",text:"Deliverables updated"}]});
   rocks.forEach((r,i)=>{r.history=[{at:r.quarter==="Q3 2026"?d(7,1):d(9,29),who:r.ownerId,text:"Created"}].concat(r.status!=="Not Set"?[{at:d(10,1),who:r.ownerId,text:`Status set to ${r.status}`}]:[])});
-  return {people,teams,goals,rocks,quarter:"Q4 2026"};
+  return {people,departments,goals,rocks,quarter:"Q4 2026"};
 }
 
-const KEY="goals-rocks-v6";
+const KEY="goals-rocks-v7"; // v7: teams replaced by S.departments (real org structure)
 const ME="p1"; // placeholder for the signed-in user
 let S;
 function load(){
@@ -543,6 +550,20 @@ const parseD=s=>new Date(s+"T00:00:00");
 const mondayOf=dt=>{const x=new Date(dt);x.setHours(0,0,0,0);x.setDate(x.getDate()-(x.getDay()+6)%7);return x};
 const isoWeek=dt=>{const x=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));x.setUTCDate(x.getUTCDate()+4-(x.getUTCDay()||7));return Math.ceil(((x-Date.UTC(x.getUTCFullYear(),0,1))/864e5+1)/7)};
 const quarterRange=q=>{const [,n,y]=q.match(/Q(\d) (\d{4})/).map(Number);return [new Date(y,(n-1)*3,1),new Date(y,n*3,0)]};
+/* organisation helpers. A "unit" is what goals and rocks store in .team: "Company", a department name, or a team name.
+   Note "HR" is both a department and its only team; deptOf() resolves it to the department, which is the same name. */
+const isDept=u=>S.departments.some(d=>d.name===u);
+const deptOf=u=>u==="Company"?null:(S.departments.find(d=>d.name===u)||S.departments.find(d=>d.teams.includes(u)))?.name||null;
+const unitMatches=(u,filter)=>!filter||u===filter||(isDept(filter)&&deptOf(u)===filter); // a department filter includes its teams
+function unitOptions(sel,level,keepUnknown=true){ // level: "Company" | "Department" | "Team" | null (any unit)
+  const o=v=>`<option value="${esc(v)}" ${v===sel?"selected":""}>${esc(v)}</option>`;
+  const grp=(label,vals)=>`<optgroup label="${esc(label)}">${vals.map(o).join("")}</optgroup>`;
+  const depts=S.departments.map(d=>d.name),teamGroups=S.departments.map(d=>grp(d.name,d.teams)).join("");
+  const html=level==="Company"?o("Company"):level==="Department"?depts.map(o).join(""):level==="Team"?teamGroups
+    :grp("Company",["Company"])+grp("Departments",depts)+S.departments.map(d=>grp(`${d.name} teams`,d.teams)).join("");
+  const known=["Company",...depts,...S.departments.flatMap(d=>d.teams)];
+  return keepUnknown&&sel&&!known.includes(sel)?o(sel)+html:html; // keep a legacy value selectable instead of silently changing it
+}
 const statusClass=st=>(STATUSES.find(x=>x[0]===st)||STATUSES[0])[1];
 function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),1600)}
 
@@ -648,7 +669,7 @@ function goalRow(g,depth,hasKids){
 /* ---------- rocks view ---------- */
 function renderRocks(){
   if(!quarterFilter) quarterFilter=S.quarter||QUARTERS[0];
-  const rocks=S.rocks.filter(r=>r.quarter===quarterFilter&&(!teamFilter||r.team===teamFilter));
+  const rocks=S.rocks.filter(r=>r.quarter===quarterFilter&&unitMatches(r.team,teamFilter));
   const head=`<div class="viewhead"><h1>Rocks${teamFilter?` <span class="dim">· ${esc(teamFilter)}</span>`:""}</h1><span class="count">${rocks.length} this quarter</span><div class="spacer"></div>
     <select class="ctl" data-act="quarter" aria-label="Quarter">${QUARTERS.map(q=>`<option ${q===quarterFilter?"selected":""}>${q}</option>`).join("")}</select>
     <button class="btn primary" data-act="newrock">+ New rock</button></div>`;
@@ -663,7 +684,7 @@ function rockRow(r){
   const g=r.goalId?goal(r.goalId):null;
   const open=expanded.has(r.id);
   const n=(r.milestones||[]).length;
-  const main=`<tr class="row"><td class="title"><span class="treeline"><button class="chev" data-act="expand" data-id="${r.id}" aria-expanded="${open}" aria-label="Show milestones">${ICONS.chev}</button><button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${n?`<span class="muted" style="font-size:12px">${n}</span>`:""}${!teamFilter&&r.team?`<span class="teamtag">${esc(r.team)}</span>`:""}</span></td>
+  const main=`<tr class="row"><td class="title"><span class="treeline"><button class="chev" data-act="expand" data-id="${r.id}" aria-expanded="${open}" aria-label="Show milestones">${ICONS.chev}</button><button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${n?`<span class="muted" style="font-size:12px">${n}</span>`:""}${r.team&&r.team!==teamFilter?`<span class="teamtag">${esc(r.team)}</span>`:""}</span></td>
     <td class="fit">${ownerHTML(r.ownerId)}</td><td class="fit">${statusSelect(r)}</td><td class="fit">${progressHTML(r)}</td>
     <td class="updcell">${lastUpdateHTML(r,"rock")}</td>
     <td class="fit">${g?`<span class="pill goalpill" data-tip="${esc(goalChainText(g))}">${esc(g.title)}</span>`:`<span class="muted">—</span>`}</td></tr>`;
@@ -684,7 +705,7 @@ function rockRow(r){
 /* ---------- rock review view ---------- */
 function renderReview(){
   if(!quarterFilter) quarterFilter=S.quarter||QUARTERS[0];
-  const rocks=S.rocks.filter(r=>r.quarter===quarterFilter&&(!teamFilter||r.team===teamFilter));
+  const rocks=S.rocks.filter(r=>r.quarter===quarterFilter&&unitMatches(r.team,teamFilter));
   // weeks span the quarter, widened to include every milestone deadline of the shown rocks
   let [start,end]=quarterRange(quarterFilter);
   rocks.forEach(r=>(r.milestones||[]).forEach(m=>{if(!m.deadline)return;const dt=parseD(m.deadline);if(dt<start)start=dt;if(dt>end)end=dt}));
@@ -711,7 +732,7 @@ function renderReview(){
   let left=rocks.map(r=>{
     const undated=(r.milestones||[]).filter(m=>!m.deadline).length;
     return `<tr class="${rowCls(r)}"><td class="rk"><div class="rkcell">
-      <div class="rkhead">${ownerHTML(r.ownerId)}<button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${!teamFilter&&r.team?`<span class="teamtag">${esc(r.team)}</span>`:""}${updBtn(r)}</div>
+      <div class="rkhead">${ownerHTML(r.ownerId)}<button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${r.team&&r.team!==teamFilter?`<span class="teamtag">${esc(r.team)}</span>`:""}${updBtn(r)}</div>
       <div class="rkmeta">${statusSelect(r)}${progressHTML(r)}${undated?`<span class="muted" style="font-size:12px">${undated} undated</span>`:""}</div>
     </div></td></tr>`;
   }).join("");
@@ -745,7 +766,7 @@ function render(){
   }
   $("#app").classList.toggle("wide",view!=="plan");
   const tfw=$("#teamFilterWrap");tfw.hidden=view==="plan";
-  if(view!=="plan"){const sel=$("#teamFilter");sel.innerHTML=`<option value="">All teams</option>`+S.teams.map(t=>`<option value="${esc(t)}" ${t===teamFilter?"selected":""}>${esc(t)}</option>`).join("");sel.classList.toggle("active",!!teamFilter)}
+  if(view!=="plan"){const sel=$("#teamFilter");sel.innerHTML=`<option value="">All teams</option>`+unitOptions(teamFilter,null,false);sel.classList.toggle("active",!!teamFilter)}
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===view));
   const ta=$("[data-pop-text]");if(ta){
     const pop=$("[data-pop]"),btn=$('.updbtn.on');if(pop&&btn){const r=btn.getBoundingClientRect();const w=Math.min(320,window.innerWidth-16);pop.style.width=w+"px";pop.style.top=(r.bottom+6)+"px";pop.style.left=Math.max(8,Math.min(r.right-w,window.innerWidth-w-8))+"px"}
@@ -768,7 +789,7 @@ const opt=(list,val,label=x=>x,value=x=>x)=>list.map(x=>`<option value="${esc(va
 const field=(l,inner)=>`<div class="field"><label>${l}</label>${inner}</div>`;
 
 function goalModal(g){
-  const isNew=!g; g=g||{id:uid(),level:"Team",team:S.teams[1],title:"",parentId:null,description:"",deliverables:""};
+  const isNew=!g; g=g||{id:uid(),level:"Team",team:S.departments[0].teams[0],title:"",parentId:null,description:"",deliverables:""};
   modalState={kind:"goal",obj:g,isNew};
   modalState.parentId=g.parentId;modalState.tab="details";
   drawGoalModal();
@@ -778,93 +799,101 @@ function drawGoalModal(){
   const tabs=isNew?"":`<div class="mtabs" role="tablist"><button role="tab" data-m="tab" data-tab="details" aria-selected="${tab==="details"}">Details</button><button role="tab" data-m="tab" data-tab="history" aria-selected="${tab==="history"}">History <span class="muted">${(g.history||[]).length}</span></button></div>`;
   const body=tab==="history"?`<div class="body">${historyHTML(g)}</div>`:`<div class="body">
     ${field("Title",`<input id="f-title" value="${esc(g.title)}" placeholder="What do we want to be true at the end of the year?">`)}
-    <div class="grid3">
+    <div class="grid2">
       ${field("Type",`<select id="f-level">${opt(LEVELS,g.level)}</select>`)}
-      ${field("Team",`<select id="f-team">${opt(S.teams,g.team)}</select>`)}
-      ${field("Linked to",`<div class="combo" id="f-parent"><input id="f-parent-in" placeholder="Search goals…" autocomplete="off" role="combobox" aria-expanded="false"><div class="list" id="f-parent-list"></div></div>`)}
+      ${field("Team",`<select id="f-team">${unitOptions(g.team,g.level)}</select>`)}
     </div>
+    ${field("Linked to",pickerHTML("f-parent"))}
     ${field("Description",`<textarea id="f-desc">${esc(g.description)}</textarea>`)}
     ${field("Deliverables",`<textarea id="f-deliv" placeholder="How we'll know it's done">${esc(g.deliverables)}</textarea>`)}
   </div>`;
   openModal(`<header><h2>${isNew?"New goal":"Goal"}</h2><button class="btn ghost sm" data-m="close">✕</button></header>${tabs}${body}
   <footer>${isNew?"":`<button class="btn danger" data-m="delgoal">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button>${tab==="details"?`<button class="btn primary" data-m="savegoal">${isNew?"Create goal":"Save changes"}</button>`:""}</footer>`);
-  if(tab==="details")initParentCombo(g);
+  if(tab==="details")initLinkedPicker(g);
 }
-/* nested, searchable "Linked to" picker */
-function initParentCombo(g){
-  const box=$("#f-parent"),inp=$("#f-parent-in"),list=$("#f-parent-list");
-  const level=()=>$("#f-level").value;
-  const allowed=x=>x.id!==g.id&&LEVELS.indexOf(x.level)<LEVELS.indexOf(level());
-  const descendants=(id,acc=new Set())=>{S.goals.filter(x=>x.parentId===id).forEach(x=>{acc.add(x.id);descendants(x.id,acc)});return acc};
-  const blocked=descendants(g.id);
-  const flat=()=>{const out=[];const kids=p=>S.goals.filter(x=>(x.parentId||null)===p);const walk=(p,dep)=>kids(p).forEach(x=>{out.push({g:x,dep});walk(x.id,dep+1)});walk(null,0);return out};
-  const setLabel=()=>{const p=modalState.parentId?goal(modalState.parentId):null;inp.value=p?p.title:"";inp.placeholder=p?"":"None — type to search";};
-  let active=-1,typed=false; // until the user types, the input shows the current parent and must not act as a filter
+/* ---------- shared, searchable goal picker ----------
+   Used for a goal's "Linked to" and a rock's "Contributes to goal".
+   groups() returns [{name, goals, label(g)}] in display order; get()/set() read and write the chosen goal id. */
+const pickerHTML=id=>`<div class="combo" id="${id}"><input id="${id}-in" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="${id}-list"><div class="list" id="${id}-list" role="listbox"></div></div>`;
+const byLevelTitle=(a,b)=>LEVELS.indexOf(a.level)-LEVELS.indexOf(b.level)||a.title.localeCompare(b.title);
+function initGoalPicker(id,{get,set,groups,emptyText}){
+  const box=$("#"+id),inp=$(`#${id}-in`),list=$(`#${id}-list`);
+  let active=-1,typed=false; // until the user types, the input shows the current goal and must not act as a filter
+  const setLabel=()=>{const g=get()?goal(get()):null;inp.value=g?g.title:"";inp.placeholder=g?"":"None — type to search"};
   const draw=()=>{
     const q=typed?inp.value.trim().toLowerCase():"";
-    const rows=flat().filter(({g:x})=>!blocked.has(x.id)&&x.id!==g.id&&(!q||x.title.toLowerCase().includes(q)||x.team.toLowerCase().includes(q)));
-    const items=[`<div class="item ${!modalState.parentId?"sel":""}" data-id="">— none —</div>`].concat(rows.map(({g:x,dep},i)=>{
-      const ok=allowed(x);return`<div class="item ${ok?"":"dis"} ${x.id===modalState.parentId?"sel":""}" data-id="${ok?x.id:""}" data-dis="${!ok}" style="padding-left:${10+(q?0:dep*18)}px"><span class="dot" style="background:var(--${x.level.toLowerCase()})"></span><span>${esc(x.title)}</span><span class="lvl">${x.level}${ok?"":" · not a higher level"}</span></div>`}));
-    list.innerHTML=rows.length||!q?items.join(""):`<div class="none">No goals match “${esc(inp.value)}”</div>`;active=-1;
+    const match=g=>!q||[g.title,g.team,g.level].some(s=>s.toLowerCase().includes(q));
+    let html=q?"":`<div class="item ${!get()?"sel":""}" data-id="" role="option">— none —</div>`,hits=0;
+    groups().forEach(({name,goals,label})=>{const gs=goals.filter(match);if(!gs.length)return;hits+=gs.length;
+      html+=`<div class="grp">${esc(name)}</div>`+gs.map(g=>`<div class="item ${g.id===get()?"sel":""}" data-id="${g.id}" role="option"><span class="dot" style="background:var(--${g.level.toLowerCase()})"></span><span class="t">${esc(g.title)}</span><span class="lvl">${esc(label?label(g):"")}</span></div>`).join("")});
+    if(!hits&&!q&&emptyText)html+=`<div class="none">${esc(emptyText())}</div>`;
+    list.innerHTML=hits||!q?html:`<div class="none">No goals match “${esc(inp.value)}”</div>`;active=-1;
   };
+  const isOpen=()=>box.classList.contains("open");
   const open=()=>{box.classList.add("open");inp.setAttribute("aria-expanded","true");draw();$(".item.sel",list)?.scrollIntoView({block:"nearest"})};
   const close=()=>{box.classList.remove("open");inp.setAttribute("aria-expanded","false");typed=false;setLabel()};
+  const pick=v=>{set(v||null);close()};
   inp.addEventListener("focus",()=>{typed=false;inp.select();open()});
-  inp.addEventListener("mousedown",()=>{if(document.activeElement===inp&&!box.classList.contains("open"))open()});
+  inp.addEventListener("mousedown",()=>{if(document.activeElement===inp&&!isOpen())open()});
   inp.addEventListener("input",()=>{typed=true;open()});
   inp.addEventListener("keydown",e=>{
-    const its=[...list.querySelectorAll(".item:not(.dis)")];
-    if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();active=Math.max(0,Math.min(its.length-1,active+(e.key==="ArrowDown"?1:-1)));its.forEach((it,i)=>it.classList.toggle("active",i===active));its[active]?.scrollIntoView({block:"nearest"})}
-    else if(e.key==="Enter"){e.preventDefault();const it=its[active]||its.find(x=>x.dataset.id)||its[0];if(it){modalState.parentId=it.dataset.id||null;close()}}
-    else if(e.key==="Escape"){e.stopPropagation();close()}
+    const its=[...list.querySelectorAll(".item")];
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();if(!isOpen())open();active=Math.max(0,Math.min(its.length-1,active+(e.key==="ArrowDown"?1:-1)));its.forEach((it,i)=>it.classList.toggle("active",i===active));its[active]?.scrollIntoView({block:"nearest"})}
+    else if(e.key==="Enter"){e.preventDefault();const it=its[active]||its.find(x=>x.dataset.id)||its[0];if(it)pick(it.dataset.id)}
+    else if(e.key==="Escape"&&isOpen()){e.stopPropagation();close()}
   });
-  list.addEventListener("mousedown",e=>{const it=e.target.closest(".item");if(!it||it.dataset.dis==="true")return;e.preventDefault();modalState.parentId=it.dataset.id||null;close()});
-  inp.addEventListener("blur",()=>setTimeout(close,120));
-  $("#f-level").addEventListener("change",()=>{const p=modalState.parentId?goal(modalState.parentId):null;if(p&&!allowed(p))modalState.parentId=null;setLabel()});
+  list.addEventListener("mousedown",e=>{const it=e.target.closest(".item");if(!it)return;e.preventDefault();pick(it.dataset.id)});
+  inp.addEventListener("blur",()=>setTimeout(()=>{if(box.offsetParent)close()},120)); // skip if the modal was closed (hidden) meanwhile
   setLabel();
+  return {refresh:()=>{isOpen()?draw():null;setLabel()}};
+}
+/* goal "Linked to": only higher-level goals (and never the goal itself or its descendants).
+   Team goal → its department's goals, Company, other departments. Department goal → Company. */
+function initLinkedPicker(g){
+  const descendants=(id,acc=new Set())=>{S.goals.filter(x=>x.parentId===id).forEach(x=>{acc.add(x.id);descendants(x.id,acc)});return acc};
+  const blocked=descendants(g.id);
+  const level=()=>$("#f-level").value,unit=()=>$("#f-team").value;
+  const allowed=x=>x.id!==g.id&&!blocked.has(x.id)&&LEVELS.indexOf(x.level)<LEVELS.indexOf(level());
+  const groups=()=>{
+    const cand=S.goals.filter(allowed).sort(byLevelTitle),company=cand.filter(x=>x.level==="Company");
+    if(level()!=="Team")return [{name:"Company",goals:company}];
+    const dept=deptOf(unit()),own=cand.filter(x=>x.level==="Department"&&x.team===dept);
+    const others=cand.filter(x=>x.level==="Department"&&x.team!==dept).sort((a,b)=>a.team.localeCompare(b.team)||a.title.localeCompare(b.title));
+    return [{name:`${dept} · your department`,goals:own},{name:"Company",goals:company},{name:"Other departments",goals:others,label:x=>x.team}];
+  };
+  const picker=initGoalPicker("f-parent",{get:()=>modalState.parentId,set:v=>{modalState.parentId=v},groups,
+    emptyText:()=>level()==="Company"?"Company goals are the top level, so they don't link to another goal.":"No higher-level goals yet."});
+  const dropInvalid=()=>{const p=modalState.parentId?goal(modalState.parentId):null;if(p&&!allowed(p))modalState.parentId=null;picker.refresh()};
+  $("#f-level").addEventListener("change",e=>{$("#f-team").innerHTML=unitOptions($("#f-team").value,e.target.value,false);dropInvalid()});
+  $("#f-team").addEventListener("change",picker.refresh);
 }
 function rockModal(r){
-  const isNew=!r; r=r||{id:uid(),team:teamFilter||S.teams[1],quarter:quarterFilter||QUARTERS[0],title:"",ownerId:S.people[0].id,status:"Not Set",goalId:null,description:"",deliverables:"",milestones:[],updates:[]};
+  const isNew=!r; r=r||{id:uid(),team:teamFilter||S.departments[0].teams[0],quarter:quarterFilter||QUARTERS[0],title:"",ownerId:S.people[0].id,status:"Not Set",goalId:null,description:"",deliverables:"",milestones:[],updates:[]};
   const work=JSON.parse(JSON.stringify(r));
   modalState={kind:"rock",obj:work,isNew,orig:r,tab:"updates"};
   drawRockModal();
 }
-/* searchable "Contributes to goal" picker: all goals, the rock's own team first, then Company / Department / other teams */
-function initGoalCombo(r){
-  const box=$("#f-goal"),inp=$("#f-goal-in"),list=$("#f-goal-list");
-  const byLevel=(a,b)=>LEVELS.indexOf(a.level)-LEVELS.indexOf(b.level)||a.title.localeCompare(b.title);
-  const byTeam=(a,b)=>a.team.localeCompare(b.team)||a.title.localeCompare(b.title);
-  const setLabel=()=>{const g=r.goalId?goal(r.goalId):null;inp.value=g?g.title:"";inp.placeholder=g?"":"None — type to search"};
-  let active=-1,typed=false; // until the user types, the input shows the current goal and must not act as a filter
-  const draw=()=>{
-    const q=typed?inp.value.trim().toLowerCase():"",team=$("#f-team").value;
-    const match=g=>!q||[g.title,g.team,g.level].some(s=>s.toLowerCase().includes(q));
-    const rest=S.goals.filter(g=>g.team!==team);
-    const groups=[[`${team} goals`,S.goals.filter(g=>g.team===team).sort(byLevel),true],
-      ["Company",rest.filter(g=>g.level==="Company").sort(byTeam)],
-      ["Department",rest.filter(g=>g.level==="Department").sort(byTeam)],
-      ["Other teams",rest.filter(g=>g.level==="Team").sort(byTeam)]];
-    let html=q?"":`<div class="item ${!r.goalId?"sel":""}" data-id="">— none —</div>`,hits=0;
-    groups.forEach(([name,gs,own])=>{gs=gs.filter(match);if(!gs.length)return;hits+=gs.length;
-      html+=`<div class="grp">${esc(name)}</div>`+gs.map(g=>`<div class="item ${g.id===r.goalId?"sel":""}" data-id="${g.id}"><span class="dot" style="background:var(--${g.level.toLowerCase()})"></span><span>${esc(g.title)}</span><span class="lvl">${own?g.level:g.level==="Company"?"":esc(g.team)}</span></div>`).join("")});
-    list.innerHTML=hits||!q?html:`<div class="none">No goals match “${esc(inp.value)}”</div>`;active=-1;
-  };
-  const open=()=>{box.classList.add("open");inp.setAttribute("aria-expanded","true");draw();$(".item.sel",list)?.scrollIntoView({block:"nearest"})};
-  const close=()=>{box.classList.remove("open");inp.setAttribute("aria-expanded","false");typed=false;setLabel()};
-  const pick=id=>{r.goalId=id||null;close()};
-  inp.addEventListener("focus",()=>{typed=false;inp.select();open()});
-  inp.addEventListener("mousedown",()=>{if(document.activeElement===inp&&!box.classList.contains("open"))open()});
-  inp.addEventListener("input",()=>{typed=true;open()});
-  inp.addEventListener("keydown",e=>{
-    const its=[...list.querySelectorAll(".item")];
-    if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();active=Math.max(0,Math.min(its.length-1,active+(e.key==="ArrowDown"?1:-1)));its.forEach((it,i)=>it.classList.toggle("active",i===active));its[active]?.scrollIntoView({block:"nearest"})}
-    else if(e.key==="Enter"){e.preventDefault();const it=its[active]||its.find(x=>x.dataset.id)||its[0];if(it)pick(it.dataset.id)}
-    else if(e.key==="Escape"){e.stopPropagation();close();inp.blur()}
-  });
-  list.addEventListener("mousedown",e=>{const it=e.target.closest(".item");if(!it)return;e.preventDefault();pick(it.dataset.id)});
-  inp.addEventListener("blur",()=>setTimeout(close,120));
-  $("#f-team").addEventListener("change",()=>{if(box.classList.contains("open"))draw()});
-  setLabel();
+/* rock "Contributes to goal": every goal, ordered by closeness to the rock's team:
+   own team → own department → Company → the rest, grouped by department */
+function rockGoalGroups(unit){
+  const dept=deptOf(unit),used=new Set();
+  const take=gs=>gs.filter(g=>!used.has(g.id)).sort(byLevelTitle).filter(g=>used.add(g.id));
+  const where=g=>g.level==="Department"?"Department":g.team; // shown on the right in the "other" groups
+  const groups=[];
+  if(unit==="Company")groups.push({name:"Company",goals:take(S.goals.filter(g=>g.level==="Company"))});
+  else{
+    groups.push({name:`${unit} · ${isDept(unit)?"your department":"your team"}`,goals:take(S.goals.filter(g=>g.team===unit))});
+    if(dept&&dept!==unit)groups.push({name:`${dept} · your department`,goals:take(S.goals.filter(g=>g.team===dept))});
+    groups.push({name:"Company",goals:take(S.goals.filter(g=>g.level==="Company"))});
+  }
+  const order=[...S.departments].sort((a,b)=>(b.name===dept)-(a.name===dept)); // own department's other teams first
+  order.forEach(d=>groups.push({name:d.name===dept?`${d.name} · other teams`:d.name,goals:take(S.goals.filter(g=>deptOf(g.team)===d.name)),label:where}));
+  groups.push({name:"Other",goals:take(S.goals),label:where}); // goals on a team that isn't in the org structure
+  return groups;
+}
+function initRockGoalPicker(r){
+  const picker=initGoalPicker("f-goal",{get:()=>r.goalId,set:v=>{r.goalId=v},groups:()=>rockGoalGroups($("#f-team").value)});
+  $("#f-team").addEventListener("change",picker.refresh);
 }
 function drawRockModal(){
   const r=modalState.obj,isNew=modalState.isNew,tab=modalState.tab;
@@ -890,12 +919,12 @@ function drawRockModal(){
     ${field("Title",`<input id="f-title" value="${esc(r.title)}" placeholder="What will be done in 90 days?">`)}
     <div class="grid3">
       ${field("Owner",`<select id="f-owner">${opt(S.people,r.ownerId,p=>p.name,p=>p.id)}</select>`)}
-      ${field("Team",`<select id="f-team">${opt(S.teams,r.team)}</select>`)}
+      ${field("Team",`<select id="f-team">${unitOptions(r.team,null)}</select>`)}
       ${field("Quarter",`<select id="f-quarter">${opt(QUARTERS,r.quarter)}</select>`)}
     </div>
     <div class="grid12">
       ${field("Status",`<select id="f-status">${opt(STATUSES.map(s=>s[0]),r.status)}</select>`)}
-      ${field("Contributes to goal",`<div class="combo" id="f-goal"><input id="f-goal-in" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="f-goal-list"><div class="list" id="f-goal-list" role="listbox"></div></div>`)}
+      ${field("Contributes to goal",pickerHTML("f-goal"))}
     </div>
     ${field("Description",`<textarea id="f-desc">${esc(r.description)}</textarea>`)}
     ${field("Deliverables",`<textarea id="f-deliv">${esc(r.deliverables)}</textarea>`)}
@@ -905,7 +934,7 @@ function drawRockModal(){
   </div>
   <footer>${isNew?"":`<button class="btn danger" data-m="delrock">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="saverock">${isNew?"Create rock":"Save changes"}</button></footer>`);
   $("#modal").classList.add("wide");
-  if($("#f-goal"))initGoalCombo(r);
+  if($("#f-goal"))initRockGoalPicker(r);
 }
 const msDateCls=m=>!m.deadline?"empty":m.done?"":isPast(m.deadline)?"over":isSoon(m.deadline)?"soon":"";
 function syncRockFields(){

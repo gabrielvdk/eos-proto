@@ -26,15 +26,21 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
 - Rock modal: left tabs **Details · Milestones** (`modalState.left`), right tabs **Updates · History** (`modalState.tab`).
   - Milestones tab: round done-checkbox, inline name, compact date label that opens the native picker (`showPicker()` on a hidden date input), delete on hover; Enter jumps to the next milestone / adds one. Edits live on the modal's working copy and are saved (and logged to history) with "Save changes".
   - `syncRockFields()` is a no-op when the Details tab isn't rendered; call it before every redraw.
-  - "Contributes to goal" is a searchable combo (`initGoalCombo`) listing **all** goals grouped: rock's own team → Company → Department → other teams. It writes `r.goalId` directly. Both combos only filter once the user types (`typed` flag), not on the pre-filled current value.
+  - Goal pickers share one component, `initGoalPicker(id, {get, set, groups, emptyText})`:
+    - Rock "Contributes to goal" (`rockGoalGroups`): all goals — own team → own department → Company → own department's other teams → other departments (each with its department + team goals). Writes `r.goalId` directly.
+    - Goal "Linked to" (`initLinkedPicker`): only higher levels, never self/descendants. Team goal → own department → Company → other departments; Department goal → Company; Company goal → nothing.
+    - They only filter once the user types (`typed` flag), not on the pre-filled current value.
 - Status is changed via a custom menu (`#stmenu`, `openStatusMenu()` / `setStatus()`), not a native `<select>` — the Windows select popup can't be styled.
 - Light/dark theme follows the OS (`prefers-color-scheme`).
 
 ## Data & storage
-- All state lives in one object `S = {people, teams, goals, rocks, quarter}`.
-- Persisted to the browser's `localStorage` under key `goals-rocks-v6`. Data is per browser/per device — **not shared** between users. Bump the key when the data shape changes.
-- `seed()` contains fictional sample data (people, teams, goals, rocks); the "Reset sample data" button restores it.
-- People and teams are hard-coded in `seed()`; there is no UI to manage them yet.
+- All state lives in one object `S = {people, departments, goals, rocks, quarter}`.
+- Persisted to the browser's `localStorage` under key `goals-rocks-v7`. Data is per browser/per device — **not shared** between users. Bump the key when the data shape changes.
+- **Organisation (real):** `S.departments = [{name, teams[]}]` — Product & Technology (Data Science, Research, LG Dev, IIVO Dev, Hardware, Controls), Operations (Engineering, IIVO Helpdesk, LG Service Desk, Customer Success, Contracts, T&C), Sales (Project Sales, Direct Sales), Finance (Legal, Accounting, Business Strategy), HR (HR). Above them: "Company".
+  - Goals and rocks store a *unit* name in `.team`: "Company", a department name, or a team name. "HR" is both a department and a team.
+  - Helpers: `deptOf(unit)`, `isDept(unit)`, `unitMatches(unit, filter)` (a department filter includes its teams), `unitOptions(selected, level)` (grouped `<option>`s; goal Team field depends on the goal's level).
+- `seed()` contains sample goals/rocks (fictional content, real team names) and fictional people; "Reset sample data" restores it.
+- People and the org structure are hard-coded in `seed()`; there is no UI to manage them yet.
 - `ME = "p1"` is a placeholder for the current user (used in history entries). There is no login.
 - `YEAR` and `QUARTERS` are hard-coded constants.
 
