@@ -84,7 +84,10 @@ tr.ctx td .pill,tr.ctx td .dot{filter:grayscale(1)}
 main{max-width:1280px;margin:0 auto;padding:22px 24px 40px}
 footer.site{max-width:1280px;margin:0 auto;padding:0 24px 40px;display:flex;justify-content:flex-end;color:var(--ink-3);font-size:12.5px}
 .topfilter{display:inline-flex;align-items:center;gap:8px;font-weight:600;color:var(--ink-2)}
-.topfilter[hidden]{display:none}
+.topfilter .combo input{width:220px;border:1px solid var(--line-strong);background:var(--surface);border-radius:9px;padding:6px 10px;font-weight:600;cursor:pointer}
+.topfilter .combo input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft);cursor:text}
+.topfilter .combo.active input{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.topfilter .combo .list{font-weight:400;color:var(--ink)}
 #tip{position:fixed;z-index:40;max-width:360px;background:var(--ink);color:var(--surface);padding:7px 10px;border-radius:8px;font-size:12.5px;line-height:1.4;box-shadow:var(--shadow);pointer-events:none;display:none;white-space:pre-line}
 #tip.show{display:block}
 main.wide{max-width:none}
@@ -377,7 +380,7 @@ tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
     <button class="tab" role="tab" data-view="review" aria-selected="false">Rock Review</button>
   </div>
   <div class="spacer"></div>
-  <label class="topfilter" id="teamFilterWrap" hidden>Team <select class="ctl" id="teamFilter" aria-label="Filter rocks by team"></select></label>
+  <div class="topfilter" id="teamFilterWrap"></div>
 </div>
 
 <main id="app"></main>
@@ -566,14 +569,6 @@ const isDept=u=>S.departments.some(d=>d.name===u);
 const deptOf=u=>u===COMPANY?null:(S.departments.find(d=>d.name===u)||S.departments.find(d=>d.teams.includes(u)))?.name||null;
 const levelOf=u=>u===COMPANY?"Company":isDept(u)?"Department":"Team";
 const unitMatches=(u,filter)=>!filter||u===filter||(isDept(filter)&&deptOf(u)===filter); // a department filter includes its teams
-function unitOptions(sel,keepUnknown=true){
-  const o=v=>`<option value="${esc(v)}" ${v===sel?"selected":""}>${esc(v)}</option>`;
-  const grp=(label,vals)=>vals.length?`<optgroup label="${esc(label)}">${vals.map(o).join("")}</optgroup>`:"";
-  const depts=S.departments.map(d=>d.name),teamsOf=d=>d.teams.filter(t=>t!==d.name);
-  const html=grp("Company",[COMPANY])+grp("Departments",depts)+S.departments.map(d=>grp(`${d.name} teams`,teamsOf(d))).join("");
-  const known=[COMPANY,...depts,...S.departments.flatMap(d=>d.teams)];
-  return keepUnknown&&sel&&!known.includes(sel)?o(sel)+html:html; // keep a legacy value selectable instead of silently changing it
-}
 const statusClass=st=>(STATUSES.find(x=>x[0]===st)||STATUSES[0])[1];
 function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),1600)}
 
@@ -615,8 +610,8 @@ function ownerHTML(id){const p=person(id);if(!p)return`<span class="muted">—</
 /* ---------- plan view ---------- */
 function renderPlan(){
   const all=S.goals;
-  const match=g=>fTypes.has(g.level);
-  const filtering=fTypes.size<LEVELS.length;
+  const match=g=>fTypes.has(g.level)&&unitMatches(g.team,teamFilter);
+  const filtering=fTypes.size<LEVELS.length||!!teamFilter;
   let goals=all.filter(match);
   const ctx=new Set(); // ancestors shown for context in tree view
   if(planMode==="tree"&&filtering){
@@ -625,7 +620,7 @@ function renderPlan(){
     goals=all.filter(g=>keep.has(g.id));
   }
   const matched=goals.length-ctx.size;
-  const head=`<div class="viewhead"><h1>One Year Plan ${YEAR}</h1><span class="count">${filtering?`${matched} of ${all.length}`:all.length} goals</span><div class="spacer"></div>
+  const head=`<div class="viewhead"><h1>One Year Plan ${YEAR}${teamFilter?` <span class="dim">· ${esc(teamFilter)}</span>`:""}</h1><span class="count">${filtering?`${matched} of ${all.length}`:all.length} goals</span><div class="spacer"></div>
     <div class="checks" role="group" aria-label="Filter by type">${LEVELS.map(l=>`<label><input type="checkbox" data-filter="type" value="${l}" ${fTypes.has(l)?"checked":""}><span class="dot" style="background:var(--${l.toLowerCase()})"></span>${l}</label>`).join("")}</div>
     ${planMode==="tree"?`<button class="btn sm" data-act="toggleall">${collapsed.size?"Expand all":"Collapse all"}</button>`:""}
     <div class="seg" role="group" aria-label="View"><button data-mode="list" aria-pressed="${planMode==="list"}">List</button><button data-mode="tree" aria-pressed="${planMode==="tree"}">Tree</button></div>
@@ -775,8 +770,7 @@ function render(){
     sc.scrollLeft=rrScroll;rrScroll=sc.scrollLeft;
   }
   $("#app").classList.toggle("wide",view!=="plan");
-  const tfw=$("#teamFilterWrap");tfw.hidden=view==="plan";
-  if(view!=="plan"){const sel=$("#teamFilter");sel.innerHTML=`<option value="">All teams</option>`+unitOptions(teamFilter,false);sel.classList.toggle("active",!!teamFilter)}
+  $("#tf").classList.toggle("active",!!teamFilter);
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===view));
   const ta=$("[data-pop-text]");if(ta){
     const pop=$("[data-pop]"),btn=$('.updbtn.on');if(pop&&btn){const r=btn.getBoundingClientRect();const w=Math.min(320,window.innerWidth-16);pop.style.width=w+"px";pop.style.top=(r.bottom+6)+"px";pop.style.left=Math.max(8,Math.min(r.right-w,window.innerWidth-w-8))+"px"}
@@ -799,7 +793,7 @@ const opt=(list,val,label=x=>x,value=x=>x)=>list.map(x=>`<option value="${esc(va
 const field=(l,inner)=>`<div class="field"><label>${l}</label>${inner}</div>`;
 
 function goalModal(g){
-  const isNew=!g; g=g||{id:uid(),level:"Team",team:S.departments[0].teams[0],title:"",parentId:null,description:"",deliverables:""};
+  const isNew=!g; g=g||{id:uid(),level:levelOf(teamFilter||S.departments[0].teams[0]),team:teamFilter||S.departments[0].teams[0],title:"",parentId:null,description:"",deliverables:""};
   modalState={kind:"goal",obj:g,isNew};
   modalState.parentId=g.parentId;modalState.tab="details";
   drawGoalModal();
@@ -831,15 +825,15 @@ function initGoalPicker(id,{get,set,groups,emptyText}){
   return initPicker(id,{get,set,emptyText,noun:"goals",display:v=>goal(v)?.title||"",
     groups:()=>groups().map(g=>({name:g.name,items:g.goals.map(x=>({id:x.id,title:x.title,level:x.level,label:g.label?g.label(x):"",search:`${x.title} ${x.team} ${x.level}`}))}))});
 }
-function initPicker(id,{get,set,groups,emptyText,display,dotOf,noun="items",allowNone=true}){
+function initPicker(id,{get,set,groups,emptyText,display,dotOf,noun="items",allowNone=true,noneText=""}){ // noneText: shown (and listed) for the empty value instead of "— none —"
   const box=$("#"+id),inp=$(`#${id}-in`),list=$(`#${id}-list`);
   let active=-1,typed=false; // until the user types, the input shows the current value and must not act as a filter
-  const setLabel=()=>{const v=get();inp.value=v?display(v):"";inp.placeholder=v?"":allowNone?"None — type to search":"Type to search";
+  const setLabel=()=>{const v=get();inp.value=v?display(v):noneText;inp.placeholder=v||noneText?"":allowNone?"None — type to search":"Type to search";
     if(dotOf){const d=$(".cur-dot",box);d.style.background=v?`var(--${dotOf(v).toLowerCase()})`:"transparent"}};
   const draw=()=>{
     const q=typed?inp.value.trim().toLowerCase():"";
     const match=it=>!q||`${it.search||it.title} ${it.label||""}`.toLowerCase().includes(q);
-    let html=q||!allowNone?"":`<div class="item ${!get()?"sel":""}" data-id="" role="option">— none —</div>`,hits=0;
+    let html=q||!allowNone?"":`<div class="item ${!get()?"sel":""}" data-id="" role="option">${esc(noneText||"— none —")}</div>`,hits=0;
     groups().forEach(({name,items})=>{const its=items.filter(match);if(!its.length)return;hits+=its.length;
       html+=`<div class="grp">${esc(name)}</div>`+its.map(it=>`<div class="item ${it.id===get()?"sel":""}" data-id="${esc(it.id)}" role="option"${it.indent&&!q?` style="padding-left:${10+it.indent*18}px"`:""}><span class="dot" style="background:var(--${it.level.toLowerCase()})"></span><span class="t">${esc(it.title)}</span><span class="lvl">${esc(it.label||"")}</span></div>`).join("")});
     if(!hits&&!q&&emptyText)html+=`<div class="none">${esc(emptyText())}</div>`;
@@ -986,7 +980,9 @@ function updateModal(kind,id){
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{view=t.dataset.view;if(view==="review")rrScroll=null;render()}));
 // Rock Review: remember horizontal scroll across re-renders; a real scroll closes the update popover (it is positioned to its button)
 document.addEventListener("scroll",e=>{const el=e.target;if(!el.classList||!el.classList.contains("rr-scroll"))return;if(Math.abs(el.scrollLeft-(rrScroll??0))<1)return;rrScroll=el.scrollLeft;if(updOpen){updOpen=null;render()}},true);
-$("#teamFilter").addEventListener("change",e=>{teamFilter=e.target.value;render()});
+// team filter in the top bar (all views): same picker as the Team field, plus "All teams"
+$("#teamFilterWrap").innerHTML=`<label for="tf-in">Team</label>`+pickerHTML("tf",{dot:true});
+initPicker("tf",{get:()=>teamFilter,set:v=>{teamFilter=v||"";rrScroll=null;render()},groups:unitGroups,display:v=>v,dotOf:levelOf,noun:"teams",noneText:"All teams"});
 // instant tooltips
 const tip=$("#tip");let tipEl=null;
 function showTip(el){const t=el.getAttribute("data-tip");if(!t)return;tip.textContent=t;tip.classList.add("show");const r=el.getBoundingClientRect(),tw=tip.offsetWidth,th=tip.offsetHeight;

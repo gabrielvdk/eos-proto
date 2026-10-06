@@ -13,7 +13,8 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
   - List view (sortable by title/type/team/linked-to) and Tree view (collapsible hierarchy).
   - Filter by level; goals not linked to a Company goal are grouped separately.
   - Goal modal: title, **Team** (Hoogendoorn, a department or a team — the goal's level is derived from it via `levelOf()`, shown as a pill; there is no Type field), "Linked to goal" picker, description, deliverables, change history.
-- **Rocks** tab: 90-day rocks per quarter (`QUARTERS` constant), filterable by team.
+- **Team filter** (top bar, `#tf`, all three views): same picker as the Team field plus "All teams"; stored in `teamFilter`. A department includes its teams. It filters goals on the One Year Plan (tree view keeps ancestors as greyed context) and rocks on Rocks / Rock Review; new goals and rocks default to the filtered team.
+- **Rocks** tab: 90-day rocks per quarter (`QUARTERS` constant).
   - Owner avatar, status (Not Set / On-Track / Off-Track / Off-Track Escalate / Done / Cancelled), milestone progress bar (done / overdue / to do), last update, linked goal (tooltip shows full goal chain).
   - Expand a rock to edit milestones inline (title, done toggle, deadline, per-milestone updates, delete).
   - Quick-update popover on rocks and milestones; rock modal with Updates and History tabs.
@@ -38,7 +39,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
 - Persisted to the browser's `localStorage` under key `goals-rocks-v7`. Data is per browser/per device — **not shared** between users. Bump the key when the data shape changes.
 - **Organisation (real):** `S.departments = [{name, teams[]}]` — Product & Technology (Data Science, Research, LG Dev, IIVO Dev, Hardware, Controls), Operations (Engineering, IIVO Helpdesk, LG Service Desk, Customer Success, Contracts, T&C), Sales (Project Sales, Direct Sales), Finance (Legal, Accounting, Business Strategy), HR (HR). Above them: "Company".
   - Goals and rocks store a *unit* name in `.team`: `COMPANY` ("Hoogendoorn" — the single company; the *level* is still called "Company"), a department name, or a team name. A team named like its department (HR) counts as the department and is listed once. `migrate()` renames the old "Company" unit on load.
-  - Helpers: `deptOf(unit)`, `isDept(unit)`, `unitMatches(unit, filter)` (a department filter includes its teams), `levelOf(unit)`, `unitOptions(selected)` (all units as grouped `<option>`s).
+  - Helpers: `deptOf(unit)`, `isDept(unit)`, `unitMatches(unit, filter)` (a department filter includes its teams), `levelOf(unit)`.
 - `seed()` contains sample goals/rocks (fictional content, real team names) and fictional people; "Reset sample data" restores it.
 - People and the org structure are hard-coded in `seed()`; there is no UI to manage them yet.
 - `ME = "p1"` is a placeholder for the current user (used in history entries). There is no login.
