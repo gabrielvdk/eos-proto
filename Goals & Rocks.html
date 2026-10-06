@@ -134,13 +134,16 @@ td.title{font-weight:400}
 .status select{appearance:none;-webkit-appearance:none;border:0;border-radius:7px;padding:5px 26px 5px 11px;font-weight:600;font-size:13px;min-width:132px;color:#fff;cursor:pointer}
 .status::after{content:"";position:absolute;right:10px;top:50%;width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-70%) rotate(45deg);color:rgba(255,255,255,.85);pointer-events:none}
 .st-not{background:var(--grey-pill)!important;color:var(--ink-2)!important}
-.status:has(.st-not)::after{color:var(--ink-2)}
+.status:has(select.st-not)::after{color:var(--ink-2)}
 .st-on{background:var(--green)!important}
 .st-off{background:var(--red)!important}
 .st-esc{background:var(--red-deep)!important}
 .st-done{background:var(--green-deep)!important}
 .st-can{background:repeating-linear-gradient(135deg,var(--grey-pill) 0 6px,color-mix(in srgb,var(--grey-pill) 70%,var(--surface)) 6px 12px)!important;color:var(--ink-2)!important;text-decoration:line-through}
-.status:has(.st-can)::after{color:var(--ink-2)}
+.status:has(select.st-can)::after{color:var(--ink-2)}
+/* each option shows its own status color, not the selected one's */
+.status option{color:#fff;font-weight:600}
+.status option.st-can{background:var(--grey-pill)!important}
 /* milestone toggle */
 .ms-toggle{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:4px 10px;font-weight:600;font-size:12.5px;color:var(--ink-2);min-width:68px}
 .ms-toggle.done{background:var(--green);border-color:var(--green);color:#fff}
@@ -281,7 +284,7 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 table.rr{width:auto;min-width:100%;border-collapse:separate;border-spacing:0}
 table.rr th.rk,table.rr td.rk{position:sticky;left:0;z-index:2;background:var(--surface);width:360px;min-width:360px;max-width:360px;border-right:1px solid var(--line-strong)}
 table.rr thead th.rk{vertical-align:bottom}
-table.rr th.wk{width:150px;min-width:150px;max-width:150px;padding:8px 10px;border-left:1px solid var(--line);vertical-align:top}
+table.rr th.wk{width:225px;min-width:225px;max-width:225px;padding:8px 10px;border-left:1px solid var(--line);vertical-align:top}
 .wk .n{font-weight:700;font-size:13px;color:var(--ink)}
 .wk .dt{font-weight:500;font-size:12px;color:var(--ink-3)}
 th.wk.past{background:var(--red-soft)}
@@ -289,23 +292,25 @@ th.wk.past .n,th.wk.past .dt{color:var(--ink-2)}
 th.wk.now{background:var(--accent)}
 th.wk.now .n{color:#fff}
 th.wk.now .dt{color:rgba(255,255,255,.85)}
-table.rr td.wkc{vertical-align:top;padding:8px;border-left:1px solid var(--line);width:150px;min-width:150px;max-width:150px}
+table.rr td.wkc{vertical-align:top;padding:5px 6px;border-left:1px solid var(--line);width:225px;min-width:225px;max-width:225px;height:auto}
 table.rr td.wkc.now{background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
-table.rr tbody td.rk{padding:10px 12px}
-.rkcell{display:grid;gap:7px}
+table.rr tbody td.rk{padding:5px 12px;height:auto}
+.rkcell{display:grid;gap:3px}
 .rkhead{display:flex;align-items:center;gap:8px;min-width:0}
+.rkhead .avatar{width:20px;height:20px;font-size:10px}
 .rkhead .titlebtn{min-width:0;flex:0 1 auto;font-weight:600}
 .rkhead .titlebtn .t{display:block}
+.rkhead .updbtn{margin-left:auto}
+.updbtn.has{color:var(--ink-2)}
 .rkmeta{display:flex;align-items:center;gap:10px}
-tr.cancelled .rkhead,tr.cancelled td.wkc,tr.cancelled .lastupd{opacity:.5}
-.chip{display:grid;gap:1px;width:100%;text-align:left;border:1px solid var(--line);border-left:3px solid var(--grey-fill);background:var(--surface);border-radius:7px;padding:5px 8px;font-size:12.5px;line-height:1.3;margin-bottom:6px;color:var(--ink)}
+.rkmeta .status select{padding:2px 24px 2px 9px;font-size:12px;min-width:124px}
+.rkmeta .prog .bar{height:10px}
+tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
+.chip{display:block;width:100%;text-align:left;border:1px solid var(--line);border-left:3px solid var(--grey-fill);background:var(--surface);border-radius:6px;padding:3px 8px;font-size:12.5px;line-height:1.3;margin-bottom:4px;color:var(--ink)}
 .chip:last-child{margin-bottom:0}
 .chip:hover{box-shadow:0 0 0 1px var(--accent)}
-.chip .when{font-size:11px;font-weight:600;color:var(--ink-3)}
-.chip.done{border-left-color:var(--green);background:var(--green-soft)}
-.chip.done .t{color:var(--ink-2);text-decoration:line-through}
+.chip.done{border-left-color:var(--green);background:var(--green-soft);color:var(--ink-2);text-decoration:line-through}
 .chip.over{border-left-color:var(--red);background:var(--red-soft)}
-.chip.over .when{color:var(--red)}
 .chip.soon{border-left-color:var(--amber)}
 </style>
 </head>
@@ -502,11 +507,15 @@ const ICONS={
 };
 
 /* ---------- shared renderers ---------- */
+const updIsOpen=(obj,kind)=>updOpen&&updOpen.kind===kind&&updOpen.id===obj.id;
+function updPopHTML(obj,kind){
+  if(!updIsOpen(obj,kind)) return "";
+  return `<div class="pop" data-pop><textarea data-pop-text placeholder="What's the latest on “${esc(obj.title)}”?"></textarea><div class="row"><span class="hint">Enter to post · Esc to close</span><button class="btn sm" data-act="updcancel">Cancel</button><button class="btn sm primary" data-act="updpost" data-kind="${kind}" data-id="${obj.id}">Post</button></div></div>`;
+}
 function lastUpdateHTML(obj,kind){
   const u=(obj.updates||[])[0];
-  const on=updOpen&&updOpen.kind===kind&&updOpen.id===obj.id;
-  const btn=`<button class="updbtn ${on?"on":""}" title="Add update" data-act="addupd" data-kind="${kind}" data-id="${obj.id}">${ICONS.note}</button>`;
-  const pop=on?`<div class="pop" data-pop><textarea data-pop-text placeholder="What's the latest on “${esc(obj.title)}”?"></textarea><div class="row"><span class="hint">Enter to post · Esc to close</span><button class="btn sm" data-act="updcancel">Cancel</button><button class="btn sm primary" data-act="updpost" data-kind="${kind}" data-id="${obj.id}">Post</button></div></div>`:"";
+  const btn=`<button class="updbtn ${updIsOpen(obj,kind)?"on":""}" title="Add update" data-act="addupd" data-kind="${kind}" data-id="${obj.id}">${ICONS.note}</button>`;
+  const pop=updPopHTML(obj,kind);
   if(!u) return `<div class="lastupd"><span class="txt muted">No updates yet</span>${btn}</div>${pop}`;
   return `<div class="lastupd"><span class="txt" data-tip="${esc(u.text)}&#10;— ${fmtDate(u.at)}">${esc(u.text)}</span><span class="when">${fmtDate(u.at)}</span>${btn}</div>${pop}`;
 }
@@ -517,7 +526,7 @@ function progressHTML(r){
   return `<div class="prog" data-tip="${done} of ${n} done${over?`, ${over} overdue`:""}"><div class="bar"><span class="done" style="width:${done/n*100}%"></span><span class="over" style="width:${over/n*100}%"></span></div><span class="lbl">${done}/${n}</span></div>`;
 }
 function statusSelect(r){
-  return `<span class="status"><select class="${statusClass(r.status)}" data-act="status" data-id="${r.id}" aria-label="Status">${STATUSES.map(([s])=>`<option ${s===r.status?"selected":""}>${s}</option>`).join("")}</select></span>`;
+  return `<span class="status"><select class="${statusClass(r.status)}" data-act="status" data-id="${r.id}" aria-label="Status">${STATUSES.map(([s,c])=>`<option class="${c}" ${s===r.status?"selected":""}>${s}</option>`).join("")}</select></span>`;
 }
 function goalChainText(g){
   const chain=[];let cur=g,guard=0;while(cur&&guard++<10){chain.unshift(cur);cur=cur.parentId?goal(cur.parentId):null}
@@ -643,17 +652,21 @@ function renderReview(){
     const day=parseD(m.deadline).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
     const u=(m.updates||[])[0];
     const tipText=`${m.title}\nDeadline ${day}${m.done?" · done":over?" · overdue":""}${u?`\nLatest: ${u.text}`:""}\nClick to mark ${m.done?"to do":"done"}`;
-    return `<button class="chip ${m.done?"done":over?"over":soon?"soon":""}" data-act="mtoggle" data-rock="${r.id}" data-id="${m.id}" data-tip="${esc(tipText)}"><span class="when">${m.done?"✓ ":""}${day}</span><span class="t">${esc(m.title)}</span></button>`;
+    return `<button class="chip ${m.done?"done":over?"over":soon?"soon":""}" data-act="mtoggle" data-rock="${r.id}" data-id="${m.id}" data-tip="${esc(tipText)}">${esc(m.title)}</button>`;
+  };
+  const updBtn=r=>{
+    const u=(r.updates||[])[0];
+    const tipText=u?`Latest update · ${fmtDate(u.at)}\n${u.text}\n\nClick to add an update`:"No updates yet\nClick to add an update";
+    return `<button class="updbtn ${u?"has":""} ${updIsOpen(r,"rock")?"on":""}" data-act="addupd" data-kind="rock" data-id="${r.id}" aria-label="Add update" data-tip="${esc(tipText)}">${ICONS.note}</button>`;
   };
   let rows=rocks.map(r=>{
     const byWk={};let undated=0;
     (r.milestones||[]).forEach(m=>{if(!m.deadline){undated++;return}(byWk[localISO(mondayOf(parseD(m.deadline)))]??=[]).push(m)});
     const cells=weeks.map(k=>`<td class="wkc ${k===nowWk?"now":""}">${(byWk[k]||[]).sort((a,b)=>a.deadline.localeCompare(b.deadline)).map(m=>chip(r,m)).join("")}</td>`).join("");
     return `<tr class="row ${r.status==="Cancelled"?"cancelled":""}"><td class="rk"><div class="rkcell">
-      <div class="rkhead">${ownerHTML(r.ownerId)}<button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${!teamFilter&&r.team?`<span class="teamtag">${esc(r.team)}</span>`:""}</div>
-      <div class="rkmeta">${statusSelect(r)}${progressHTML(r)}</div>
-      ${lastUpdateHTML(r,"rock")}
-      ${undated?`<div class="muted" style="font-size:12px">${undated} milestone${undated>1?"s":""} without a deadline</div>`:""}
+      <div class="rkhead">${ownerHTML(r.ownerId)}<button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${!teamFilter&&r.team?`<span class="teamtag">${esc(r.team)}</span>`:""}${updBtn(r)}</div>
+      <div class="rkmeta">${statusSelect(r)}${progressHTML(r)}${undated?`<span class="muted" style="font-size:12px">${undated} undated</span>`:""}</div>
+      ${updPopHTML(r,"rock")}
     </div></td>${cells}</tr>`;
   }).join("");
   if(!rocks.length) rows=`<tr><td class="rk"><div class="empty"><b>No rocks for ${esc(quarterFilter)}${teamFilter?` in ${esc(teamFilter)}`:""}</b>Add rocks in the Rocks tab.</div></td><td colspan="${weeks.length}"></td></tr>`;
@@ -824,6 +837,7 @@ $("#resetBtn").addEventListener("click",()=>{if(confirm("Replace everything with
 
 $("#app").addEventListener("click",e=>{
   const b=e.target.closest("[data-act],[data-mode],[data-sort]");if(!b)return;
+  hideTip(); // the clicked element is about to be re-rendered
   if(b.dataset.mode){planMode=b.dataset.mode;render();return}
   if(b.dataset.sort){const k=b.dataset.sort;if(sortCol===k)sortDir=-sortDir;else{sortCol=k;sortDir=1}render();return}
   if(b.dataset.act==="toggleall"){if(collapsed.size)collapsed.clear();else S.goals.filter(g=>S.goals.some(c=>c.parentId===g.id)).forEach(g=>collapsed.add(g.id));render();return}
