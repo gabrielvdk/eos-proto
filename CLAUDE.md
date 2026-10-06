@@ -23,7 +23,10 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
   - Left column per rock: owner, title, team tag (hidden when a team is filtered), update icon (hover = latest update, click = quick-update popover), status dropdown, progress bar.
   - Layout is two tables side by side (`.rr-left` fixed, `.rr-right` inside `.rr-scroll`) so only the weeks scroll; `syncReviewRows()` equalises row heights after each render. The update popover is rendered outside the tables so rows can't cover it.
   - Horizontal scroll is kept across re-renders (`rrScroll`); entering the view or changing quarter jumps to the current week.
-- Rock modal side tabs: Updates · Milestones (add / rename / date / done / delete, saved with the rock and logged to history) · History.
+- Rock modal: left tabs **Details · Milestones** (`modalState.left`), right tabs **Updates · History** (`modalState.tab`).
+  - Milestones tab: round done-checkbox, inline name, compact date label that opens the native picker (`showPicker()` on a hidden date input), delete on hover; Enter jumps to the next milestone / adds one. Edits live on the modal's working copy and are saved (and logged to history) with "Save changes".
+  - `syncRockFields()` is a no-op when the Details tab isn't rendered; call it before every redraw.
+- Status is changed via a custom menu (`#stmenu`, `openStatusMenu()` / `setStatus()`), not a native `<select>` — the Windows select popup can't be styled.
 - Light/dark theme follows the OS (`prefers-color-scheme`).
 
 ## Data & storage

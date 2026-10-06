@@ -262,11 +262,36 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 @media (max-width:640px){.grid2,.grid3{grid-template-columns:1fr}}
 .modal.wide{max-width:1040px}
 .twocol{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0}
-.twocol>.body{border-right:1px solid var(--line)}
+.twocol>.main{border-right:1px solid var(--line);min-width:0}
+.twocol>.main>.body{min-height:440px;align-content:start}
+/* milestone list in the rock modal */
+.msl{display:grid;gap:2px}
+.msr{display:grid;grid-template-columns:22px minmax(0,1fr) auto 26px;align-items:center;gap:8px;padding:3px 4px 3px 6px;border-radius:8px}
+.msr:hover,.msr:focus-within{background:var(--canvas)}
+.mck{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line-strong);background:var(--surface);display:inline-flex;align-items:center;justify-content:center;color:transparent;padding:0}
+.mck:hover{border-color:var(--green);color:var(--green)}
+.mck svg{width:12px;height:12px}
+.msr.done .mck{background:var(--green);border-color:var(--green);color:#fff}
+.msr input.mt{border:1px solid transparent;background:transparent;border-radius:6px;padding:5px 7px;width:100%}
+.msr input.mt:hover{border-color:var(--line-strong);background:var(--surface)}
+.msr input.mt:focus{border-color:var(--accent);background:var(--surface);outline:none}
+.msr.done input.mt{text-decoration:line-through;color:var(--ink-2)}
+.mdate{position:relative;display:inline-flex}
+.mdate button{border:0;background:var(--canvas);border-radius:6px;padding:3px 8px;font-size:12.5px;font-weight:600;color:var(--ink-2);white-space:nowrap;font-variant-numeric:tabular-nums;min-width:62px}
+.msr:hover .mdate button,.msr:focus-within .mdate button{background:var(--surface)}
+.mdate button:hover{color:var(--accent)}
+.mdate.empty button{color:var(--ink-3);font-weight:500}
+.mdate.over button{color:var(--red);background:var(--red-soft)}
+.mdate.soon button{color:var(--amber)}
+.mdate input{position:absolute;left:0;bottom:0;width:100%;height:0;opacity:0;pointer-events:none;border:0;padding:0}
+.msr .x{border:0;background:none;color:var(--ink-3);padding:4px;border-radius:6px;display:inline-flex;opacity:0}
+.msr:hover .x,.msr:focus-within .x{opacity:1}
+.msr .x:hover{color:var(--red);background:var(--red-soft)}
+.msr .x svg{width:15px;height:15px}
 .twocol>.side{display:flex;flex-direction:column;min-height:0}
 .side .mtabs{padding:0 20px}
 .side .pane{padding:16px 20px;display:grid;gap:10px;align-content:start;max-height:560px;overflow:auto}
-@media (max-width:860px){.twocol{grid-template-columns:1fr}.twocol>.body{border-right:0;border-bottom:1px solid var(--line)}}
+@media (max-width:860px){.twocol{grid-template-columns:1fr}.twocol>.main{border-right:0;border-bottom:1px solid var(--line)}.twocol>.main>.body{min-height:0}}
 .section{border-top:1px solid var(--line);padding-top:12px}
 .section h3{margin:0 0 8px;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px}
 .section h3 .count{font-weight:500;color:var(--ink-3)}
@@ -810,21 +835,24 @@ function drawRockModal(){
   const r=modalState.obj,isNew=modalState.isNew,tab=modalState.tab;
   const updHTML=r.updates.length?r.updates.map(u=>`<div class="upd"><div>${esc(u.text)}</div><div class="meta">${fmtDate(u.at)}</div></div>`).join(""):`<div class="muted">No updates yet.</div>`;
   const goalOpts=goalOptionsFor(r.team,r.goalId);
-  const msHTML=`<div class="mlist">${r.milestones.map(m=>{const over=!m.done&&isPast(m.deadline);return `<div class="mitem">
-      <button class="ms-toggle ${m.done?"done":""}" data-m="mstoggle" data-id="${m.id}">${m.done?"Done":"To do"}</button>
-      <input type="text" value="${esc(m.title)}" data-mf="title" data-id="${m.id}" aria-label="Milestone title" placeholder="Milestone">
-      <input type="date" class="dl ${over?"over":""}" value="${m.deadline||""}" data-mf="deadline" data-id="${m.id}" aria-label="Deadline">
-      <button class="x" data-m="msdel" data-id="${m.id}" aria-label="Delete milestone" title="Delete milestone">${ICONS.trash}</button></div>`}).join("")||`<div class="muted">No milestones yet.</div>`}</div>
+  const left=modalState.left||"details";
+  const msHTML=`<div class="msl">${r.milestones.map(m=>`<div class="msr ${m.done?"done":""}" data-row="${m.id}">
+      <button class="mck" data-m="mstoggle" data-id="${m.id}" aria-pressed="${m.done}" aria-label="Done" title="Mark ${m.done?"to do":"done"}">${CHECK}</button>
+      <input class="mt" type="text" value="${esc(m.title)}" data-mf="title" data-id="${m.id}" aria-label="Milestone title" placeholder="Milestone name">
+      <span class="mdate ${msDateCls(m)}"><button type="button" data-m="pickdate" data-id="${m.id}" aria-label="Deadline">${m.deadline?fmtDate(m.deadline):"Set date"}</button><input type="date" value="${m.deadline||""}" data-mf="deadline" data-id="${m.id}" tabindex="-1" aria-hidden="true"></span>
+      <button class="x" data-m="msdel" data-id="${m.id}" aria-label="Delete milestone" title="Delete milestone">${ICONS.trash}</button></div>`).join("")||`<div class="muted" style="padding:6px">No milestones yet.</div>`}</div>
     <div><button class="btn sm" data-m="msadd">+ Add milestone</button></div>`;
-  const tabBtn=(key,label,n)=>`<button role="tab" data-m="tab" data-tab="${key}" aria-selected="${tab===key}">${label} <span class="muted">${n}</span></button>`;
+  const tabBtn=(key,label,n,cur,m="tab")=>`<button role="tab" data-m="${m}" data-tab="${key}" aria-selected="${cur===key}">${label}${n===undefined?"":` <span class="muted">${n}</span>`}</button>`;
   const side=`<div class="side">
-    <div class="mtabs" role="tablist">${tabBtn("updates","Updates",r.updates.length)}${tabBtn("milestones","Milestones",r.milestones.length)}${tabBtn("history","History",(r.history||[]).length)}</div>
+    <div class="mtabs" role="tablist">${tabBtn("updates","Updates",r.updates.length,tab)}${tabBtn("history","History",(r.history||[]).length,tab)}</div>
     <div class="pane">${tab==="updates"?`<div class="addupd"><input id="f-newupd" placeholder="What's the latest?"><button class="btn" data-m="updadd">Post</button></div><div class="updates">${updHTML}</div>`
-      :tab==="milestones"?msHTML:historyHTML(r)}</div>
+      :historyHTML(r)}</div>
   </div>`;
   openModal(`<header><h2>${isNew?"New rock":"Rock"}</h2><button class="btn ghost sm" data-m="close">✕</button></header>
   <div class="twocol">
-  <div class="body">
+  <div class="main">
+  <div class="mtabs" role="tablist">${tabBtn("details","Details",undefined,left,"ltab")}${tabBtn("milestones","Milestones",r.milestones.length,left,"ltab")}</div>
+  ${left==="milestones"?`<div class="body">${msHTML}</div>`:`<div class="body">
     ${field("Title",`<input id="f-title" value="${esc(r.title)}" placeholder="What will be done in 90 days?">`)}
     <div class="grid3">
       ${field("Owner",`<select id="f-owner">${opt(S.people,r.ownerId,p=>p.name,p=>p.id)}</select>`)}
@@ -837,15 +865,18 @@ function drawRockModal(){
     </div>
     ${field("Description",`<textarea id="f-desc">${esc(r.description)}</textarea>`)}
     ${field("Deliverables",`<textarea id="f-deliv">${esc(r.deliverables)}</textarea>`)}
+  </div>`}
   </div>
   ${side}
   </div>
   <footer>${isNew?"":`<button class="btn danger" data-m="delrock">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="saverock">${isNew?"Create rock":"Save changes"}</button></footer>`);
   $("#modal").classList.add("wide");
-  $("#f-team").addEventListener("change",e=>{const sel=$("#f-goal");const cur=sel.value;const list=goalOptionsFor(e.target.value,null);sel.innerHTML=`<option value="">— none —</option>`+opt(list,list.some(g=>g.id===cur)?cur:"",g=>g.level==="Team"?g.title:`${g.title} (${g.level})`,g=>g.id)});
+  $("#f-team")?.addEventListener("change",e=>{const sel=$("#f-goal");const cur=sel.value;const list=goalOptionsFor(e.target.value,null);sel.innerHTML=`<option value="">— none —</option>`+opt(list,list.some(g=>g.id===cur)?cur:"",g=>g.level==="Team"?g.title:`${g.title} (${g.level})`,g=>g.id)});
 }
+const msDateCls=m=>!m.deadline?"empty":m.done?"":isPast(m.deadline)?"over":isSoon(m.deadline)?"soon":"";
 function syncRockFields(){
   const r=modalState.obj;
+  if(!$("#f-title"))return; // Details tab not shown; its values were synced when leaving it
   r.title=$("#f-title").value;r.ownerId=$("#f-owner").value;r.team=$("#f-team").value;r.quarter=$("#f-quarter").value;r.status=$("#f-status").value;r.goalId=$("#f-goal").value||null;
   r.description=$("#f-desc").value;r.deliverables=$("#f-deliv").value;
 }
@@ -988,10 +1019,13 @@ $("#modal").addEventListener("click",e=>{
   }else if(modalState.kind==="rock"){
     const r=modalState.obj;
     if(m==="updadd"){const t=$("#f-newupd").value.trim();if(!t)return;syncRockFields();r.updates.unshift({at:todayISO(),text:t});drawRockModal()}
-    else if(m==="mstoggle"){syncRockFields();const ms=r.milestones.find(x=>x.id===id);ms.done=!ms.done;drawRockModal()}
-    else if(m==="msdel"){syncRockFields();r.milestones=r.milestones.filter(x=>x.id!==id);drawRockModal()}
-    else if(m==="msadd"){syncRockFields();const ms={id:uid(),title:"",done:false,deadline:"",updates:[]};r.milestones.push(ms);drawRockModal();$(`#modal [data-mf="title"][data-id="${ms.id}"]`)?.focus()}
-    else if(m==="saverock"){syncRockFields();if(!r.title.trim()){$("#f-title").focus();return}
+    else if(m==="ltab"){syncRockFields();modalState.left=b.dataset.tab;drawRockModal();if(modalState.left==="milestones")$("#modal .msr input.mt")?.focus()}
+    else if(m==="mstoggle"){const ms=r.milestones.find(x=>x.id===id);ms.done=!ms.done; // update in place, no redraw
+      const row=b.closest(".msr");row.classList.toggle("done",ms.done);b.setAttribute("aria-pressed",ms.done);b.title=`Mark ${ms.done?"to do":"done"}`;$(".mdate",row).className=`mdate ${msDateCls(ms)}`}
+    else if(m==="pickdate"){const inp=b.nextElementSibling;try{inp.showPicker()}catch(_){inp.focus()}}
+    else if(m==="msdel"){r.milestones=r.milestones.filter(x=>x.id!==id);drawRockModal()}
+    else if(m==="msadd")addModalMilestone();
+    else if(m==="saverock"){syncRockFields();if(!r.title.trim()){if(!$("#f-title")){modalState.left="details";drawRockModal()}$("#f-title").focus();return}
       r.milestones=r.milestones.map(x=>({...x,title:x.title.trim()})).filter(x=>x.title);
       const o=modalState.orig,pn=id=>id?(person(id)||{}).name||"?":"none",gn=id=>id?(goal(id)||{}).title||"?":"none";
       if(modalState.isNew){r.history=[];logHist(r,"Created")}else{
@@ -1014,7 +1048,20 @@ $("#modal").addEventListener("click",e=>{
     modalState.target.updates.unshift({at:todayISO(),text:t});save();closeModal();render();toast("Update posted")
   }
 });
-$("#modal").addEventListener("input",e=>{const f=e.target.dataset.mf;if(!f||modalState?.kind!=="rock")return;const ms=modalState.obj.milestones.find(x=>x.id===e.target.dataset.id);if(ms)ms[f]=e.target.value});
+function addModalMilestone(){
+  const r=modalState.obj,ms={id:uid(),title:"",done:false,deadline:"",updates:[]};
+  r.milestones.push(ms);drawRockModal();$(`#modal [data-mf="title"][data-id="${ms.id}"]`)?.focus();
+}
+$("#modal").addEventListener("input",e=>{
+  const f=e.target.dataset.mf;if(!f||modalState?.kind!=="rock")return;
+  const ms=modalState.obj.milestones.find(x=>x.id===e.target.dataset.id);if(!ms)return;
+  ms[f]=e.target.value;
+  if(f==="deadline"){const wrap=e.target.closest(".mdate");wrap.className=`mdate ${msDateCls(ms)}`;$("button",wrap).textContent=ms.deadline?fmtDate(ms.deadline):"Set date"}
+});
+$("#modal").addEventListener("keydown",e=>{
+  // Enter in a milestone name: jump to the next one, or add a new one at the end
+  if(e.key==="Enter"&&e.target.matches(".msr input.mt")){e.preventDefault();const all=[...document.querySelectorAll("#modal .msr input.mt")],i=all.indexOf(e.target);i<all.length-1?all[i+1].focus():addModalMilestone()}
+});
 $("#modal").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="f-newupd"&&modalState?.kind==="rock"){e.preventDefault();$('[data-m="updadd"]').click()}});
 
 render();
