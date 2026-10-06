@@ -20,8 +20,10 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
 - **Rock Review** tab: meeting view. Rows = rocks of the selected quarter/team; columns = ISO weeks (header: "Wk n" + Monday date) spanning the quarter, widened to include every milestone deadline.
   - Past week headers red-soft, current week solid accent (and tinted column), future weeks plain.
   - Each dated milestone is a chip in its deadline week (done / overdue / due ≤7 days / to do); clicking a chip toggles done.
-  - Sticky left column per rock: owner, title, team, status dropdown, progress bar, last update + quick-update button.
+  - Left column per rock: owner, title, team tag (hidden when a team is filtered), update icon (hover = latest update, click = quick-update popover), status dropdown, progress bar.
+  - Layout is two tables side by side (`.rr-left` fixed, `.rr-right` inside `.rr-scroll`) so only the weeks scroll; `syncReviewRows()` equalises row heights after each render. The update popover is rendered outside the tables so rows can't cover it.
   - Horizontal scroll is kept across re-renders (`rrScroll`); entering the view or changing quarter jumps to the current week.
+- Rock modal side tabs: Updates · Milestones (add / rename / date / done / delete, saved with the rock and logged to history) · History.
 - Light/dark theme follows the OS (`prefers-color-scheme`).
 
 ## Data & storage
@@ -41,6 +43,7 @@ Rendering is "re-render everything": change `S`, call `save()` and `render()`.
 - Colors are CSS variables on `:root`, with dark-mode overrides; use the tokens rather than hard-coded colors.
 - Always escape user text with `esc()` when building HTML strings.
 - Log meaningful changes to an item's history with `logHist(obj, text)`.
+- **Never use `window.confirm()/alert()/prompt()`** — they are silently blocked in Claude Code's browser pane (and some other embedded browsers). Use `askConfirm(message, okLabel)` (returns a Promise<boolean>) for confirmations.
 
 ## Open ideas / next steps
 - Current phase: **prototype** — iterate on features and UX in the single HTML file.

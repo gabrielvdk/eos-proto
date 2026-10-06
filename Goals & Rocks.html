@@ -62,6 +62,8 @@ button{cursor:pointer}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.primary:hover{filter:brightness(1.07)}
 .btn.danger{color:var(--red)}
+.btn.danger-solid{background:var(--red);border-color:var(--red);color:#fff}
+.btn.danger-solid:hover{filter:brightness(1.07);background:var(--red)}
 .btn.sm{padding:4px 9px;font-size:13px}
 .btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
 .btn.ghost:hover{background:var(--canvas);color:var(--ink)}
@@ -142,7 +144,7 @@ td.title{font-weight:400}
 .st-can{background:repeating-linear-gradient(135deg,var(--grey-pill) 0 6px,color-mix(in srgb,var(--grey-pill) 70%,var(--surface)) 6px 12px)!important;color:var(--ink-2)!important;text-decoration:line-through}
 .status:has(select.st-can)::after{color:var(--ink-2)}
 /* each option shows its own status color, not the selected one's */
-.status option{color:#fff;font-weight:600}
+.status option{color:#fff;font-weight:600;padding:6px 10px}
 .status option.st-can{background:var(--grey-pill)!important}
 /* milestone toggle */
 .ms-toggle{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:4px 10px;font-weight:600;font-size:12.5px;color:var(--ink-2);min-width:68px}
@@ -265,7 +267,9 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .mlist{display:grid;gap:6px}
 .mitem{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center}
 .mitem input[type=text],.mitem input[type=date]{border:1px solid var(--line-strong);border-radius:8px;padding:6px 8px;background:var(--surface)}
-.mitem .x{border:0;background:none;color:var(--ink-3);padding:4px;border-radius:6px}
+.mitem .x{border:0;background:none;color:var(--ink-3);padding:4px;border-radius:6px;display:inline-flex}
+.mitem .x svg{width:15px;height:15px}
+.mitem input.over{border-color:var(--red);color:var(--red)}
 .mitem .x:hover{color:var(--red);background:var(--red-soft)}
 .updates{display:grid;gap:8px;max-height:220px;overflow:auto}
 .upd{display:grid;gap:2px;padding:8px 10px;border-radius:9px;background:var(--canvas)}
@@ -281,9 +285,14 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
 
 /* rock review (weekly milestone grid) */
-table.rr{width:auto;min-width:100%;border-collapse:separate;border-spacing:0}
-table.rr th.rk,table.rr td.rk{position:sticky;left:0;z-index:2;background:var(--surface);width:360px;min-width:360px;max-width:360px;border-right:1px solid var(--line-strong)}
+.rrwrap{display:flex;align-items:flex-start}
+.rrwrap .rr-scroll{flex:1 1 auto;min-width:0}
+table.rr{width:auto;min-width:0;border-collapse:separate;border-spacing:0}
+table.rr.rr-left{flex:none;width:360px;border-right:1px solid var(--line-strong)}
+table.rr.rr-right{min-width:100%}
+table.rr th.rk,table.rr td.rk{width:360px;min-width:360px;max-width:360px}
 table.rr thead th.rk{vertical-align:bottom}
+table.rr thead th{height:52px}
 table.rr th.wk{width:225px;min-width:225px;max-width:225px;padding:8px 10px;border-left:1px solid var(--line);vertical-align:top}
 .wk .n{font-weight:700;font-size:13px;color:var(--ink)}
 .wk .dt{font-weight:500;font-size:12px;color:var(--ink-3)}
@@ -292,9 +301,9 @@ th.wk.past .n,th.wk.past .dt{color:var(--ink-2)}
 th.wk.now{background:var(--accent)}
 th.wk.now .n{color:#fff}
 th.wk.now .dt{color:rgba(255,255,255,.85)}
-table.rr td.wkc{vertical-align:top;padding:5px 6px;border-left:1px solid var(--line);width:225px;min-width:225px;max-width:225px;height:auto}
+table.rr td.wkc{vertical-align:top;padding:9px 6px;border-left:1px solid var(--line);width:225px;min-width:225px;max-width:225px;height:auto}
 table.rr td.wkc.now{background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
-table.rr tbody td.rk{padding:5px 12px;height:auto}
+table.rr tbody td.rk{padding:9px 12px;height:auto}
 .rkcell{display:grid;gap:3px}
 .rkhead{display:flex;align-items:center;gap:8px;min-width:0}
 .rkhead .avatar{width:20px;height:20px;font-size:10px}
@@ -335,6 +344,7 @@ tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
 <div id="tip" role="tooltip"></div>
 
 <div class="backdrop" id="backdrop"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="backdrop" id="cbackdrop" style="z-index:25"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -646,7 +656,7 @@ function renderReview(){
   const wkCls=k=>k<nowWk?"past":k===nowWk?"now":"";
   const head=`<div class="viewhead"><h1>Rock Review${teamFilter?` <span class="dim">· ${esc(teamFilter)}</span>`:""}</h1><span class="count">${rocks.length} rocks · week ${isoWeek(TODAY)}</span><div class="spacer"></div>
     <select class="ctl" data-act="quarter" aria-label="Quarter">${QUARTERS.map(q=>`<option ${q===quarterFilter?"selected":""}>${q}</option>`).join("")}</select></div>`;
-  const cols=`<thead><tr><th class="rk">Rock</th>${weeks.map(k=>`<th class="wk ${wkCls(k)}" ${k===nowWk?'aria-current="date"':""}><div class="n">Wk ${isoWeek(parseD(k))}</div><div class="dt">${fmtDate(k)}</div></th>`).join("")}</tr></thead>`;
+  const cols=`<thead><tr>${weeks.map(k=>`<th class="wk ${wkCls(k)}" ${k===nowWk?'aria-current="date"':""}><div class="n">Wk ${isoWeek(parseD(k))}</div><div class="dt">${fmtDate(k)}</div></th>`).join("")}</tr></thead>`;
   const chip=(r,m)=>{
     const over=!m.done&&isPast(m.deadline),soon=!m.done&&!over&&isSoon(m.deadline);
     const day=parseD(m.deadline).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
@@ -659,27 +669,41 @@ function renderReview(){
     const tipText=u?`Latest update · ${fmtDate(u.at)}\n${u.text}\n\nClick to add an update`:"No updates yet\nClick to add an update";
     return `<button class="updbtn ${u?"has":""} ${updIsOpen(r,"rock")?"on":""}" data-act="addupd" data-kind="rock" data-id="${r.id}" aria-label="Add update" data-tip="${esc(tipText)}">${ICONS.note}</button>`;
   };
-  let rows=rocks.map(r=>{
-    const byWk={};let undated=0;
-    (r.milestones||[]).forEach(m=>{if(!m.deadline){undated++;return}(byWk[localISO(mondayOf(parseD(m.deadline)))]??=[]).push(m)});
-    const cells=weeks.map(k=>`<td class="wkc ${k===nowWk?"now":""}">${(byWk[k]||[]).sort((a,b)=>a.deadline.localeCompare(b.deadline)).map(m=>chip(r,m)).join("")}</td>`).join("");
-    return `<tr class="row ${r.status==="Cancelled"?"cancelled":""}"><td class="rk"><div class="rkcell">
+  // two tables side by side: the rock column stays put, only the weeks scroll; row heights are synced in syncReviewRows()
+  const rowCls=r=>`row ${r.status==="Cancelled"?"cancelled":""}`;
+  let left=rocks.map(r=>{
+    const undated=(r.milestones||[]).filter(m=>!m.deadline).length;
+    return `<tr class="${rowCls(r)}"><td class="rk"><div class="rkcell">
       <div class="rkhead">${ownerHTML(r.ownerId)}<button class="titlebtn" data-act="editrock" data-id="${r.id}"><span class="t">${esc(r.title)}</span></button>${!teamFilter&&r.team?`<span class="teamtag">${esc(r.team)}</span>`:""}${updBtn(r)}</div>
       <div class="rkmeta">${statusSelect(r)}${progressHTML(r)}${undated?`<span class="muted" style="font-size:12px">${undated} undated</span>`:""}</div>
-      ${updPopHTML(r,"rock")}
-    </div></td>${cells}</tr>`;
+    </div></td></tr>`;
   }).join("");
-  if(!rocks.length) rows=`<tr><td class="rk"><div class="empty"><b>No rocks for ${esc(quarterFilter)}${teamFilter?` in ${esc(teamFilter)}`:""}</b>Add rocks in the Rocks tab.</div></td><td colspan="${weeks.length}"></td></tr>`;
+  let right=rocks.map(r=>{
+    const byWk={};
+    (r.milestones||[]).forEach(m=>{if(m.deadline)(byWk[localISO(mondayOf(parseD(m.deadline)))]??=[]).push(m)});
+    return `<tr class="${rowCls(r)}">${weeks.map(k=>`<td class="wkc ${k===nowWk?"now":""}">${(byWk[k]||[]).sort((a,b)=>a.deadline.localeCompare(b.deadline)).map(m=>chip(r,m)).join("")}</td>`).join("")}</tr>`;
+  }).join("");
+  if(!rocks.length){left=`<tr><td class="rk"><div class="empty"><b>No rocks for ${esc(quarterFilter)}${teamFilter?` in ${esc(teamFilter)}`:""}</b>Add rocks in the Rocks tab.</div></td></tr>`;right=`<tr><td colspan="${weeks.length}"></td></tr>`}
+  // the update popover lives outside the tables so it is never covered by the next row
+  const openRock=updOpen&&updOpen.kind==="rock"?rocks.find(r=>r.id===updOpen.id):null;
   const legend=`<div class="legend" style="margin-top:10px"><span><i class="sw" style="background:var(--green)"></i> done</span><span><i class="sw" style="background:var(--red)"></i> overdue</span><span><i class="sw" style="background:var(--amber)"></i> due within 7 days</span><span><i class="sw" style="background:var(--grey-fill)"></i> to do</span><span>· Click a milestone to mark it done</span></div>`;
-  return head+`<div class="board"><div class="scroll rr-scroll"><table class="rr">${cols}<tbody>${rows}</tbody></table></div></div>`+legend;
+  return head+`<div class="board rrwrap"><table class="rr rr-left"><thead><tr><th class="rk">Rock</th></tr></thead><tbody>${left}</tbody></table>`
+    +`<div class="scroll rr-scroll"><table class="rr rr-right">${cols}<tbody>${right}</tbody></table></div></div>`+legend+(openRock?updPopHTML(openRock,"rock"):"");
+}
+function syncReviewRows(){
+  const L=[...document.querySelectorAll(".rr-left tr")],R=[...document.querySelectorAll(".rr-right tr")];
+  // ceil the fractional heights so both sides get the same whole-pixel height (rounding errors would add up down the list)
+  const h=L.map((tr,i)=>Math.ceil(Math.max(tr.getBoundingClientRect().height,R[i]?R[i].getBoundingClientRect().height:0)));
+  L.forEach((tr,i)=>{tr.style.height=h[i]+"px";if(R[i])R[i].style.height=h[i]+"px"});
 }
 
 /* ---------- render ---------- */
 function render(){
   $("#app").innerHTML=view==="plan"?renderPlan():view==="rocks"?renderRocks():renderReview();
   if(view==="review"){
+    syncReviewRows();
     const sc=$(".rr-scroll");
-    if(rrScroll===null){const now=$("th.wk.now",sc),pin=$("th.rk",sc);rrScroll=now?Math.max(0,now.offsetLeft-pin.offsetWidth-now.offsetWidth):0} // show one past week before the current one
+    if(rrScroll===null){const now=$("th.wk.now",sc);rrScroll=now?Math.max(0,now.offsetLeft-now.offsetWidth):0} // show one past week before the current one
     sc.scrollLeft=rrScroll;rrScroll=sc.scrollLeft;
   }
   $("#app").classList.toggle("wide",view!=="plan");
@@ -778,10 +802,17 @@ function drawRockModal(){
   const r=modalState.obj,isNew=modalState.isNew,tab=modalState.tab;
   const updHTML=r.updates.length?r.updates.map(u=>`<div class="upd"><div>${esc(u.text)}</div><div class="meta">${fmtDate(u.at)}</div></div>`).join(""):`<div class="muted">No updates yet.</div>`;
   const goalOpts=goalOptionsFor(r.team,r.goalId);
+  const msHTML=`<div class="mlist">${r.milestones.map(m=>{const over=!m.done&&isPast(m.deadline);return `<div class="mitem">
+      <button class="ms-toggle ${m.done?"done":""}" data-m="mstoggle" data-id="${m.id}">${m.done?"Done":"To do"}</button>
+      <input type="text" value="${esc(m.title)}" data-mf="title" data-id="${m.id}" aria-label="Milestone title" placeholder="Milestone">
+      <input type="date" class="dl ${over?"over":""}" value="${m.deadline||""}" data-mf="deadline" data-id="${m.id}" aria-label="Deadline">
+      <button class="x" data-m="msdel" data-id="${m.id}" aria-label="Delete milestone" title="Delete milestone">${ICONS.trash}</button></div>`}).join("")||`<div class="muted">No milestones yet.</div>`}</div>
+    <div><button class="btn sm" data-m="msadd">+ Add milestone</button></div>`;
+  const tabBtn=(key,label,n)=>`<button role="tab" data-m="tab" data-tab="${key}" aria-selected="${tab===key}">${label} <span class="muted">${n}</span></button>`;
   const side=`<div class="side">
-    <div class="mtabs" role="tablist"><button role="tab" data-m="tab" data-tab="updates" aria-selected="${tab==="updates"}">Updates <span class="muted">${r.updates.length}</span></button><button role="tab" data-m="tab" data-tab="history" aria-selected="${tab==="history"}">History <span class="muted">${(r.history||[]).length}</span></button></div>
-    ${tab==="updates"?`<div class="pane"><div class="addupd"><input id="f-newupd" placeholder="What's the latest?"><button class="btn" data-m="updadd">Post</button></div><div class="updates">${updHTML}</div></div>`
-      :`<div class="pane">${historyHTML(r)}</div>`}
+    <div class="mtabs" role="tablist">${tabBtn("updates","Updates",r.updates.length)}${tabBtn("milestones","Milestones",r.milestones.length)}${tabBtn("history","History",(r.history||[]).length)}</div>
+    <div class="pane">${tab==="updates"?`<div class="addupd"><input id="f-newupd" placeholder="What's the latest?"><button class="btn" data-m="updadd">Post</button></div><div class="updates">${updHTML}</div>`
+      :tab==="milestones"?msHTML:historyHTML(r)}</div>
   </div>`;
   openModal(`<header><h2>${isNew?"New rock":"Rock"}</h2><button class="btn ghost sm" data-m="close">✕</button></header>
   <div class="twocol">
@@ -798,7 +829,6 @@ function drawRockModal(){
     </div>
     ${field("Description",`<textarea id="f-desc">${esc(r.description)}</textarea>`)}
     ${field("Deliverables",`<textarea id="f-deliv">${esc(r.deliverables)}</textarea>`)}
-    <div class="muted" style="font-size:12.5px">Milestones are managed in the list: expand the rock to add, complete or delete them.</div>
   </div>
   ${side}
   </div>
@@ -833,7 +863,20 @@ function showTip(el){const t=el.getAttribute("data-tip");if(!t)return;tip.textCo
 function hideTip(){tip.classList.remove("show");tipEl=null}
 document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el!==tipEl){el?showTip(el):hideTip()}});
 document.addEventListener("scroll",hideTip,true);
-$("#resetBtn").addEventListener("click",()=>{if(confirm("Replace everything with the sample data?")){S=seed();save();quarterFilter=null;render();toast("Sample data restored")}});
+$("#resetBtn").addEventListener("click",()=>askConfirm("Replace everything with the sample data? All your changes will be lost.","Reset").then(ok=>{if(ok){S=seed();save();quarterFilter=null;render();toast("Sample data restored")}}));
+/* in-app confirmation dialog (window.confirm() is blocked in some embedded browsers) */
+function askConfirm(msg,okLabel="Delete"){
+  return new Promise(resolve=>{
+    const bd=$("#cbackdrop");
+    bd.innerHTML=`<div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="c-msg" style="max-width:440px"><div class="body"><div id="c-msg" style="font-weight:600;font-size:14.5px">${esc(msg)}</div></div><footer><button class="btn" data-c="0">Cancel</button><button class="btn danger-solid" data-c="1">${esc(okLabel)}</button></footer></div>`;
+    bd.classList.add("open");
+    const done=v=>{bd.classList.remove("open");bd.onclick=null;document.removeEventListener("keydown",key,true);resolve(v)};
+    const key=e=>{if(e.key==="Escape"||e.key==="Enter"){e.preventDefault();e.stopImmediatePropagation();done(e.key==="Enter")}};
+    document.addEventListener("keydown",key,true);
+    bd.onclick=e=>{const c=e.target.closest("[data-c]");if(c)done(c.dataset.c==="1");else if(e.target===bd)done(false)};
+    $('[data-c="0"]',bd).focus(); // default focus on Cancel so a stray Enter on the trigger doesn't delete
+  });
+}
 
 $("#app").addEventListener("click",e=>{
   const b=e.target.closest("[data-act],[data-mode],[data-sort]");if(!b)return;
@@ -852,7 +895,7 @@ $("#app").addEventListener("click",e=>{
   else if(act==="updcancel"){updOpen=null;render()}
   else if(act==="updpost")postQuickUpdate();
   else if(act==="mtoggle"){const r=S.rocks.find(r=>r.id===b.dataset.rock);const m=r.milestones.find(x=>x.id===id);m.done=!m.done;logHist(r,`Milestone “${m.title}” marked ${m.done?"done":"to do"}`);save();render()}
-  else if(act==="msdel"){const r=S.rocks.find(x=>x.id===b.dataset.rock);const m=r.milestones.find(x=>x.id===id);if(!confirm(`Delete milestone “${m.title}”?`))return;r.milestones=r.milestones.filter(x=>x.id!==id);logHist(r,`Milestone “${m.title}” removed`);hideTip();save();render();toast("Milestone deleted")}
+  else if(act==="msdel"){const r=S.rocks.find(x=>x.id===b.dataset.rock);const m=r.milestones.find(x=>x.id===id);askConfirm(`Delete milestone “${m.title}”?`,"Delete milestone").then(ok=>{if(!ok)return;r.milestones=r.milestones.filter(x=>x.id!==id);logHist(r,`Milestone “${m.title}” removed`);save();render();toast("Milestone deleted")})}
   else if(act==="newms"){const r=S.rocks.find(x=>x.id===id);r.milestones.push({id:uid(),title:"New milestone",done:false,deadline:"",updates:[]});expanded.add(id);save();render();
     const inp=document.querySelector(`[data-act="mtitle"][data-id="${r.milestones[r.milestones.length-1].id}"]`);inp&&(inp.focus(),inp.select())}
 });
@@ -896,25 +939,38 @@ $("#modal").addEventListener("click",e=>{
       Object.assign(g,next);
       if(modalState.isNew){g.history=[];logHist(g,"Created");S.goals.push(g)}else changes.forEach(c=>logHist(g,c));
       save();closeModal();render();toast("Goal saved")}
-    if(m==="delgoal"&&confirm("Delete this goal? Rocks and child goals linked to it will be unlinked.")){
-      S.goals=S.goals.filter(x=>x.id!==g.id);S.goals.forEach(x=>{if(x.parentId===g.id)x.parentId=null});S.rocks.forEach(r=>{if(r.goalId===g.id)r.goalId=null});save();closeModal();render();toast("Goal deleted")}
+    if(m==="delgoal")askConfirm(`Delete the goal “${g.title}”? Rocks and child goals linked to it will be unlinked.`,"Delete goal").then(ok=>{if(!ok)return;
+      S.goals=S.goals.filter(x=>x.id!==g.id);S.goals.forEach(x=>{if(x.parentId===g.id)x.parentId=null});S.rocks.forEach(r=>{if(r.goalId===g.id)r.goalId=null});save();closeModal();render();toast("Goal deleted")});
   }else if(modalState.kind==="rock"){
     const r=modalState.obj;
     if(m==="updadd"){const t=$("#f-newupd").value.trim();if(!t)return;syncRockFields();r.updates.unshift({at:todayISO(),text:t});drawRockModal()}
+    else if(m==="mstoggle"){syncRockFields();const ms=r.milestones.find(x=>x.id===id);ms.done=!ms.done;drawRockModal()}
+    else if(m==="msdel"){syncRockFields();r.milestones=r.milestones.filter(x=>x.id!==id);drawRockModal()}
+    else if(m==="msadd"){syncRockFields();const ms={id:uid(),title:"",done:false,deadline:"",updates:[]};r.milestones.push(ms);drawRockModal();$(`#modal [data-mf="title"][data-id="${ms.id}"]`)?.focus()}
     else if(m==="saverock"){syncRockFields();if(!r.title.trim()){$("#f-title").focus();return}
-      r.milestones=modalState.orig.milestones||r.milestones;
+      r.milestones=r.milestones.map(x=>({...x,title:x.title.trim()})).filter(x=>x.title);
       const o=modalState.orig,pn=id=>id?(person(id)||{}).name||"?":"none",gn=id=>id?(goal(id)||{}).title||"?":"none";
       if(modalState.isNew){r.history=[];logHist(r,"Created")}else{
         diffHist(o,r,{title:(a,b)=>`Title changed to “${b}”`,ownerId:(a,b)=>`Owner changed from ${pn(a)} to ${pn(b)}`,team:(a,b)=>`Team changed from ${a} to ${b}`,quarter:(a,b)=>`Moved from ${a} to ${b}`,status:(a,b)=>`Status changed from ${a} to ${b}`,goalId:(a,b)=>`Goal changed from ${gn(a)} to ${gn(b)}`,description:()=>"Description updated",deliverables:()=>"Deliverables updated"}).forEach(c=>logHist(r,c));
         if(r.updates.length>(o.updates||[]).length)logHist(r,"Posted an update");
+        const before=new Map((o.milestones||[]).map(x=>[x.id,x]));
+        r.milestones.forEach(x=>{const b=before.get(x.id);
+          if(!b)logHist(r,`Milestone “${x.title}” added`);
+          else{if(b.done!==x.done)logHist(r,`Milestone “${x.title}” marked ${x.done?"done":"to do"}`);if(b.title!==x.title)logHist(r,`Milestone renamed to “${x.title}”`);if((b.deadline||"")!==(x.deadline||""))logHist(r,`Milestone “${x.title}” deadline ${x.deadline?`set to ${fmtDate(x.deadline)}`:"removed"}`)}
+          before.delete(x.id)});
+        before.forEach(b=>logHist(r,`Milestone “${b.title}” removed`));
       }
       const i=S.rocks.findIndex(x=>x.id===r.id);i>=0?S.rocks[i]=r:S.rocks.push(r);quarterFilter=r.quarter;S.quarter=r.quarter;save();closeModal();render();toast("Rock saved")}
-    else if(m==="delrock"&&confirm("Delete this rock and its milestones?")){S.rocks=S.rocks.filter(x=>x.id!==r.id);save();closeModal();render();toast("Rock deleted")}
+    else if(m==="delrock"){
+      // window.confirm() is silently blocked in some embedded browsers, so use the in-app dialog
+      askConfirm(`Delete the rock “${modalState.orig.title}” and its ${r.milestones.length} milestone${r.milestones.length===1?"":"s"}? This cannot be undone.`,"Delete rock").then(ok=>{
+        if(!ok)return;S.rocks=S.rocks.filter(x=>x.id!==r.id);expanded.delete(r.id);if(updOpen&&updOpen.id===r.id)updOpen=null;save();closeModal();render();toast("Rock deleted")})}
   }else if(modalState.kind==="quickupd"&&m==="quickpost"){
     const t=$("#f-newupd").value.trim();if(!t){$("#f-newupd").focus();return}
     modalState.target.updates.unshift({at:todayISO(),text:t});save();closeModal();render();toast("Update posted")
   }
 });
+$("#modal").addEventListener("input",e=>{const f=e.target.dataset.mf;if(!f||modalState?.kind!=="rock")return;const ms=modalState.obj.milestones.find(x=>x.id===e.target.dataset.id);if(ms)ms[f]=e.target.value});
 $("#modal").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="f-newupd"&&modalState?.kind==="rock"){e.preventDefault();$('[data-m="updadd"]').click()}});
 
 render();
