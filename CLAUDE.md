@@ -26,7 +26,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
 - Rock modal: left tabs **Details · Milestones** (`modalState.left`), right tabs **Updates · History** (`modalState.tab`).
   - Milestones tab: round done-checkbox, inline name, compact date label that opens the native picker (`showPicker()` on a hidden date input), delete on hover; Enter jumps to the next milestone / adds one. Edits live on the modal's working copy and are saved (and logged to history) with "Save changes".
   - `syncRockFields()` is a no-op when the Details tab isn't rendered; call it before every redraw.
-  - Goal pickers share one component, `initGoalPicker(id, {get, set, groups, emptyText})`:
+  - All pickers share one component, `initPicker(id, {get, set, groups, display, dotOf, allowNone})` (searchable, grouped, level dots). `initGoalPicker` wraps it for goals; `initUnitPicker` is the **Team** field in both modals (Hoogendoorn, then each department with its teams indented; dot = level). Its value lives in a hidden `#f-team` input that fires `change`, so modal code reads `$("#f-team").value` as before.
     - Rock "Contributes to goal" (`rockGoalGroups`): all goals — own team → own department → Company → own department's other teams → other departments (each with its department + team goals). Writes `r.goalId` directly.
     - Goal "Linked to goal" (`initLinkedPicker`): only higher levels, never self/descendants. Team goal → own department → Company → other departments; Department goal → Company; Company goal → nothing.
     - They only filter once the user types (`typed` flag), not on the pre-filled current value.

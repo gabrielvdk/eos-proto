@@ -226,7 +226,12 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 
 /* searchable nested combobox */
 .combo{position:relative}
-.combo input{width:100%}
+.combo input{width:100%;padding-right:30px!important;text-overflow:ellipsis}
+.combo::after{content:"";position:absolute;right:13px;top:50%;width:6px;height:6px;border-right:2px solid var(--ink-3);border-bottom:2px solid var(--ink-3);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.combo.open::after{transform:translateY(-30%) rotate(225deg)}
+.combo.has-dot input{padding-left:28px!important}
+.combo .cur-dot{position:absolute;left:12px;top:50%;width:8px;height:8px;border-radius:50%;transform:translateY(-50%);pointer-events:none}
+#f-unit .list{left:0;right:auto}
 .combo .list{position:absolute;left:auto;right:0;width:max(100%,380px);top:calc(100% + 4px);max-height:320px;overflow-y:auto;overflow-x:hidden;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;box-shadow:var(--shadow);z-index:9;display:none;padding:4px}
 .combo.open .list{display:block}
 .combo .item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:13.5px}
@@ -805,7 +810,7 @@ function drawGoalModal(){
   const body=tab==="history"?`<div class="body">${historyHTML(g)}</div>`:`<div class="body">
     ${field("Title",`<input id="f-title" value="${esc(g.title)}" placeholder="What do we want to be true at the end of the year?">`)}
     <div class="grid2">
-      <div class="field"><label for="f-team">Team <span class="pill lvl-${levelOf(g.team)}" id="f-level-pill" title="The goal's level follows from the team">${levelOf(g.team)} goal</span></label><select id="f-team">${unitOptions(g.team)}</select></div>
+      <div class="field"><label for="f-unit-in">Team <span class="pill lvl-${levelOf(g.team)}" id="f-level-pill" title="The goal's level follows from the team">${levelOf(g.team)} goal</span></label>${unitPickerHTML(g.team)}</div>
       ${field("Linked to goal",pickerHTML("f-parent"))}
     </div>
     ${field("Description",`<textarea id="f-desc">${esc(g.description)}</textarea>`)}
@@ -813,25 +818,32 @@ function drawGoalModal(){
   </div>`;
   openModal(`<header><h2>${isNew?"New goal":"Goal"}</h2><button class="btn ghost sm" data-m="close">✕</button></header>${tabs}${body}
   <footer>${isNew?"":`<button class="btn danger" data-m="delgoal">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button>${tab==="details"?`<button class="btn primary" data-m="savegoal">${isNew?"Create goal":"Save changes"}</button>`:""}</footer>`);
-  if(tab==="details")initLinkedPicker(g);
+  if(tab==="details"){initUnitPicker();initLinkedPicker(g)}
 }
-/* ---------- shared, searchable goal picker ----------
-   Used for a goal's "Linked to" and a rock's "Contributes to goal".
-   groups() returns [{name, goals, label(g)}] in display order; get()/set() read and write the chosen goal id. */
-const pickerHTML=id=>`<div class="combo" id="${id}"><input id="${id}-in" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="${id}-list"><div class="list" id="${id}-list" role="listbox"></div></div>`;
+/* ---------- shared, searchable picker ----------
+   Used for a goal's "Linked to goal", a rock's "Contributes to goal" and the Team field of both modals.
+   groups() returns [{name, items:[{id, title, level, label?, indent?, search?}]}] in display order;
+   get()/set() read and write the chosen id; display(id) is the text shown in the closed field;
+   dotOf(id) (optional) gives the level whose colour is shown as a dot in the closed field. */
+const pickerHTML=(id,{dot=false,hidden=null}={})=>`<div class="combo ${dot?"has-dot":""}" id="${id}">${dot?'<span class="cur-dot"></span>':""}<input id="${id}-in" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="${id}-list"><div class="list" id="${id}-list" role="listbox"></div>${hidden?`<input type="hidden" id="${hidden.id}" value="${esc(hidden.value)}">`:""}</div>`;
 const byLevelTitle=(a,b)=>LEVELS.indexOf(a.level)-LEVELS.indexOf(b.level)||a.title.localeCompare(b.title);
 function initGoalPicker(id,{get,set,groups,emptyText}){
+  return initPicker(id,{get,set,emptyText,noun:"goals",display:v=>goal(v)?.title||"",
+    groups:()=>groups().map(g=>({name:g.name,items:g.goals.map(x=>({id:x.id,title:x.title,level:x.level,label:g.label?g.label(x):"",search:`${x.title} ${x.team} ${x.level}`}))}))});
+}
+function initPicker(id,{get,set,groups,emptyText,display,dotOf,noun="items",allowNone=true}){
   const box=$("#"+id),inp=$(`#${id}-in`),list=$(`#${id}-list`);
-  let active=-1,typed=false; // until the user types, the input shows the current goal and must not act as a filter
-  const setLabel=()=>{const g=get()?goal(get()):null;inp.value=g?g.title:"";inp.placeholder=g?"":"None — type to search"};
+  let active=-1,typed=false; // until the user types, the input shows the current value and must not act as a filter
+  const setLabel=()=>{const v=get();inp.value=v?display(v):"";inp.placeholder=v?"":allowNone?"None — type to search":"Type to search";
+    if(dotOf){const d=$(".cur-dot",box);d.style.background=v?`var(--${dotOf(v).toLowerCase()})`:"transparent"}};
   const draw=()=>{
     const q=typed?inp.value.trim().toLowerCase():"";
-    const match=g=>!q||[g.title,g.team,g.level].some(s=>s.toLowerCase().includes(q));
-    let html=q?"":`<div class="item ${!get()?"sel":""}" data-id="" role="option">— none —</div>`,hits=0;
-    groups().forEach(({name,goals,label})=>{const gs=goals.filter(match);if(!gs.length)return;hits+=gs.length;
-      html+=`<div class="grp">${esc(name)}</div>`+gs.map(g=>`<div class="item ${g.id===get()?"sel":""}" data-id="${g.id}" role="option"><span class="dot" style="background:var(--${g.level.toLowerCase()})"></span><span class="t">${esc(g.title)}</span><span class="lvl">${esc(label?label(g):"")}</span></div>`).join("")});
+    const match=it=>!q||`${it.search||it.title} ${it.label||""}`.toLowerCase().includes(q);
+    let html=q||!allowNone?"":`<div class="item ${!get()?"sel":""}" data-id="" role="option">— none —</div>`,hits=0;
+    groups().forEach(({name,items})=>{const its=items.filter(match);if(!its.length)return;hits+=its.length;
+      html+=`<div class="grp">${esc(name)}</div>`+its.map(it=>`<div class="item ${it.id===get()?"sel":""}" data-id="${esc(it.id)}" role="option"${it.indent&&!q?` style="padding-left:${10+it.indent*18}px"`:""}><span class="dot" style="background:var(--${it.level.toLowerCase()})"></span><span class="t">${esc(it.title)}</span><span class="lvl">${esc(it.label||"")}</span></div>`).join("")});
     if(!hits&&!q&&emptyText)html+=`<div class="none">${esc(emptyText())}</div>`;
-    list.innerHTML=hits||!q?html:`<div class="none">No goals match “${esc(inp.value)}”</div>`;active=-1;
+    list.innerHTML=hits||!q?html:`<div class="none">No ${noun} match “${esc(inp.value)}”</div>`;active=-1;
   };
   const isOpen=()=>box.classList.contains("open");
   const open=()=>{box.classList.add("open");inp.setAttribute("aria-expanded","true");draw();$(".item.sel",list)?.scrollIntoView({block:"nearest"})};
@@ -850,6 +862,17 @@ function initGoalPicker(id,{get,set,groups,emptyText}){
   inp.addEventListener("blur",()=>setTimeout(()=>{if(box.offsetParent)close()},120)); // skip if the modal was closed (hidden) meanwhile
   setLabel();
   return {refresh:()=>{isOpen()?draw():null;setLabel()}};
+}
+/* Team field: Hoogendoorn, then each department followed by its teams (indented); the dot shows the level.
+   The value lives in a hidden #f-team input that fires "change", so the rest of the modal code reads it like the old <select>. */
+const unitItem=(u,indent=0)=>({id:u,title:u,level:levelOf(u),indent,label:indent?"":levelOf(u),search:`${u} ${deptOf(u)||""}`});
+const unitGroups=()=>[{name:"Company",items:[unitItem(COMPANY)]},
+  {name:"Departments & teams",items:S.departments.flatMap(d=>[unitItem(d.name),...d.teams.filter(t=>t!==d.name).map(t=>unitItem(t,1))])}];
+const unitPickerHTML=sel=>pickerHTML("f-unit",{dot:true,hidden:{id:"f-team",value:sel}});
+function initUnitPicker(){
+  const hid=$("#f-team");
+  initPicker("f-unit",{get:()=>hid.value,set:v=>{if(v&&v!==hid.value){hid.value=v;hid.dispatchEvent(new Event("change"))}},
+    groups:unitGroups,display:v=>v,dotOf:levelOf,noun:"teams",allowNone:false});
 }
 /* goal "Linked to": only higher-level goals (and never the goal itself or its descendants).
    Team goal → its department's goals, Company, other departments. Department goal → Company. */
@@ -925,7 +948,7 @@ function drawRockModal(){
     ${field("Title",`<input id="f-title" value="${esc(r.title)}" placeholder="What will be done in 90 days?">`)}
     <div class="grid3">
       ${field("Owner",`<select id="f-owner">${opt(S.people,r.ownerId,p=>p.name,p=>p.id)}</select>`)}
-      ${field("Team",`<select id="f-team">${unitOptions(r.team)}</select>`)}
+      ${field("Team",unitPickerHTML(r.team))}
       ${field("Quarter",`<select id="f-quarter">${opt(QUARTERS,r.quarter)}</select>`)}
     </div>
     <div class="grid12">
@@ -940,7 +963,7 @@ function drawRockModal(){
   </div>
   <footer>${isNew?"":`<button class="btn danger" data-m="delrock">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="saverock">${isNew?"Create rock":"Save changes"}</button></footer>`);
   $("#modal").classList.add("wide");
-  if($("#f-goal"))initRockGoalPicker(r);
+  if($("#f-goal")){initUnitPicker();initRockGoalPicker(r)}
 }
 const msDateCls=m=>!m.deadline?"empty":m.done?"":isPast(m.deadline)?"over":isSoon(m.deadline)?"soon":"";
 function syncRockFields(){
