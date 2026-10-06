@@ -465,7 +465,7 @@ tr.cancelled .rkhead,tr.cancelled td.wkc{opacity:.5}
 /* ---------- data ---------- */
 const LEVELS=["Company","Department","Team"];
 const COMPANY="Hoogendoorn"; // the one company-level unit (above all departments)
-const STATUSES=[["Not Set","st-not"],["On-Track","st-on"],["Off-Track","st-off"],["Off-Track Escalate","st-esc"],["Done","st-done"],["Cancelled","st-can"]];
+const STATUSES=[["Not Set","st-not"],["On-Track","st-on"],["Off-Track","st-off"],["OT - Escalate","st-esc"],["Done","st-done"],["Cancelled","st-can"]];
 const YEAR=2026;
 const QUARTERS=["Q1 2026","Q2 2026","Q3 2026","Q4 2026","Q1 2027"];
 const TODAY=new Date(); TODAY.setHours(0,0,0,0);
@@ -530,7 +530,7 @@ function seed(){
     {id:"r4",team:"Sales",quarter:"Q4 2026",title:"Sales deck and proposal v1",ownerId:"p4",status:"Not Set",goalId:"g4",
      description:"A single deck and proposal template built on the new packages.",deliverables:"Deck • Proposal template",
      milestones:[M("Collect best existing slides",false,d(10,9)),M("Draft new deck",false,d(10,30)),M("Proposal template",false,d(11,13))],updates:[]},
-    {id:"r5",team:"Project Sales",quarter:"Q4 2026",title:"Sign DACH partner",ownerId:"p5",status:"Off-Track Escalate",goalId:"g5",
+    {id:"r5",team:"Project Sales",quarter:"Q4 2026",title:"Sign DACH partner",ownerId:"p5",status:"OT - Escalate",goalId:"g5",
      description:"Sign a reseller or implementation partner for the German market.",deliverables:"Signed partner agreement • Joint go-to-market plan",
      milestones:[M("Shortlist 5 partners",true,d(8,22)),M("First conversations",true,d(9,12)),M("Term sheet with preferred partner",false,d(9,26),"Partner's legal team pushed back on exclusivity."),M("Agreement signed",false,d(11,27))],
      updates:[U(10,2,"Need a decision on exclusivity from the leadership team, otherwise we lose the preferred partner."),U(9,19,"Two partners remain, preferred one wants exclusivity for Austria.")]},
@@ -576,7 +576,7 @@ function seed(){
      description:"Everyone on the support team completes the new security training and phishing test.",deliverables:"100% trained • Phishing pass rate >90%",
      milestones:[M("Schedule training sessions",false,d(10,9)),M("All sessions held",false,d(11,6)),M("Phishing test",false,d(11,20))],updates:[]},
     // IIVO Dev / Data Science
-    {id:"r17",team:"IIVO Dev",quarter:"Q4 2026",title:"Alert clean-up: halve the noise",ownerId:"p10",status:"Off-Track Escalate",goalId:"g17",
+    {id:"r17",team:"IIVO Dev",quarter:"Q4 2026",title:"Alert clean-up: halve the noise",ownerId:"p10",status:"OT - Escalate",goalId:"g17",
      description:"Delete or tune the noisiest alerts and write a runbook for every remaining one.",deliverables:"Alert volume −50% • Runbook per alert",
      milestones:[M("Alert inventory",true,d(9,11)),M("Remove top 20 noisy alerts",true,d(9,25)),M("Runbooks for remaining alerts",false,d(9,30),"Blocked: no time allocated because of the billing split."),M("Measure volume",false,d(11,13))],
      updates:[U(10,2,"Need a decision: pause this rock or pull a second engineer off the billing split.")]},
@@ -626,6 +626,7 @@ function save(){
 function migrate(){
   [...S.goals,...S.rocks].forEach(x=>{if(x.team==="Company")x.team=COMPANY}); // the company unit was renamed to its real name
   if(!S.cards)S.cards=seedCards(); // Level 10 boards were added later
+  S.rocks.forEach(r=>{if(r.status==="Off-Track Escalate")r.status="OT - Escalate"}); // shorter label keeps the status column narrow
 }
 load();
 
