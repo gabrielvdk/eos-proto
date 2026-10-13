@@ -1,0 +1,55 @@
+# Deploys EOS Tracker to Azure Static Web Apps (site + API). See docs/AZURE.md.
+#   push to main        → Test environment
+#   push to production  → Prod environment   (promote with: git push origin main:production)
+# Skipped until the repository variable AZURE_DEPLOY is "true", so pushes keep working before Azure exists.
+# Per GitHub environment ("test", "prod"):
+#   secret   AZURE_STATIC_WEB_APPS_API_TOKEN   deployment token of that environment's Static Web App
+#   variable AUTH_MODE                         "builtin" (default: Microsoft sign-in, no keys needed) or "entra" (tenant-locked)
+#   variable ENTRA_TENANT_ID                   needed when AUTH_MODE is "entra"
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [main, production]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.AZURE_DEPLOY == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'production' && 'prod' || 'test' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble the site
+        env:
+          AUTH_MODE: ${{ vars.AUTH_MODE }}
+          ENTRA_TENANT_ID: ${{ vars.ENTRA_TENANT_ID }}
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+          if [ "$AUTH_MODE" = "entra" ]; then
+            if [ -z "$ENTRA_TENANT_ID" ]; then echo "::error::AUTH_MODE=entra needs the ENTRA_TENANT_ID variable"; exit 1; fi
+            jq --arg issuer "https://login.microsoftonline.com/$ENTRA_TENANT_ID/v2.0" \
+              '.auth.identityProviders.azureActiveDirectory.registration = {openIdIssuer: $issuer, clientIdSettingName: "AZURE_CLIENT_ID", clientSecretSettingName: "AZURE_CLIENT_SECRET"}' \
+              azure/staticwebapp.config.json > dist/staticwebapp.config.json
+            echo "Sign-in: your Entra tenant only ($ENTRA_TENANT_ID)"
+          else
+            cp azure/staticwebapp.config.json dist/
+            echo "Sign-in: built-in Microsoft provider (limit access with ALLOWED_EMAIL_DOMAINS / ALLOWED_EMAILS)"
+          fi
+
+      - name: Deploy to Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: dist
+          api_location: api
+          output_location: ""
+          skip_app_build: true

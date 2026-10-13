@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>API core tests</title>
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;margin:24px;color:#1C2430;background:#fff}
+  .ok{color:#0E7A5A}.fail{color:#D93B4F;font-weight:600}
+  pre{background:#F3F5F9;padding:8px;border-radius:6px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<h1>EOS Tracker API core — tests</h1>
+<p>Runs <code>api/src/core.js</code> (the server logic) in the browser against the in-memory store.
+Open via <code>serve.ps1</code>: <code>http://localhost:8080/tests/api-core.test.html</code>.</p>
+<div id="out">Running…</div>
+<script src="../api/src/core.js"></script>
+<script>
+const {createApi,createMemoryStore,parsePrincipal,displayName}=EosApiCore;
+const tests=[];const test=(name,fn)=>tests.push({name,fn});
+function assert(cond,msg){if(!cond)throw new Error(msg||"assertion failed")}
+const eq=(a,b,msg)=>assert(JSON.stringify(a)===JSON.stringify(b),`${msg||"not equal"}: ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`);
+const sha256=async s=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,"0")).join("");
+let n=0;const newId=()=>"id"+(++n);
+const user=(email,claims=[])=>({identityProvider:"aad",userId:"u-"+email,userDetails:email,userRoles:["anonymous","authenticated"],claims});
+function setup(settings={ALLOWED_EMAIL_DOMAINS:"letsgrow.com"}){
+  const store=createMemoryStore();
+  return {store,api:createApi({store,settings:{APP_ENV:"test",SEED:"sample",...settings},sha256,newId})};
+}
+const ana=user("ana.de.vries@letsgrow.com");
+const PNG="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+test("access: nobody gets in until an allow-list is set",async()=>{
+  const {api}=setup({});
+  const r=await api.data({principal:ana});eq(r.status,403);assert(/isn't configured/.test(r.json.error));
+});
+test("access: not signed in → 401",async()=>{const {api}=setup();eq((await api.data({principal:null})).status,401)});
+test("access: allowed domain, other domain, single e-mail, *",async()=>{
+  eq(setup().api.access(ana).ok,true,"domain");
+  eq(setup().api.access(user("x@evil.com")).ok,false,"other domain");
+  eq(setup().api.access(user("x@letsgrow.com.evil.com")).ok,false,"suffix trick");
+  eq(setup({ALLOWED_EMAILS:"x@evil.com"}).api.access(user("X@Evil.com")).ok,true,"single e-mail, any case");
+  eq(setup({ALLOWED_EMAIL_DOMAINS:"*"}).api.access(user("x@evil.com")).ok,true,"*");
+});
+test("config: tells the app it runs on the API, with the user and access",async()=>{
+  const {api}=setup();const r=(await api.config({principal:ana})).json;
+  eq([r.app,r.backend,r.env,r.seed,r.user.email,r.user.name,r.access.ok],["eos-tracker","api","test","sample","ana.de.vries@letsgrow.com","Ana De Vries",true]);
+  eq((await setup().api.config({principal:user("x@evil.com")})).json.access.ok,false);
+});
+test("displayName: name claim wins, else derived from the e-mail",async()=>{
+  eq(displayName(user("a@b.com",[{typ:"name",val:"Ana de Vries"}])),"Ana de Vries");
+  eq(displayName(user("jan.jansen@b.com")),"Jan Jansen");
+});
+test("parsePrincipal: decodes the Static Web Apps header, ignores junk",async()=>{
+  eq(parsePrincipal(btoa(JSON.stringify(ana)),atob).userDetails,ana.userDetails);
+  eq(parsePrincipal("not base64!",atob),null);eq(parsePrincipal(null,atob),null);
+});
+test("data: first visit adds you to people once; returns meId",async()=>{
+  const {api}=setup();
+  const a=(await api.data({principal:ana})).json,b=(await api.data({principal:ana})).json;
+  eq(a.people.length,1);eq(b.people.length,1);eq(a.meId,b.meId);eq(a.people[0].name,"Ana De Vries");
+  assert(a.people[0]._etag,"records carry _etag");assert(!("type" in a.people[0]),"no partition key in records");eq(a.meta,null);
+});
+test("items: create, update with ETag, stale ETag → 412",async()=>{
+  const {api}=setup();
+  const put=(record,ifMatch)=>api.putItem({principal:ana,params:{collection:"rocks",id:record.id},body:{record,ifMatch}});
+  const c=await put({id:"r1",title:"Rock"});eq(c.status,200);const e1=c.json.record._etag;
+  const u=await put({id:"r1",title:"Rock v2",_etag:"ignored"},e1);eq(u.status,200);eq(u.json.record.title,"Rock v2");
+  eq((await put({id:"r1",title:"Rock v3"},e1)).status,412,"stale etag");
+  const d=(await api.data({principal:ana})).json;eq(d.rocks.map(r=>r.title),["Rock v2"]);
+});
+test("items: validation",async()=>{
+  const {api}=setup();
+  const put=(collection,id,record)=>api.putItem({principal:ana,params:{collection,id},body:{record}}).then(r=>r.status);
+  eq(await put("secrets","x",{id:"x"}),400,"unknown collection");
+  eq(await put("rocks","a/b",{id:"a/b"}),400,"bad id");
+  eq(await put("rocks","r1",{id:"r2"}),400,"id mismatch");
+  eq(await put("meta","x",{id:"x"}),400,"meta must be id meta");
+  eq(await put("rocks","meta",{id:"meta"}),400,"id meta only in meta");
+  eq(await put("meta","meta",{id:"meta",version:9}),200,"meta record");
+  eq((await api.putItem({principal:user("x@evil.com"),params:{collection:"rocks",id:"r1"},body:{record:{id:"r1"}}})).status,403,"not allowed");
+});
+test("items: delete; meta can't be deleted",async()=>{
+  const {api}=setup();
+  await api.putItem({principal:ana,params:{collection:"cards",id:"c1"},body:{record:{id:"c1"}}});
+  eq((await api.deleteItem({principal:ana,params:{collection:"cards",id:"c1"}})).status,204);
+  eq((await api.data({principal:ana})).json.cards.length,0);
+  eq((await api.deleteItem({principal:ana,params:{collection:"meta",id:"meta"}})).status,400);
+});
+test("images: pasted data URLs become attachments (deduplicated) and are served back",async()=>{
+  const {api,store}=setup();
+  const html=`<div>a<img src="data:image/png;base64,${PNG}">b<img src="data:image/png;base64,${PNG}"></div>`;
+  const r=await api.putItem({principal:ana,params:{collection:"cards",id:"c1"},body:{record:{id:"c1",description:html}}});
+  const id=await sha256(PNG);
+  eq(r.json.record.description,`<div>a<img src="/api/attachments/${id}">b<img src="/api/attachments/${id}"></div>`);
+  eq(Object.keys(store.db.attachments),[id],"stored once");
+  const a=await api.attachment({principal:ana,params:{id}});
+  eq([a.status,a.contentType,a.base64],[200,"image/png",PNG]);
+  eq((await api.attachment({principal:ana,params:{id:"../x"}})).status,400);
+  eq((await api.attachment({principal:ana,params:{id:"0".repeat(64)}})).status,404);
+  eq((await api.attachment({principal:user("x@evil.com"),params:{id}})).status,403);
+});
+test("images: KEEP_INLINE_IMAGES leaves them in place (browser mock)",async()=>{
+  const {api}=setup({ALLOWED_EMAIL_DOMAINS:"letsgrow.com",KEEP_INLINE_IMAGES:"true"});
+  const html=`<img src="data:image/png;base64,${PNG}">`;
+  eq((await api.putItem({principal:ana,params:{collection:"cards",id:"c1"},body:{record:{id:"c1",description:html}}})).json.record.description,html);
+});
+test("size: items over ~2 MB are refused with 413",async()=>{
+  const {api}=setup();
+  eq((await api.putItem({principal:ana,params:{collection:"goals",id:"g1"},body:{record:{id:"g1",description:"x".repeat(2e6)}}})).status,413);
+});
+
+(async()=>{
+  const out=[];let failed=0;
+  for(const t of tests){
+    try{await t.fn();out.push(`<div class="ok">✓ ${t.name}</div>`)}
+    catch(e){failed++;out.push(`<div class="fail">✗ ${t.name}</div><pre>${String(e.stack||e).replace(/</g,"&lt;")}</pre>`)}
+  }
+  document.getElementById("out").innerHTML=`<p><b>${tests.length-failed} of ${tests.length} passed</b></p>`+out.join("");
+  window.testResults={total:tests.length,failed};
+})();
+</script>
+</body>
+</html>
