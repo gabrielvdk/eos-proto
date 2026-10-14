@@ -154,12 +154,24 @@ test("server: members only change their own branch; moving needs rights on both 
 });
 test("server: Level 10 cards are only sent where you have rights",async()=>{
   const {api}=setup();await tree(api);
-  for(const [id,unitId] of [["c1","T1"],["c2","T2"],["c3","D"],["c4","F"]])await asAna(api,"cards",{id,unitId});
+  for(const [id,unitId] of [["c1","T1"],["c2","T2"],["c4","F"]])await asAna(api,"cards",{id,unitId});
   await assign(api,bob,["T1"]);
   eq((await api.data({principal:bob})).json.cards.map(c=>c.id),["c1"],"team member: own board");
   await assign(api,bob,["D"]);
-  eq((await api.data({principal:bob})).json.cards.map(c=>c.id).sort(),["c1","c2","c3"],"department member: its teams' boards too");
-  eq((await api.data({principal:ana})).json.cards.length,4,"admin: all");
+  eq((await api.data({principal:bob})).json.cards.map(c=>c.id).sort(),["c1","c2"],"department member: its teams' boards too");
+  eq((await api.data({principal:ana})).json.cards.length,3,"admin: all");
+});
+test("rocks and Level 10 cards live on teams and meetings only, for everyone",async()=>{
+  const {api}=setup();await tree(api);
+  for(const c of ["rocks","cards"]){
+    eq((await asAna(api,c,{id:"x1",unitId:"D"})).status,403,`${c}: not on a department, even for an admin`);
+    eq((await asAna(api,c,{id:"x2",unitId:"C"})).status,403,`${c}: not on the company`);
+    eq((await asAna(api,c,{id:"x3",unitId:"T1"})).status,200,`${c}: on a team`);
+    eq((await asAna(api,c,{id:"x4",unitId:"F"})).status,200,`${c}: on a meeting`);
+  }
+  eq((await asAna(api,"goals",{id:"g1",unitId:"D"})).status,200,"goals: any level");
+  const R=createRights({units:UNITS,people:[],adminEmails:[]});
+  eq(UNITS.map(u=>R.canSeeBoard({unitIds:["C"]},u.id)),[false,false,true,true,false,true,true],"boards exist on teams and meetings only");
 });
 test("the rights block is identical in index.html and api/src/core.js",async()=>{
   const block=s=>{const a=s.indexOf("/* rights:start"),b=s.indexOf("/* rights:end */");assert(a>=0&&b>a,"markers missing");return s.slice(a,b)};
@@ -167,8 +179,8 @@ test("the rights block is identical in index.html and api/src/core.js",async()=>
   assert(block(page).replace(/\r/g,"")===block(core).replace(/\r/g,""),"the two copies differ: copy the block from one file to the other");
 });
 test("items: create, update with ETag, stale ETag → 412",async()=>{
-  const {api}=setup();
-  const put=(record,ifMatch)=>api.putItem({principal:ana,params:{collection:"rocks",id:record.id},body:{record,ifMatch}});
+  const {api}=setup();await tree(api);
+  const put=(record,ifMatch)=>api.putItem({principal:ana,params:{collection:"rocks",id:record.id},body:{record:{unitId:"T1",...record},ifMatch}});
   const c=await put({id:"r1",title:"Rock"});eq(c.status,200);const e1=c.json.record._etag;
   const u=await put({id:"r1",title:"Rock v2",_etag:"ignored"},e1);eq(u.status,200);eq(u.json.record.title,"Rock v2");
   eq((await put({id:"r1",title:"Rock v3"},e1)).status,412,"stale etag");
@@ -186,16 +198,16 @@ test("items: validation",async()=>{
   eq((await api.putItem({principal:user("x@evil.com"),params:{collection:"rocks",id:"r1"},body:{record:{id:"r1"}}})).status,403,"not allowed");
 });
 test("items: delete; meta can't be deleted",async()=>{
-  const {api}=setup();
-  await api.putItem({principal:ana,params:{collection:"cards",id:"c1"},body:{record:{id:"c1"}}});
+  const {api}=setup();await tree(api);
+  await api.putItem({principal:ana,params:{collection:"cards",id:"c1"},body:{record:{id:"c1",unitId:"T1"}}});
   eq((await api.deleteItem({principal:ana,params:{collection:"cards",id:"c1"}})).status,204);
   eq((await api.data({principal:ana})).json.cards.length,0);
   eq((await api.deleteItem({principal:ana,params:{collection:"meta",id:"meta"}})).status,400);
 });
 test("images: pasted data URLs become attachments (deduplicated) and are served back",async()=>{
-  const {api,store}=setup();
+  const {api,store}=setup();await tree(api);
   const html=`<div>a<img src="data:image/png;base64,${PNG}">b<img src="data:image/png;base64,${PNG}"></div>`;
-  const r=await api.putItem({principal:ana,params:{collection:"cards",id:"c1"},body:{record:{id:"c1",description:html}}});
+  const r=await api.putItem({principal:ana,params:{collection:"cards",id:"c1"},body:{record:{id:"c1",unitId:"T1",description:html}}});
   const id=await sha256(PNG);
   eq(r.json.record.description,`<div>a<img src="/api/attachments/${id}">b<img src="/api/attachments/${id}"></div>`);
   eq(Object.keys(store.db.attachments),[id],"stored once");
@@ -206,9 +218,9 @@ test("images: pasted data URLs become attachments (deduplicated) and are served 
   eq((await api.attachment({principal:user("x@evil.com"),params:{id}})).status,403);
 });
 test("images: KEEP_INLINE_IMAGES leaves them in place (browser mock)",async()=>{
-  const {api}=setup({ALLOWED_EMAIL_DOMAINS:"letsgrow.com",KEEP_INLINE_IMAGES:"true"});
+  const {api}=setup({ALLOWED_EMAIL_DOMAINS:"letsgrow.com",KEEP_INLINE_IMAGES:"true"});await tree(api);
   const html=`<img src="data:image/png;base64,${PNG}">`;
-  eq((await api.putItem({principal:ana,params:{collection:"cards",id:"c1"},body:{record:{id:"c1",description:html}}})).json.record.description,html);
+  eq((await api.putItem({principal:ana,params:{collection:"cards",id:"c1"},body:{record:{id:"c1",unitId:"T1",description:html}}})).json.record.description,html);
 });
 test("size: items over ~2 MB are refused with 413",async()=>{
   const {api}=setup();

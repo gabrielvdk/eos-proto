@@ -602,7 +602,7 @@ const currentUserId=()=>session.userId;
    rank: display order (S.rocks and S.cards are kept sorted by it); a database keeps no array order.
    updates and history: [{at, who, text}], newest first; `at` is an ISO timestamp (older entries: a plain date, older updates: no `who`).
    Records refer to each other by id, never by name. */
-const DATA_VERSION=10;
+const DATA_VERSION=11;
 
 /* ---------- sample data (only used when this browser has no saved data) ---------- */
 const DEMO_YEAR=2026; // the sample content is written for this year
@@ -724,7 +724,7 @@ function seed(){
       {at:r.quarter==="Q3 2026"?d(7,1):d(9,29),who:r.ownerId,text:"Created"},
     ];
   });
-  return {version:DATA_VERSION,people,units,goals,rocks,cards:seedCards(U)};
+  return migrate({version:10,people,units,goals,rocks,cards:seedCards(U)}); // the sample has rocks on departments: v11 moves them to "<department> MT" teams
 }
 /* Level 10 board cards; U(name) gives a unit id. Same card type in every column, so an IDS item can become a to-do. */
 function seedCards(U){
@@ -749,6 +749,7 @@ function migrate(data){
   if(!data.version)data=migrateV7(data); // → 8
   if(data.version<9)data=migrateV8(data); // → 9
   if(data.version<10)data=migrateV9(data); // → 10
+  if(data.version<11)data=migrateV10(data); // → 11
   return data;
 }
 // v7 and older: units referenced by name, stored goal levels, status labels, a single trackBR flag, no authors on updates
@@ -795,6 +796,29 @@ function migrateV9(data){
   });
   if(data.people.length&&!data.people.some(p=>p.admin)&&!data.people.some(p=>p.email))data.people[0].admin=true;
   return {...data,version:10};
+}
+/* v10: rocks and Level 10 cards could sit on the company or a department; they now live on teams and meetings only.
+   Each department (or the company) that had some gets a "<name> MT" team (management team), listed first, and they move
+   there. Its people keep their rights: rights flow down from the department (or company) to the new team. */
+function migrateV10(data){
+  const mt=new Map(); // department/company id → its MT team id
+  const mtFor=u=>{
+    if(mt.has(u.id))return mt.get(u.id);
+    const parentId=u.kind==="department"?u.id:null,name=`${u.name} MT`;
+    let team=data.units.find(t=>t.kind==="team"&&t.name===name&&(t.parentId||null)===parentId);
+    if(!team){
+      const siblings=data.units.filter(t=>t.kind==="team"&&(t.parentId||null)===parentId);
+      team={id:uid(),kind:"team",name,parentId,rank:siblings.length?Math.min(...siblings.map(t=>t.rank??0))-1:nextRank(data.units)};
+      data.units.push(team);
+    }
+    mt.set(u.id,team.id);return team.id;
+  };
+  const byId=new Map(data.units.map(u=>[u.id,u]));
+  for(const x of [...data.rocks,...data.cards]){
+    const u=byId.get(x.unitId);
+    if(u&&(u.kind==="department"||u.kind==="company"))x.unitId=mtFor(u);
+  }
+  return {...data,version:11};
 }
 const byRank=(a,b)=>(a.rank??0)-(b.rank??0);
 const nextRank=list=>list.reduce((m,x)=>Math.max(m,x.rank??0),-1)+1;
@@ -925,9 +949,12 @@ function createRemoteBackend(kind,transport,config){
     const {puts,dels}=changes();
     if(!puts.length&&!dels.length){showSaveState("");return}
     showSaveState("Saving…");
-    const meta=puts.find(p=>p.c==="meta"); // written last: the data version only moves once every record is stored
-    const jobs=[...puts.filter(p=>p!==meta).map(p=>()=>putOne(p)),...dels.map(k=>()=>deleteOne(k))];
-    let problem=(await runLimited(jobs,4)).find(Boolean);
+    // order: the structure first (units, people: a rock may move to a team created in the same save), then the content,
+    // the data version last (it only moves once every record is stored)
+    const meta=puts.find(p=>p.c==="meta"),first=puts.filter(p=>ADMIN_ONLY.includes(p.c));
+    const jobs=[...puts.filter(p=>p!==meta&&!first.includes(p)).map(p=>()=>putOne(p)),...dels.map(k=>()=>deleteOne(k))];
+    let problem=(await runLimited(first.map(p=>()=>putOne(p)),4)).find(Boolean);
+    if(!problem)problem=(await runLimited(jobs,4)).find(Boolean);
     if(!problem&&meta)problem=await putOne(meta);
     if(problem)await handleProblem(problem);else showSaveState("");
   }
@@ -1074,20 +1101,22 @@ const goalLevel=g=>levelOf(g.unitId);
 const deptOf=id=>{const u=unit(id);return u?.kind==="department"?u.id:u?.kind==="team"?u.parentId:null};
 const unitMatches=(id,filter)=>!filter||id===filter||(isDept(filter)&&deptOf(id)===filter); // a department filter includes its teams
 // Level 10 boards: every team and forum; a department without teams (HR) has its own, and keeps it while it still has cards
-const deptHasBoard=dept=>!teamsOf(dept.id).length||S.cards.some(c=>c.unitId===dept.id);
-const boardsOf=dept=>[...(deptHasBoard(dept)?[dept]:[]),...teamsOf(dept.id)];
-const hasBoard=id=>{const u=unit(id);return !!u&&(u.kind==="team"||u.kind==="forum"||(u.kind==="department"&&deptHasBoard(u)))};
+const isTeamLevel=id=>["team","forum"].includes(unit(id)?.kind); // rocks and Level 10 boards live on teams and meetings only
+const hasBoard=isTeamLevel;
 // the unit a new goal or rock starts in: the filtered team, else your own first unit, else anywhere you have rights
-const defaultUnitId=(withForums=true)=>{
-  const ok=id=>!!unit(id)&&canEditUnit(id)&&(withForums||!isForum(id));
+// the unit a new goal or rock starts in: the filtered unit if you may use it (for rocks: a team of the filtered department),
+// else your own first unit, else anywhere you have rights. kind: "goal" (any level but meetings) or "rock" (teams and meetings)
+const defaultUnitId=kind=>{
+  const ok=id=>!!unit(id)&&canEditUnit(id)&&(kind==="rock"?isTeamLevel(id):!isForum(id));
   if(teamFilter&&ok(teamFilter))return teamFilter;
-  return (me()?.unitIds||[]).find(ok)||myUnits(withForums)[0]?.id||null;
+  const inFilter=teamFilter&&S.units.find(u=>ok(u.id)&&unitMatches(u.id,teamFilter));if(inFilter)return inFilter.id;
+  return (me()?.unitIds||[]).find(ok)||myUnits(kind)[0]?.id||null;
 };
 /* rights:start — this block is identical in index.html and api/src/core.js (tests/api-core.test.html checks that).
    Who may see and change what. The tree: company → departments → teams; meetings (forums) and teams without a department
    hang under the company. Rights flow down, never up: belonging to a unit gives rights on it and on everything below it
    (a director in the company has rights everywhere; a team member has none on the department above). Admins: everything.
-   Everyone assigned sees all goals and rocks; Level 10 boards only where they have rights. */
+   Goals live on any unit; rocks and Level 10 boards only on teams and meetings ("team level"). */
 function createRights({units,people,adminEmails}){
   const byId=new Map(units.map(u=>[u.id,u]));
   const company=units.find(u=>u.kind==="company");
@@ -1102,12 +1131,13 @@ function createRights({units,people,adminEmails}){
   const inForum=(f,r)=>r.unitId===f.id||(f.includeTracked&&(r.trackIn||[]).includes(f.id))||(f.includeEscalated&&r.status==="escalate");
   // rocks: your units' rocks, plus every rock a meeting you're in shows (its members fully edit those)
   const canEditRock=(p,r)=>hasRights(p,r.unitId)||units.some(f=>f.kind==="forum"&&inForum(f,r)&&hasRights(p,f.id));
+  const teamLevel=id=>{const u=byId.get(id);return !!u&&(u.kind==="team"||u.kind==="forum")}; // where rocks and boards live
   const canEdit={goals:(p,g)=>hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
   return {
-    isAdmin,role,hasRights,canEditRock,
+    isAdmin,role,hasRights,canEditRock,teamLevel,
     canEditGoal:canEdit.goals,
     canEditCard:canEdit.cards,
-    canSeeBoard:hasRights, // Level 10: the boards of your units and of everything below them
+    canSeeBoard:(p,unitId)=>teamLevel(unitId)&&hasRights(p,unitId), // Level 10: the team and meeting boards of your units and below
     // the team filter: the company, your units, the units above them and the units below them
     branch(p){
       if(isAdmin(p))return units.map(u=>u.id);
@@ -1119,6 +1149,7 @@ function createRights({units,people,adminEmails}){
     // may p replace `before` with `after` in a collection (before = null: create, after = null: delete)? Checked on every write.
     writeAllowed(p,collection,before,after){
       if(role(p)==="pending")return false;
+      if((collection==="rocks"||collection==="cards")&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
       if(isAdmin(p)||collection==="meta")return true;
       const can=canEdit[collection];if(!can)return false; // people and units: admins only
       if(before&&!can(p,before))return false;
@@ -1143,7 +1174,7 @@ const canEditUnit=id=>rights.hasRights(me(),id);   // goals, rocks and cards of 
 const canEditGoal=g=>rights.canEditGoal(me(),g);
 const canEditRock=r=>rights.canEditRock(me(),r);   // also the rocks shown by a meeting you're in
 const canSeeBoard=id=>rights.canSeeBoard(me(),id); // Level 10
-const myUnits=(withForums=true)=>S.units.filter(u=>canEditUnit(u.id)&&(withForums||u.kind!=="forum")); // where you may create
+const myUnits=kind=>S.units.filter(u=>canEditUnit(u.id)&&(kind==="rock"?isTeamLevel(u.id):u.kind!=="forum")); // where you may create a goal / rock
 const viewOnly=()=>toast("View only: you can change the items of your own teams.",3000);
 const goalFilter=()=>isForum(teamFilter)?"":teamFilter; // forums have no goals: the plan shows everything
 // rocks: a forum shows its own rocks plus the rocks its rules pull in from other teams
@@ -1286,7 +1317,7 @@ function renderPlan(){
     ${planMode==="tree"?`<button class="btn sm" data-act="toggleall">${collapsed.size?"Expand all":"Collapse all"}</button>`:""}
     <div class="seg" role="group" aria-label="View"><button data-act="mode" data-mode="list" aria-pressed="${planMode==="list"}">List</button><button data-act="mode" data-mode="tree" aria-pressed="${planMode==="tree"}">Tree</button></div>
     <select class="ctl" data-act="year" aria-label="Year">${yearList().map(y=>`<option ${y===planYear?"selected":""}>${y}</option>`).join("")}</select>
-    ${myUnits(false).length?`<button class="btn primary" data-act="newgoal">+ New goal</button>`:""}</div>`;
+    ${myUnits("goal").length?`<button class="btn primary" data-act="newgoal">+ New goal</button>`:""}</div>`;
   const th=(key,label,w)=>`<th class="sortable" style="width:${w}" data-act="sort" data-sort="${key}" aria-sort="${sortCol===key?(sortDir>0?"ascending":"descending"):"none"}">${label}<span class="arr"></span></th>`;
   const cols=`<thead><tr>${th("title","Title","44%")}${th("level","Level","14%")}${th("team","Team","16%")}${th("linked","Linked to goal","26%")}</tr></thead>`;
   const row=(g,depth,hasKids)=>goalRow(g,depth,hasKids,ctx.has(g.id));
@@ -1308,7 +1339,7 @@ function renderPlan(){
     if(orphans.length)rows+=`<tr class="group"><td colspan="4">Not linked to a Company goal<span class="n">${orphans.length}</span></td></tr>`+orphans.map(g=>branch(g,0)).join("");
   }
   if(!goals.length)rows=`<tr><td colspan="4"><div class="empty"><b>No goals match these filters</b>Try a different level, team or year, or clear the filters.</div></td></tr>`;
-  if(myUnits(false).length)rows+=`<tr class="addrow"><td colspan="4"><button data-act="newgoal">+ Add goal</button></td></tr>`;
+  if(myUnits("goal").length)rows+=`<tr class="addrow"><td colspan="4"><button data-act="newgoal">+ Add goal</button></td></tr>`;
   return head+`<div class="board"><div class="scroll"><table class="${planMode==="tree"?"tree":""}">${cols}<tbody>${rows}</tbody></table></div></div>`;
 }
 function goalRow(g,depth,hasKids,isCtx){
@@ -1327,10 +1358,10 @@ function renderRocks(){
   const rocks=shownRocks();
   const title=!teamFilter&&myRole()!=="admin"?`<h1>Rocks <span class="dim">· your teams</span></h1>`:viewTitle("Rocks",teamFilter);
   const head=`<div class="viewhead">${title}<span class="count">${rocks.length} this quarter</span><div class="spacer"></div>
-    ${quarterSelectHTML()}${myUnits().length?`<button class="btn primary" data-act="newrock">+ New rock</button>`:""}</div>`;
+    ${quarterSelectHTML()}${myUnits("rock").length?`<button class="btn primary" data-act="newrock">+ New rock</button>`:""}</div>`;
   const cols=`<thead><tr><th class="fit">Title</th><th class="fit">Owner</th><th class="fit">Status</th><th class="fit">Progress</th><th>Last update</th><th class="fit">Goal</th></tr></thead>`;
   let rows=rocks.length?rocks.map(rockRow).join(""):`<tr><td colspan="6">${noRocksHTML("Add the first 90-day rock for this quarter.")}</td></tr>`;
-  if(myUnits().length)rows+=`<tr class="addrow"><td colspan="6"><button data-act="newrock">+ Add rock</button></td></tr>`;
+  if(myUnits("rock").length)rows+=`<tr class="addrow"><td colspan="6"><button data-act="newrock">+ Add rock</button></td></tr>`;
   return head+`<div class="board"><div class="scroll"><table class="rocks">${cols}<tbody>${rows}</tbody></table></div></div>`
     +legendHTML([["green","done"],["red","overdue"],["grey-pill","to do"]]);
 }
@@ -1358,7 +1389,7 @@ function rockRow(r){
 
 /* ---------- Rock Review (meeting view: rocks × weeks) ---------- */
 function renderReview(){
-  if(!teamFilter)return renderReviewPick(); // a review is always of one meeting, department or team
+  if(!boardOk(teamFilter))return renderReviewPick(); // like Level 10: always one of your teams or meetings
   const rocks=shownRocks();
   // weeks span the quarter, widened to include every milestone deadline of the shown rocks
   let [start,end]=quarterRange(quarterFilter);
@@ -1471,32 +1502,27 @@ function renderL10(){
   };
   return head+`<div class="l10">${agenda}<div class="kboard">${COLS.map(column).join("")}</div></div>`;
 }
-/* a page of one-click buttons that set the team filter, grouped Company · Meetings · per department (department, then its
-   teams); used by Level 10 and Rock Review when no team is chosen. intro is HTML; countOf(id) gives the small label. */
-function unitPickPage(head,intro,units,countOf){
-  const ids=new Set(units.map(u=>u.id));
-  const btn=u=>{const n=countOf(u.id);return `<button class="pteam" data-act="pickteam" data-id="${u.id}"><span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span>${esc(u.name)}${n?`<span class="n">${n}</span>`:""}</button>`};
+/* the team picker of Level 10 and Rock Review (both are held per team or meeting), shown while no team is chosen:
+   your teams and meetings, grouped Meetings · per department; with a department selected, only its teams.
+   label(id) gives the small count on each button; extraHead goes in the header (e.g. the quarter). */
+function renderTeamPick(title,what,label,extraHead=""){
+  const all=S.units.filter(u=>canSeeBoard(u.id)); // teams and meetings you have rights on
+  const inDept=isDept(teamFilter)?all.filter(u=>u.parentId===teamFilter):[];
+  const units=inDept.length?inDept:all,ids=new Set(units.map(u=>u.id));
+  const head=`<div class="viewhead"><h1>${title}</h1><div class="spacer"></div>${extraHead}</div>`;
+  if(!units.length)return head+`<div class="board l10pick"><p><b>${title} is held per team.</b> You aren't in a team yet.</p></div>`;
+  const btn=u=>{const n=label(u.id);return `<button class="pteam" data-act="pickteam" data-id="${u.id}"><span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span>${esc(u.name)}${n?`<span class="n">${n}</span>`:""}</button>`};
   const group=(name,list)=>{const shown=list.filter(u=>ids.has(u.id));return shown.length?`<div class="pdept"><div class="grp">${esc(name)}</div><div class="pteams">${shown.map(btn).join("")}</div></div>`:""};
-  return head+`<div class="board l10pick"><p>${intro}</p>
-    ${group("Company",[company()])}${group("Meetings",forums())}
-    ${departments().map(dep=>group(dep.name,[dep,...teamsOf(dep.id)])).join("")}
+  const where=inDept.length?` in <b>${esc(unitName(teamFilter))}</b>`:"";
+  return head+`<div class="board l10pick"><p><b>${title} is held per team.</b> Pick a team${where} ${what}:</p>
+    ${group("Meetings",forums())}${departments().map(dep=>group(dep.name,teamsOf(dep.id))).join("")}
     ${group("Other teams",S.units.filter(u=>u.kind==="team"&&!u.parentId))}
   </div>`;
 }
-function renderL10Pick(){
-  const boards=S.units.filter(u=>boardOk(u.id)); // only the boards of your units and the units below them
-  const why=!teamFilter?"":hasBoard(teamFilter)?`You're viewing <b>${esc(unitName(teamFilter))}</b>, which isn't one of your teams. `:`You're viewing <b>${esc(unitName(teamFilter))}</b>, which isn't a team. `;
-  const head=`<div class="viewhead"><h1>Level 10</h1></div>`;
-  if(!boards.length)return head+`<div class="board l10pick"><p><b>Level 10 meetings are held per team.</b> You can open the boards of the teams you're in; you aren't in a team with a board yet.</p></div>`;
-  const open=id=>{const n=S.cards.filter(c=>c.unitId===id&&c.column!=="done").length;return n?`${n} open`:""};
-  return unitPickPage(head,`<b>Level 10 meetings are held per team.</b> ${why}Pick one of your teams to open its board:`,boards,open);
-}
-function renderReviewPick(){
-  const head=`<div class="viewhead"><h1>Rock Review</h1><div class="spacer"></div>${quarterSelectHTML()}</div>`;
-  const units=S.units.filter(u=>rights.branch(me()).includes(u.id));
-  const count=id=>{const n=S.rocks.filter(r=>r.quarter===quarterFilter&&rockMatches(r,id)).length;return n?plural(n,"rock"):""};
-  return unitPickPage(head,`<b>Rock Review is held per meeting, department or team.</b> Pick one to review its rocks for ${esc(quarterFilter)}:`,units,count);
-}
+const renderL10Pick=()=>renderTeamPick("Level 10","to open its board",
+  id=>{const n=S.cards.filter(c=>c.unitId===id&&c.column!=="done").length;return n?`${n} open`:""});
+const renderReviewPick=()=>renderTeamPick("Rock Review",`to review its rocks for ${esc(quarterFilter)}`,
+  id=>{const n=S.rocks.filter(r=>r.quarter===quarterFilter&&rockMatches(r,id)).length;return n?plural(n,"rock"):""},quarterSelectHTML());
 const imgCount=html=>(String(html||"").match(/<img/g)||[]).length;
 function addCard(column,title,unitId=teamFilter){
   const c={id:uid(),unitId,column,rank:nextRank(S.cards),title,description:"",owners:[],createdBy:currentUserId(),createdAt:nowStamp(),updates:[],history:[]};
@@ -1546,7 +1572,7 @@ function renderOrg(){
     <input class="inline oname" value="${esc(u.name)}" data-act="unitname" data-id="${u.id}" aria-label="Name of ${esc(u.name)}">${extra}${u.kind==="company"?"":del(u)}</div>`;
   const rule=(f,key,label,tip)=>`<label class="chkrow" data-tip="${tip}"><input type="checkbox" data-act="forumrule" data-rule="${key}" data-id="${f.id}" ${f[key]?"checked":""}>${label}</label>`;
   return `<section class="board opanel">
-    <p class="muted onote">Rights flow down: people in a department can change that department and all its teams; people in ${esc(company().name)} (directors) can change everything. Drag <span class="grip inline">${ICONS.grip}</span> to reorder departments and teams, or to move a team to another department.</p>
+    <p class="muted onote">Rights flow down: people in a department can change that department and all its teams; people in ${esc(company().name)} (directors) can change everything. Goals live on any level; rocks and Level 10 boards only on teams and meetings: for department-level work, add a management team (e.g. “Sales MT”). Drag <span class="grip inline">${ICONS.grip}</span> to reorder departments and teams, or to move a team to another department.</p>
     ${row(company(),0)}
     ${departments().map(dep=>row(dep,1,`<button class="btn sm ghost" data-act="addteam" data-id="${dep.id}">+ Team</button>`)+teamsOf(dep.id).map(t=>row(t,2)).join("")).join("")}
     ${S.units.filter(u=>u.kind==="team"&&!u.parentId).map(t=>row(t,1,`<span class="ometa">no department</span>`)).join("")}
@@ -1755,7 +1781,7 @@ const sidePaneHTML=(obj,tab,canPost=true)=>`<div class="side">
 
 /* goal modal */
 function goalModal(g){
-  const obj=g?structuredClone(g):{id:uid(),unitId:defaultUnitId(false),year:planYear,title:"",parentId:null,description:"",deliverables:"",history:[]};
+  const obj=g?structuredClone(g):{id:uid(),unitId:defaultUnitId("goal"),year:planYear,title:"",parentId:null,description:"",deliverables:"",history:[]};
   startModal({kind:"goal",obj,orig:g,isNew:!g,tab:"details",readOnly:!!g&&!canEditGoal(g)});
 }
 // view only: the text of a field instead of its control
@@ -1786,7 +1812,7 @@ function drawGoalModal(){
   </div>`;
   openModal(`${modalHeader(isNew?`New goal · ${g.year}`:`Goal · ${g.year}`)}${tabs}${body}
   <footer>${isNew?"":`<button class="btn danger" data-m="delgoal">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button>${tab==="details"?`<button class="btn primary" data-m="savegoal">${isNew?"Create goal":"Save changes"}</button>`:""}</footer>`);
-  if(tab==="details"){initUnitPicker(false);initLinkedPicker(g)}
+  if(tab==="details"){initUnitPicker("goal");initLinkedPicker(g)}
 }
 function syncGoalFields(){
   const g=modalState.obj;if(!$("#f-title"))return; // parentId is set directly by the picker
@@ -1824,7 +1850,7 @@ async function deleteGoal(){
 
 /* rock modal: left tabs Details · Milestones (modalState.left), right tabs Updates · History (modalState.tab) */
 function rockModal(r){
-  const obj=r?structuredClone(r):{id:uid(),unitId:defaultUnitId(true),quarter:quarterFilter,title:"",ownerId:currentUserId(),status:"not_set",goalId:null,
+  const obj=r?structuredClone(r):{id:uid(),unitId:defaultUnitId("rock"),quarter:quarterFilter,title:"",ownerId:currentUserId(),status:"not_set",goalId:null,
     trackIn:[],description:"",deliverables:"",milestones:[],updates:[],history:[]};
   obj.trackIn??=[];obj.updates??=[];
   startModal({kind:"rock",obj,orig:r,isNew:!r,tab:"updates",left:"details",readOnly:!!r&&!canEditRock(r)});
@@ -1885,7 +1911,7 @@ function drawRockModal(){
   </div>
   <footer>${isNew?"":`<button class="btn danger" data-m="delrock">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="saverock">${isNew?"Create rock":"Save changes"}</button></footer>`,true);
   if(left==="details"){
-    initUnitPicker(true);initRockGoalPicker(r);
+    initUnitPicker("rock");initRockGoalPicker(r);
     $("#f-unit-id").addEventListener("change",()=>{ // another team: offer that team's people as owner (keep the owner if they're in it)
       const sel=$("#f-owner"),unitId=$("#f-unit-id").value,cur=sel.value,p=person(cur);
       const keep=p&&rights.hasRights(p,unitId)?cur:(rights.hasRights(me(),unitId)?currentUserId():"");
@@ -2056,21 +2082,25 @@ function initGoalPicker(id,{get,set,groups,emptyText}){
 /* Team field: the company, (meetings,) then each department followed by its teams (indented); the dot shows the level.
    The value lives in a hidden #f-unit-id input that fires "change", so the modal code can read and watch it like a <select>. */
 const unitItem=(u,indent=0)=>({id:u.id,title:u.name,level:levelOf(u.id),indent,label:indent?"":u.kind==="forum"?"Meeting":levelOf(u.id),search:`${u.name} ${u.parentId?unitName(u.parentId):""}`});
-// allow(id): which units to list (the team filter: your branch; the Team field: where you may create)
-const unitGroups=(withForums=true,allow=()=>true)=>{
+/* the units a picker lists. allow(id): which (the team filter: your branch; the Team field: where you may create).
+   teamsOnly: teams and meetings, grouped per department (where rocks live); else the whole tree, departments with their teams */
+const unitGroups=({withForums=true,allow=()=>true,teamsOnly=false}={})=>{
   const items=list=>list.filter(x=>allow(x.id));
+  const orphans=S.units.filter(u=>u.kind==="team"&&!u.parentId);
   return [
-    {name:"Company",items:items([unitItem(company())])},
+    ...(teamsOnly?[]:[{name:"Company",items:items([unitItem(company())])}]),
     ...(withForums?[{name:"Meetings",items:items(forums().map(f=>unitItem(f)))}]:[]),
-    {name:"Departments & teams",items:items(departments().flatMap(dep=>[unitItem(dep),...teamsOf(dep.id).map(t=>unitItem(t,1))]))},
-    {name:"Other teams",items:items(S.units.filter(u=>u.kind==="team"&&!u.parentId).map(t=>unitItem(t)))},
+    ...(teamsOnly?departments().map(dep=>({name:dep.name,items:items(teamsOf(dep.id).map(t=>unitItem(t)))}))
+      :[{name:"Departments & teams",items:items(departments().flatMap(dep=>[unitItem(dep),...teamsOf(dep.id).map(t=>unitItem(t,1))]))}]),
+    {name:"Other teams",items:items(orphans.map(t=>unitItem(t)))},
   ].filter(g=>g.items.length);
 };
 const unitPickerHTML=sel=>pickerHTML("f-unit",{dot:true,hidden:{id:"f-unit-id",value:sel}});
-function initUnitPicker(withForums){ // goals can't belong to a forum, rocks can; only units you have rights on (plus the current one)
-  const hid=$("#f-unit-id"),current=hid.value;
+// the Team field: goals on any level but a meeting, rocks on teams and meetings only; only units you have rights on (plus the current one)
+function initUnitPicker(kind){
+  const hid=$("#f-unit-id"),current=hid.value,allow=id=>canEditUnit(id)||id===current;
   initPicker("f-unit",{get:()=>hid.value,set:v=>{if(v&&v!==hid.value){hid.value=v;hid.dispatchEvent(new Event("change"))}},
-    groups:()=>unitGroups(withForums,id=>canEditUnit(id)||id===current),display:unitName,dotOf:levelOf,noun:"teams",allowNone:false});
+    groups:()=>unitGroups(kind==="rock"?{teamsOnly:true,allow}:{withForums:false,allow}),display:unitName,dotOf:levelOf,noun:"teams",allowNone:false});
 }
 /* goal "Linked to": only higher-level goals of the same year, never the goal itself or its descendants.
    Team goal → its department's goals, Company, other departments. Department goal → Company. Company goal → nothing. */
@@ -2525,7 +2555,7 @@ async function init(){
   drawTopBar();
   // team filter in the top bar (all views): same picker as the Team field, plus "All teams"
   $("#teamFilterWrap").innerHTML=`<label for="tf-in">Team</label>`+pickerHTML("tf",{dot:true});
-  tfPicker=initPicker("tf",{get:()=>teamFilter,set:v=>{teamFilter=v||"";rrScroll=null;render()},groups:()=>{const branch=new Set(rights.branch(me()));return unitGroups(true,id=>branch.has(id))},display:unitName,dotOf:levelOf,noun:"teams",noneText:"All teams"});
+  tfPicker=initPicker("tf",{get:()=>teamFilter,set:v=>{teamFilter=v||"";rrScroll=null;render()},groups:()=>{const branch=new Set(rights.branch(me()));return unitGroups({allow:id=>branch.has(id)})},display:unitName,dotOf:levelOf,noun:"teams",noneText:"All teams"});
   render();
   if(backend.kind!=="local")save(); // stores migrations and the first-time setup of an empty database; nothing when up to date
   if(storageProblem)toast(storageProblem,6000);

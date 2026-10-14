@@ -64,11 +64,13 @@ Getting in has two steps. First the **allow-list** decides who may sign in at al
 | Member of | May change goals, rocks and Level 10 cards of | Sees the Level 10 boards of |
 |---|---|---|
 | **Hoogendoorn** (the company: directors) | everything | every team and meeting |
-| a **department** | that department and all its teams | that department and its teams |
+| a **department** | that department and all its teams | its teams |
 | a **team** | that team only (not the department above it) | that team |
 | a **meeting** (Business Review) | the meeting's own rocks, plus every rock it shows (tracked or escalated). They can change those fully, but can't move them to another team | that meeting |
 
-- **Everyone assigned sees the full One Year Plan**, and can open every goal. **Rocks are limited to your branch**: those of the company, your own units, the departments above them and the teams below them, plus the rocks shown by meetings you're in. Items you can't change open as view-only.
+- **Goals live on any level; rocks and Level 10 boards only on teams and meetings.** That keeps them separated per team and makes rights simple. For department- or company-level rocks and meetings, add a management team (e.g. "Sales MT") under that department. This is enforced by the server for everyone, admins too.
+- **Everyone assigned sees the full One Year Plan**, and can open every goal. **Rocks are limited to your branch**: the rocks of your own teams and the teams below your units, plus the rocks shown by meetings you're in. Items you can't change open as view-only.
+- **Rock Review and Level 10** are held per team or meeting. Without one chosen, both show the same picker of your teams.
 - **New goals and rocks** can only be put in units you have rights on (the Team field only offers those). A rock's owner must be someone with rights on its team. Moving an item to another unit needs rights on that unit too.
 - **The Team filter** (top right) shows your branch: the company, your own units, the departments above them and the teams below them.
 - **New people add themselves** by signing in. They appear at the top of *Organisation → People*, marked as waiting, and the Organisation menu item shows how many are waiting. Assign them with *+ Add to…*.

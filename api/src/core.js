@@ -59,7 +59,7 @@
    Who may see and change what. The tree: company → departments → teams; meetings (forums) and teams without a department
    hang under the company. Rights flow down, never up: belonging to a unit gives rights on it and on everything below it
    (a director in the company has rights everywhere; a team member has none on the department above). Admins: everything.
-   Everyone assigned sees all goals and rocks; Level 10 boards only where they have rights. */
+   Goals live on any unit; rocks and Level 10 boards only on teams and meetings ("team level"). */
 function createRights({units,people,adminEmails}){
   const byId=new Map(units.map(u=>[u.id,u]));
   const company=units.find(u=>u.kind==="company");
@@ -74,12 +74,13 @@ function createRights({units,people,adminEmails}){
   const inForum=(f,r)=>r.unitId===f.id||(f.includeTracked&&(r.trackIn||[]).includes(f.id))||(f.includeEscalated&&r.status==="escalate");
   // rocks: your units' rocks, plus every rock a meeting you're in shows (its members fully edit those)
   const canEditRock=(p,r)=>hasRights(p,r.unitId)||units.some(f=>f.kind==="forum"&&inForum(f,r)&&hasRights(p,f.id));
+  const teamLevel=id=>{const u=byId.get(id);return !!u&&(u.kind==="team"||u.kind==="forum")}; // where rocks and boards live
   const canEdit={goals:(p,g)=>hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
   return {
-    isAdmin,role,hasRights,canEditRock,
+    isAdmin,role,hasRights,canEditRock,teamLevel,
     canEditGoal:canEdit.goals,
     canEditCard:canEdit.cards,
-    canSeeBoard:hasRights, // Level 10: the boards of your units and of everything below them
+    canSeeBoard:(p,unitId)=>teamLevel(unitId)&&hasRights(p,unitId), // Level 10: the team and meeting boards of your units and below
     // the team filter: the company, your units, the units above them and the units below them
     branch(p){
       if(isAdmin(p))return units.map(u=>u.id);
@@ -91,6 +92,7 @@ function createRights({units,people,adminEmails}){
     // may p replace `before` with `after` in a collection (before = null: create, after = null: delete)? Checked on every write.
     writeAllowed(p,collection,before,after){
       if(role(p)==="pending")return false;
+      if((collection==="rocks"||collection==="cards")&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
       if(isAdmin(p)||collection==="meta")return true;
       const can=canEdit[collection];if(!can)return false; // people and units: admins only
       if(before&&!can(p,before))return false;
@@ -183,10 +185,10 @@ function createRights({units,people,adminEmails}){
         return reply(200,{...out,meId:me.id,role,adminEmails});
       },
       async putItem({principal,params,body}){
-        const record=body&&body.record;
-        const refused=await refuseWrite(principal,params,record&&typeof record==="object"?record:null);if(refused)return refused;
-        const t=target(params);
+        const a=access(principal);if(!a.ok)return deny(a);
+        const t=target(params),record=body&&body.record;if(!t)return reply(400,{error:"Unknown collection or id."});
         if(!record||typeof record!=="object"||Array.isArray(record)||record.id!==t.id)return reply(400,{error:"Send {record, ifMatch} with record.id matching the URL."});
+        const refused=await refuseWrite(principal,params,record);if(refused)return refused;
         const doc={...record,type:t.collection};
         delete doc._etag;SYSTEM_FIELDS.forEach(k=>delete doc[k]);
         if(typeof doc.description==="string"&&settings.KEEP_INLINE_IMAGES!=="true"){
