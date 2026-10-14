@@ -16,7 +16,7 @@ Open via <code>serve.ps1</code>: <code>http://localhost:8080/tests/api-core.test
 <div id="out">Running…</div>
 <script src="../api/src/core.js"></script>
 <script>
-const {createApi,createMemoryStore,parsePrincipal,displayName}=EosApiCore;
+const {createApi,createMemoryStore,createRights,parsePrincipal,displayName}=EosApiCore;
 const tests=[];const test=(name,fn)=>tests.push({name,fn});
 function assert(cond,msg){if(!cond)throw new Error(msg||"assertion failed")}
 const eq=(a,b,msg)=>assert(JSON.stringify(a)===JSON.stringify(b),`${msg||"not equal"}: ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`);
@@ -29,7 +29,13 @@ function setup(settings={ALLOWED_EMAIL_DOMAINS:"letsgrow.com"}){
   return {store,api:createApi({store,settings:{APP_ENV:"test",SEED:"sample",ADMIN_EMAILS:"ana.de.vries@letsgrow.com",...settings},sha256,newId})};
 }
 const ana=user("ana.de.vries@letsgrow.com"),bob=user("bob@letsgrow.com");
-// ana (admin) assigns someone to a unit, the way the Organisation tab does
+// a small org tree: company C → department D (teams T1, T2), department E (team T3); meeting F (tracked + escalated rocks)
+const UNITS=[{id:"C",kind:"company",name:"Co"},{id:"D",kind:"department",name:"D"},{id:"T1",kind:"team",name:"T1",parentId:"D"},
+  {id:"T2",kind:"team",name:"T2",parentId:"D"},{id:"E",kind:"department",name:"E"},{id:"T3",kind:"team",name:"T3",parentId:"E"},
+  {id:"F",kind:"forum",name:"F",includeTracked:true,includeEscalated:true}];
+async function tree(api){for(const u of UNITS)await api.putItem({principal:ana,params:{collection:"units",id:u.id},body:{record:u}})}
+const asAna=(api,c,rec)=>api.putItem({principal:ana,params:{collection:c,id:rec.id},body:{record:rec}});
+// ana (admin) assigns someone to a unit, the way the People tab does
 async function assign(api,principal,unitIds){
   const me=(await api.data({principal})).json.meId;
   const people=(await api.data({principal:ana})).json.people,p=people.find(x=>x.id===me);
@@ -87,10 +93,10 @@ test("roles: a new person waits, sees nothing and can change nothing",async()=>{
   eq((await api.data({principal:ana})).json.people.map(p=>p.email).sort(),["ana.de.vries@letsgrow.com","bob@letsgrow.com"],"admins see who's waiting");
 });
 test("roles: once assigned, a member sees everything and edits work, but not the org tree or people",async()=>{
-  const {api}=setup();
-  eq((await assign(api,bob,["u-sales"])).status,200);
+  const {api}=setup();await tree(api);
+  eq((await assign(api,bob,["T1"])).status,200);
   const r=(await api.data({principal:bob})).json;eq([r.role,!!r.waiting],["member",false]);
-  eq((await api.putItem({principal:bob,params:{collection:"rocks",id:"r1"},body:{record:{id:"r1"}}})).status,200,"rocks");
+  eq((await api.putItem({principal:bob,params:{collection:"rocks",id:"r1"},body:{record:{id:"r1",unitId:"T1"}}})).status,200,"rocks");
   eq((await api.putItem({principal:bob,params:{collection:"meta",id:"meta"},body:{record:{id:"meta",version:10}}})).status,200,"meta (migrations)");
   eq((await api.putItem({principal:bob,params:{collection:"units",id:"u1"},body:{record:{id:"u1"}}})).status,403,"units");
   const me=r.people.find(p=>p.id===r.meId);
@@ -106,6 +112,59 @@ test("roles: ADMIN_EMAILS are always admin and always allowed in; promoted admin
   eq(api.roleOf({unitIds:[],admin:true},"x@hoogendoorn.com"),"admin");
   const gk=user("gk@letsgrow.com");
   eq((await api.putItem({principal:gk,params:{collection:"units",id:"u1"},body:{record:{id:"u1",kind:"team",name:"X"}}})).status,200,"admin edits the org tree");
+});
+test("rights: flow down the tree, never up",async()=>{
+  const R=createRights({units:UNITS,people:[],adminEmails:["boss@x.com"]});
+  const can=(units,unitId)=>R.hasRights({unitIds:units},unitId);
+  eq(UNITS.map(u=>can(["C"],u.id)),[true,true,true,true,true,true,true],"a director (company) has rights everywhere");
+  eq(UNITS.map(u=>can(["D"],u.id)),[false,true,true,true,false,false,false],"department: itself and its teams");
+  eq(UNITS.map(u=>can(["T1"],u.id)),[false,false,true,false,false,false,false],"team: only itself, not the department above");
+  eq(UNITS.map(u=>can(["F"],u.id)),[false,false,false,false,false,false,true],"meeting: only itself");
+  eq(R.hasRights({email:"Boss@x.com",unitIds:[]},"T3"),true,"admins everywhere");
+  eq(R.hasRights({unitIds:[]},"T1"),false,"waiting: nowhere");
+});
+test("rights: the team filter shows your branch",async()=>{
+  const R=createRights({units:UNITS,people:[],adminEmails:[]});
+  eq(R.branch({unitIds:["T1"]}),["C","D","T1"],"team member: company, own department, own team");
+  eq(R.branch({unitIds:["D"]}),["C","D","T1","T2"],"department member: also its teams");
+  eq(R.branch({unitIds:["T1","F"]}),["C","D","T1","F"]);
+  eq(R.branch({unitIds:["C"]}),UNITS.map(u=>u.id),"director: everything");
+});
+test("rights: meeting members fully edit the rocks the meeting shows",async()=>{
+  const R=createRights({units:UNITS,people:[],adminEmails:[]}),f={unitIds:["F"]};
+  const esc={id:"r",unitId:"T3",status:"escalate"},tracked={id:"r",unitId:"T2",trackIn:["F"]},plain={id:"r",unitId:"T2"};
+  eq([R.canEditRock(f,esc),R.canEditRock(f,tracked),R.canEditRock(f,plain)],[true,true,false]);
+  eq(R.writeAllowed(f,"rocks",esc,{...esc,status:"on_track"}),true,"resolving an escalation (the rock then leaves the meeting)");
+  eq(R.writeAllowed(f,"rocks",esc,{...esc,unitId:"T1"}),false,"but not moving it to a team you have no rights on");
+  eq(R.writeAllowed(f,"rocks",null,{...esc,id:"new"}),false,"nor creating an (escalated) rock for another team");
+  eq(R.writeAllowed(f,"rocks",null,{id:"new",unitId:"F"}),true,"the meeting's own rocks: yes");
+  eq(R.writeAllowed(f,"goals",null,{id:"g",unitId:"T3"}),false,"goals of other teams: no");
+});
+test("server: members only change their own branch; moving needs rights on both sides",async()=>{
+  const {api}=setup();await tree(api);await assign(api,bob,["T1"]);
+  const put=(c,rec)=>api.putItem({principal:bob,params:{collection:c,id:rec.id},body:{record:rec}}).then(r=>r.status);
+  eq(await put("goals",{id:"g1",unitId:"T1"}),200,"own team goal");
+  eq(await put("goals",{id:"g2",unitId:"D"}),403,"department goal (above you)");
+  eq(await put("rocks",{id:"r2",unitId:"T2"}),403,"another team's rock");
+  await asAna(api,"rocks",{id:"r3",unitId:"T3"});
+  eq(await put("rocks",{id:"r3",unitId:"T1"}),403,"taking over another team's rock");
+  eq(await put("rocks",{id:"r1",unitId:"T1"}),200);eq(await put("rocks",{id:"r1",unitId:"T3"}),403,"handing a rock to another team");
+  eq((await api.deleteItem({principal:bob,params:{collection:"rocks",id:"r3"}})).status,403,"deleting another team's rock");
+  eq((await api.deleteItem({principal:bob,params:{collection:"rocks",id:"r1"}})).status,204,"deleting your own");
+});
+test("server: Level 10 cards are only sent where you have rights",async()=>{
+  const {api}=setup();await tree(api);
+  for(const [id,unitId] of [["c1","T1"],["c2","T2"],["c3","D"],["c4","F"]])await asAna(api,"cards",{id,unitId});
+  await assign(api,bob,["T1"]);
+  eq((await api.data({principal:bob})).json.cards.map(c=>c.id),["c1"],"team member: own board");
+  await assign(api,bob,["D"]);
+  eq((await api.data({principal:bob})).json.cards.map(c=>c.id).sort(),["c1","c2","c3"],"department member: its teams' boards too");
+  eq((await api.data({principal:ana})).json.cards.length,4,"admin: all");
+});
+test("the rights block is identical in index.html and api/src/core.js",async()=>{
+  const block=s=>{const a=s.indexOf("/* rights:start"),b=s.indexOf("/* rights:end */");assert(a>=0&&b>a,"markers missing");return s.slice(a,b)};
+  const [page,core]=await Promise.all(["../index.html","../api/src/core.js"].map(u=>fetch(u,{cache:"no-store"}).then(r=>r.text())));
+  assert(block(page).replace(/\r/g,"")===block(core).replace(/\r/g,""),"the two copies differ: copy the block from one file to the other");
 });
 test("items: create, update with ETag, stale ETag → 412",async()=>{
   const {api}=setup();

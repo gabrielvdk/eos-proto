@@ -55,14 +55,28 @@ Getting in has two steps. First the **allow-list** decides who may sign in at al
 
 | Role | Who | Sees and does |
 |---|---|---|
-| **Admin** | everyone in `ADMIN_EMAILS` (always, automatically), plus anyone an admin ticks "Admin" for | everything, plus the **Organisation** tab: add, rename, move and delete departments, teams and meetings; assign people to teams; make others admin |
-| **Member** | anyone assigned to at least one unit (team, department, meeting or the company) | the whole app (goals, rocks, Level 10, Rock Review) |
+| **Admin** | everyone in `ADMIN_EMAILS` (always, automatically), plus anyone an admin ticks "Admin" for | everything, plus the **Organisation** tab (add, rename, move and delete departments, teams and meetings) and the **People** tab (assign people to units, make others admin) |
+| **Member** | anyone assigned to at least one unit (team, department, meeting or the company) | see below |
 | **Waiting** | signed in for the first time, not assigned yet | only "Welcome, you haven't been added to a team yet". The page checks every 30 seconds and opens the app once they're assigned |
 
-- **New people add themselves** by signing in. They appear at the top of the Organisation tab, marked as waiting, and the tab shows how many are waiting. Assign them with *+ Add to…*.
+**What a member may do: rights flow down the tree, never up.** Belonging to a unit gives rights on that unit and on everything below it:
+
+| Member of | May change goals, rocks and Level 10 cards of | Sees the Level 10 boards of |
+|---|---|---|
+| **Hoogendoorn** (the company: directors) | everything | every team and meeting |
+| a **department** | that department and all its teams | that department and its teams |
+| a **team** | that team only (not the department above it) | that team |
+| a **meeting** (Business Review) | the meeting's own rocks, plus every rock it shows (tracked or escalated). They can change those fully, but can't move them to another team | that meeting |
+
+- **Everyone assigned sees the full One Year Plan and all rocks**, and can open every goal and rock. Items you can't change open as view-only.
+- **New goals and rocks** can only be put in units you have rights on (the Team field only offers those). A rock's owner must be someone with rights on its team. Moving an item to another unit needs rights on that unit too.
+- **The Team filter** (top right) shows your branch: the company, your own units, the departments above them and the teams below them.
+- **New people add themselves** by signing in. They appear at the top of the People tab, marked as waiting, and the tab shows how many are waiting. Assign them with *+ Add to…*.
 - **Removing someone from every unit** puts them back to waiting. That's how you offboard someone while keeping their history.
-- **Enforced by the server, not just hidden in the page:** a waiting person gets no data at all, and only admins can change the organisation or people.
-- **Members currently see everything.** Per-team visibility is a possible later step.
+- **Enforced by the server, not just hidden in the page:**
+  - a waiting person gets no data at all;
+  - every save is checked against these rights (`createRights` in `api/src/core.js`; the page uses the identical block);
+  - Level 10 cards of boards you can't see are never sent to your browser.
 
 ### Saving and multiple users
 
@@ -243,8 +257,8 @@ Re-running the deployment is safe. It rewrites the app settings, so pass the sam
 
 ### Check that it works
 
-- The app opens after you sign in, shows your name top right, and has the right tag (Test) or no tag (Prod). As an admin you also see the **Organisation** tab.
-- Sign in with another allowed account (e.g. a private browser window). It should get the waiting page and show up as waiting in your Organisation tab. Assign it to a team; within 30 seconds the other window opens the app.
+- The app opens after you sign in, shows your name top right, and has the right tag (Test) or no tag (Prod). As an admin you also see the **Organisation** and **People** tabs.
+- Sign in with another allowed account (e.g. a private browser window). It should get the waiting page and show up as waiting on your People tab. Assign it to a team; within 30 seconds the other window opens the app. It sees only that team's Level 10 board, and other teams' rocks open as view-only.
 - Make a change, reload: it's still there. Open the site in a second browser profile as someone else: they see it too.
 - *Cosmos DB → Data Explorer → eostracker → items* shows the records.
 
@@ -296,8 +310,9 @@ That's the intended path: run Prod on `builtin` (with the allow-list) until IT h
 | The run fails at *Deploy* | wrong or missing `AZURE_STATIC_WEB_APPS_API_TOKEN` in that GitHub environment |
 | "Can't reach the server" | the API isn't running: check the run's API build step and the app settings (a missing `COSMOS_CONNECTION_STRING` breaks every call) |
 | "No access" | your address isn't covered by `ALLOWED_EMAIL_DOMAINS` / `ALLOWED_EMAILS` / `ADMIN_EMAILS` |
-| "Welcome, you haven't been added to a team yet" | expected for new people: an admin assigns them in the Organisation tab |
-| No Organisation tab although you should be admin | your sign-in address differs from the one in `ADMIN_EMAILS` (check the name/tooltip top right) |
+| "Welcome, you haven't been added to a team yet" | expected for new people: an admin assigns them on the People tab |
+| No Organisation/People tabs although you should be admin | your sign-in address differs from the one in `ADMIN_EMAILS` (check the name/tooltip top right) |
+| "View only" on a goal or rock | it belongs to a unit you're not in (or below); add the person to that unit, or to the department/company above it |
 | Sign-in loops or errors after switching to `entra` | redirect URI, ID tokens setting, client ID/secret, or an expired secret |
 | "…was changed by someone else at the same time" | two people edited the same item; the latest version is shown, so redo your change |
 | "Not saved · retrying…" | connection or server trouble; it retries automatically, so keep the tab open |
@@ -307,6 +322,6 @@ That's the intended path: run Prod on `builtin` (with the allow-list) until IT h
 ## 8. Security notes
 
 - The repository is public. It contains no secrets: the deployment token is a GitHub secret, and the database connection string and Entra secret are Static Web App app settings.
-- Every page and API call requires sign-in (`staticwebapp.config.json`). The API also checks the allow-list and the caller's role on every call. People who are waiting get no data; only admins can change the organisation and people.
+- Every page and API call requires sign-in (`staticwebapp.config.json`). The API also checks the allow-list, the caller's role and their rights on every call. People who are waiting get no data; only admins can change the organisation and people; members only change their own branch and receive only their own Level 10 boards.
 - Pasted images are stored as attachments and served only to signed-in users.
 - All data is in West Europe.

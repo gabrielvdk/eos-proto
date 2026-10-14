@@ -11,11 +11,13 @@
      DELETE items/{collection}/{id}     → 204
      GET    attachments/{sha256}        → the image (pasted images are moved out of descriptions on save)
 
-   Roles (roleOf): admin = in ADMIN_EMAILS (always) or person.admin · member = assigned to at least one unit (person.unitIds)
-   · pending = signed in, not assigned yet: sees and changes nothing. Only admins change people and units (the org tree).
+   Roles: admin = in ADMIN_EMAILS (always) or person.admin · member = assigned to at least one unit (person.unitIds)
+   · pending = signed in, not assigned yet: sees and changes nothing. Only admins change people and units (the org tree);
+   members change goals, rocks and cards of their units and everything below them, and see only those Level 10 boards
+   (createRights below; the page uses the same block).
 
    store interface (Cosmos DB in index.js, memory in createMemoryStore):
-     list() → all item docs incl. _etag · listType(type) → the docs of one type · put(doc, ifMatch) → saved doc,
+     list() → all item docs incl. _etag · listType(type) → the docs of one type · get(type, id) → doc|null · put(doc, ifMatch) → saved doc,
      throws {code:412} on a stale ifMatch · remove(type, id) · getAttachment(id) → doc|null · putAttachment(doc) → no-op if it exists */
 (function(root,factory){
   if(typeof module==="object"&&module.exports)module.exports=factory();
@@ -53,6 +55,53 @@
     SYSTEM_FIELDS.forEach(k=>delete r[k]);delete r.type;
     return r;
   }
+/* rights:start — this block is identical in index.html and api/src/core.js (tests/api-core.test.html checks that).
+   Who may see and change what. The tree: company → departments → teams; meetings (forums) and teams without a department
+   hang under the company. Rights flow down, never up: belonging to a unit gives rights on it and on everything below it
+   (a director in the company has rights everywhere; a team member has none on the department above). Admins: everything.
+   Everyone assigned sees all goals and rocks; Level 10 boards only where they have rights. */
+function createRights({units,people,adminEmails}){
+  const byId=new Map(units.map(u=>[u.id,u]));
+  const company=units.find(u=>u.kind==="company");
+  const parentOf=u=>u.kind==="company"?null:u.kind==="team"&&byId.has(u.parentId)?byId.get(u.parentId):company||null;
+  const above=new Map(); // unit id → the ids of the units above it
+  for(const u of units){const ids=[];for(let p=parentOf(u),n=0;p&&n<10;p=parentOf(p),n++)ids.push(p.id);above.set(u.id,ids)}
+  const admins=(adminEmails||[]).map(e=>String(e).toLowerCase());
+  const isAdmin=p=>!!p&&(p.admin===true||admins.includes(String(p.email||"").toLowerCase()));
+  const memberOf=p=>(p&&p.unitIds)||[];
+  const role=p=>isAdmin(p)?"admin":memberOf(p).length?"member":"pending";
+  const hasRights=(p,unitId)=>isAdmin(p)||memberOf(p).some(m=>m===unitId||(above.get(unitId)||[]).includes(m));
+  const inForum=(f,r)=>r.unitId===f.id||(f.includeTracked&&(r.trackIn||[]).includes(f.id))||(f.includeEscalated&&r.status==="escalate");
+  // rocks: your units' rocks, plus every rock a meeting you're in shows (its members fully edit those)
+  const canEditRock=(p,r)=>hasRights(p,r.unitId)||units.some(f=>f.kind==="forum"&&inForum(f,r)&&hasRights(p,f.id));
+  const canEdit={goals:(p,g)=>hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
+  return {
+    isAdmin,role,hasRights,canEditRock,
+    canEditGoal:canEdit.goals,
+    canEditCard:canEdit.cards,
+    canSeeBoard:hasRights, // Level 10: the boards of your units and of everything below them
+    // the team filter: the company, your units, the units above them and the units below them
+    branch(p){
+      if(isAdmin(p))return units.map(u=>u.id);
+      const mine=memberOf(p),ids=new Set(company?[company.id]:[]);
+      for(const m of mine){ids.add(m);(above.get(m)||[]).forEach(id=>ids.add(id))}
+      for(const u of units)if((above.get(u.id)||[]).some(id=>mine.includes(id)))ids.add(u.id);
+      return units.map(u=>u.id).filter(id=>ids.has(id));
+    },
+    // may p replace `before` with `after` in a collection (before = null: create, after = null: delete)? Checked on every write.
+    writeAllowed(p,collection,before,after){
+      if(role(p)==="pending")return false;
+      if(isAdmin(p)||collection==="meta")return true;
+      const can=canEdit[collection];if(!can)return false; // people and units: admins only
+      if(before&&!can(p,before))return false;
+      // creating, or moving to another unit, needs rights on that unit itself: a meeting member may edit and resolve
+      // the rocks it shows, but not move them to another team or create rocks for other teams
+      if(after&&(!before||after.unitId!==before.unitId)&&!hasRights(p,after.unitId))return false;
+      return true;
+    },
+  };
+}
+/* rights:end */
 
   /* settings: APP_ENV (test|prod|…), SEED (sample|org), ALLOWED_EMAIL_DOMAINS, ALLOWED_EMAILS ("*" = anyone who can sign in),
      ADMIN_EMAILS (always admin, always allowed in), KEEP_INLINE_IMAGES ("true": leave pasted images inside descriptions; browser mock) */
@@ -68,29 +117,30 @@
       const ok=domains.includes("*")||emails.includes(email)||domains.some(d=>email.endsWith("@"+d.replace(/^\*?@/,""))); // "letsgrow.com", "@letsgrow.com" and "*@letsgrow.com" all work
       return ok?{ok:true,status:200,email}:{ok:false,status:403,email,reason:`${email||"This account"} has no access to EOS Tracker.`};
     }
-    function roleOf(person,email){
-      if(adminEmails.includes(email)||(person&&person.admin===true))return "admin";
-      return person&&Array.isArray(person.unitIds)&&person.unitIds.length?"member":"pending";
+    // the signed-in person (a bare {email} until their record exists) and the rights over the current org tree
+    async function whoAndRights(email){
+      const [units,people]=await Promise.all([store.listType("units"),store.listType("people")]);
+      const me=people.find(p=>sameEmail(p,email))||{email,unitIds:[]};
+      return {me,rights:createRights({units,people,adminEmails})};
     }
-    // the caller's role, for writes: looks up their person record
-    async function callerRole(email){
-      const people=await store.listType("people");
-      return roleOf(people.find(p=>sameEmail(p,email)),email);
-    }
+    const roleOf=(person,email)=>createRights({units:[],people:[],adminEmails}).role({...(person||{}),email:(person&&person.email)||email});
     const deny=a=>reply(a.status,{error:a.reason});
     function target(params){
       const {collection,id}=params||{};
       if(!COLLECTIONS.includes(collection)||!ID_RE.test(id||"")||(collection==="meta")!==(id==="meta"))return null;
       return {collection,id};
     }
-    // checks everything a write needs; returns a reply to send back, or null when the write may go ahead
-    async function refuseWrite(principal,params){
+    // checks everything a write needs (after = the new record, null for a delete); returns a reply to send back, or null to go ahead
+    async function refuseWrite(principal,params,after){
       const a=access(principal);if(!a.ok)return deny(a);
       const t=target(params);if(!t)return reply(400,{error:"Unknown collection or id."});
-      const role=await callerRole(a.email);
-      if(role==="pending")return reply(403,{error:"You haven't been added to a team yet."});
-      if(ADMIN_ONLY.includes(t.collection)&&role!=="admin")return reply(403,{error:"Only administrators can change the organisation and people."});
-      return null;
+      const {me,rights}=await whoAndRights(a.email);
+      const before=await store.get(t.collection,t.id);
+      if(rights.writeAllowed(me,t.collection,before&&toRecord(before),after))return null;
+      const why=rights.role(me)==="pending"?"You haven't been added to a team yet."
+        :ADMIN_ONLY.includes(t.collection)?"Only administrators can change the organisation and people."
+        :"You can only change items of your own teams.";
+      return reply(403,{error:why});
     }
     // pasted images (data URLs) are stored once as attachments (id = sha256) and referenced by URL
     async function extractImages(html){
@@ -127,13 +177,15 @@
           me=toRecord(await store.put({...person,type:"people"},null));
           out.people.push(me);
         }
-        const role=roleOf(me,a.email);
+        const rights=createRights({units:out.units,people:out.people,adminEmails}),role=rights.role(me);
         if(role==="pending")return reply(200,{waiting:true,role,meId:me.id,me:{name:me.name,email:a.email}}); // nothing else until assigned
+        out.cards=out.cards.filter(c=>rights.canSeeBoard(me,c.unitId)); // Level 10 boards only where you have rights
         return reply(200,{...out,meId:me.id,role,adminEmails});
       },
       async putItem({principal,params,body}){
-        const refused=await refuseWrite(principal,params);if(refused)return refused;
-        const t=target(params),record=body&&body.record;
+        const record=body&&body.record;
+        const refused=await refuseWrite(principal,params,record&&typeof record==="object"?record:null);if(refused)return refused;
+        const t=target(params);
         if(!record||typeof record!=="object"||Array.isArray(record)||record.id!==t.id)return reply(400,{error:"Send {record, ifMatch} with record.id matching the URL."});
         const doc={...record,type:t.collection};
         delete doc._etag;SYSTEM_FIELDS.forEach(k=>delete doc[k]);
@@ -146,14 +198,15 @@
         catch(e){if(e&&e.code===412)return reply(412,{error:"Changed by someone else in the meantime."});throw e}
       },
       async deleteItem({principal,params}){
-        const refused=await refuseWrite(principal,params);if(refused)return refused;
+        const refused=await refuseWrite(principal,params,null);if(refused)return refused;
         const t=target(params);if(t.collection==="meta")return reply(400,{error:"Unknown collection or id."});
         await store.remove(t.collection,t.id);
         return {status:204};
       },
       async attachment({principal,params}){
         const a=access(principal);if(!a.ok)return deny(a);
-        if(await callerRole(a.email)==="pending")return reply(403,{error:"You haven't been added to a team yet."});
+        const {me,rights}=await whoAndRights(a.email);
+        if(rights.role(me)==="pending")return reply(403,{error:"You haven't been added to a team yet."});
         const id=params&&params.id;if(!HASH_RE.test(id||""))return reply(400,{error:"Unknown attachment."});
         const doc=await store.getAttachment(id);if(!doc)return reply(404,{error:"Attachment not found."});
         return {status:200,base64:doc.data,contentType:doc.contentType,headers:{"cache-control":"private, max-age=31536000, immutable"}};
@@ -170,6 +223,7 @@
       db,
       async list(){return Object.values(db.items).map(copy)},
       async listType(type){return Object.values(db.items).filter(d=>d.type===type).map(copy)},
+      async get(type,id){const d=db.items[key(type,id)];return d?copy(d):null},
       async put(doc,ifMatch){
         const cur=db.items[key(doc.type,doc.id)];
         if(ifMatch&&cur&&cur._etag!==ifMatch)throw Object.assign(new Error("Precondition failed"),{code:412});
@@ -183,5 +237,5 @@
     };
   }
 
-  return {createApi,createMemoryStore,parsePrincipal,displayName,COLLECTIONS,ADMIN_ONLY};
+  return {createApi,createMemoryStore,createRights,parsePrincipal,displayName,COLLECTIONS,ADMIN_ONLY};
 });

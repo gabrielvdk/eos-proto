@@ -31,6 +31,11 @@ const cosmosStore={
     const {resources}=await items.items.query({query:"SELECT * FROM c WHERE c.type = @type",parameters:[{name:"@type",value:type}]}).fetchAll();
     return resources;
   },
+  async get(type,id){
+    const {items}=await containers();
+    try{const {resource}=await items.item(id,type).read();return resource||null}
+    catch(e){if(e.code===404)return null;throw e}
+  },
   async put(doc,ifMatch){
     const {items}=await containers();
     if(ifMatch){

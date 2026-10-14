@@ -43,7 +43,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
   - Goal "Linked to goal" (`initLinkedPicker`): only higher levels of the same year, never self/descendants. Team goal → own department → Company → other departments; Department goal → Company; Company goal → nothing.
   - They only filter once the user types (`typed` flag), not on the pre-filled current value.
 - **Level 10** tab (`view="l10"`, `renderL10`): the weekly EOS Level 10 meeting, **per board**. Teams and forums have a board, and so does a department without teams (HR) — see `hasBoard()` / `boardsOf()`.
-  - If the team filter isn't a board, `renderL10Pick` shows one-click buttons that set `teamFilter`.
+  - If the team filter isn't a board you may see (`boardOk`), `renderL10Pick` shows one-click buttons for your boards that set `teamFilter`.
   - Fixed agenda card (`AGENDA`, 90 min); "Rock Review" jumps to that tab, "To-Do List" / "IDS" flash their column.
   - Kanban columns `COLS`: IDS · To Do · Done. Inline composer (`l10Add`, Enter adds and stays open). HTML5 drag & drop (`moveCard(id, column, beforeId)` — order = order in `S.cards`), logs "Moved from X to Y".
   - Card modal (`cardModal`/`drawCardModal`): title, column switch, owners (multi, empty by default, creator is `createdBy`), description editor, Updates/History.
@@ -51,12 +51,14 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
 - **Forums** (Business Review, the 4-weekly team-leaders meeting) are units with `kind:"forum"`. A forum behaves like a team for rocks and the Level 10 board, but has **no goals**.
   - Rocks shown for a forum (`rockMatches`): its own rocks + rocks whose `trackIn` contains the forum (if `includeTracked`) + rocks with status `escalate` (if `includeEscalated`). They stay owned by their own team; edits change the real rock. Tracked rocks show a tag with the forum's initials ("BR").
   - With a forum selected the One Year Plan shows all goals (`goalFilter()` returns ""); new goals don't default to it; the goal Team picker hides "Meetings" (`initUnitPicker(false)`).
-- **Roles and the Organisation tab** (`view="org"`, `renderOrg`, admins only):
-  - `roleOf(person)`: **admin** = `person.admin` or listed in the server's `ADMIN_EMAILS` (`adminEmails`, sent with `/api/data`; defaults gk@letsgrow.com + gabrielvdk@gmail.com) · **member** = `person.unitIds` not empty · **pending** = neither. `myRole()` is the current user's.
-  - Pending people see only the waiting page (`waitingHTML`; on Azure `showWaiting()` polls every 30 s, the server sends them no data). `render()` hides the tabs (`body.gated`).
-  - The Organisation tab: the org tree (rename inline, add department / team / meeting via `addUnit`, move a team to another department, forum rules, delete only when a unit has no teams, goals, rocks or cards — `unitUsage`) and the people list (waiting first; assign/unassign units, admin checkbox; `ADMIN_EMAILS` admins can't be unticked). The tab shows a badge with the number of people waiting.
-  - The server enforces it: pending → no data, no writes; `people` and `units` (`ADMIN_ONLY`) only by admins. The remote backend doesn't send people/unit changes for non-admins (and then doesn't move the data version either).
-  - New goals/rocks default to your own first unit (`defaultUnitId`); on the first visit the team filter is set to it.
+- **Roles and rights** — one block, `createRights({units, people, adminEmails})` between `/* rights:start */` and `/* rights:end */`, is **identical in index.html and api/src/core.js** (tests/api-core.test.html fails if they differ: edit one, copy it to the other). The page rebuilds `rights` in `render()` (`refreshRights`).
+  - Roles: **admin** = `person.admin` or in the server's `ADMIN_EMAILS` (`adminEmails`, sent with `/api/data`; defaults gk@letsgrow.com + gabrielvdk@gmail.com) · **member** = `person.unitIds` not empty · **pending** = neither (`roleOf`, `myRole`).
+  - **Rights flow down, never up:** membership of a unit gives rights on it and everything below (company → everything; department → itself + its teams; team → only itself; forums hang under the company). Helpers: `canEditUnit`, `canEditGoal`, `canEditRock` (also rocks a meeting you're in shows: full edit, but no moving them away), `canSeeBoard`, `myUnits()` (where you may create), `rights.branch()` (team filter), `rights.writeAllowed(person, collection, before, after)` (every save; creating or moving needs rights on the target unit).
+  - Everyone assigned sees all goals and rocks; items you can't change open read-only (`modalState.readOnly`, `drawRockModalReadOnly`, `roField`/`roNote`); list controls are disabled/hidden (`statusButtonHTML(…, canEdit)`, `lastUpdateHTML(…, canPost)`), and `APP_ACTIONS` guard with `viewOnly()`. Level 10: only boards you may see (`boardOk`); the Team field offers only your units; rock owners are people with rights on the rock's unit (`ownerOptions`).
+  - The server enforces it: pending → no data, no writes; every write → `writeAllowed`; `/api/data` only returns the cards of boards you may see. The remote backend doesn't send changes `writeAllowed` refuses (and then doesn't move the data version either).
+  - Pending people see only the waiting page (`waitingHTML`; on Azure `showWaiting()` polls every 30 s). `render()` hides the tabs (`body.gated`).
+  - **Organisation** tab (`view="org"`, `renderOrg`, admins): the org tree — rename inline, add department / team / meeting (`addUnit`), move a team, forum rules, delete only when a unit has no teams, goals, rocks or cards (`unitUsage`). **People** tab (`view="people"`, `renderPeople`, admins): waiting first, assign/unassign units, admin checkbox (`ADMIN_EMAILS` admins can't be unticked); badge with the number waiting.
+  - New goals/rocks default to the filtered team if you may edit it, else your own first unit (`defaultUnitId`); on the first visit the team filter is set to your team/department.
 - **Modals** all work the same way: they edit a working copy (`modalState.obj`) of the record (`modalState.orig`); `MODALS[kind].sync()` copies visible fields into it (a no-op for fields not rendered — call it before every redraw); Save writes it back and logs history. Closing (✕, Cancel, Esc, backdrop) with unsaved changes asks "Discard your unsaved changes?" (`requestCloseModal()`, compares against `modalState.snapshot`).
 - Light/dark theme follows the OS (`prefers-color-scheme`) until the round toggle (fixed bottom right, `#themeBtn`) is clicked; the choice is saved in localStorage key `eos-theme` and applied by a tiny script in `<head>` before first paint.
 
@@ -86,7 +88,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
 - The initial org structure comes from `seedOrg()`; after that admins maintain it in the Organisation tab.
 
 ## Code layout (inside the `<script>`, in this order)
-constants · ids & dates · session · data model & sample data · migration · backends (local / api / mock) · ui state · helpers (incl. roles) · shared renderers · views (`renderPlan`, `renderRocks`, `renderReview`, `renderL10`, `renderOrg`) · `render()` · quick-update popover · status menu · confirm dialog · modals (goal, rock, card) · pickers · rich text · tooltips · theme · events · top bar (`drawTopBar`, `refreshFromServer`) · `init()` (async: pick backend → load → render).
+constants · ids & dates · session · data model & sample data · migration · backends (local / api / mock) · ui state · helpers (incl. the rights block and roles) · shared renderers · views (`renderPlan`, `renderRocks`, `renderReview`, `renderL10`, `renderOrg`, `renderPeople`) · `render()` · quick-update popover · status menu · confirm dialog · modals (goal, rock, card) · pickers · rich text · tooltips · theme · events · top bar (`drawTopBar`, `refreshFromServer`) · `init()` (async: pick backend → load → render).
 
 Rendering is "re-render everything": change `S`, call `save()` and `render()`. `VIEWS[view]()` builds `#app`.
 
@@ -103,4 +105,4 @@ Events are delegated: `data-act` inside `#app` → `APP_ACTIONS` (clicks) / `APP
 
 ## Open ideas / next steps
 - Current phase: **prototype, ready for Azure** (Static Web Apps + Cosmos DB + Entra ID). Next: create the Test and Prod environments (docs/AZURE.md), then switch Prod to tenant-locked sign-in once the Entra app registration exists.
-- Still open for multi-user: per-team visibility/permissions (members currently see everything), filtering owner pickers by team, reordering departments/teams, and importing someone's local data into Azure.
+- Still open for multi-user: reordering departments/teams, and importing someone's local data into Azure.
