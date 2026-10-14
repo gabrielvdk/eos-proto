@@ -1,6 +1,6 @@
 /* EOS Tracker API on Azure: Azure Functions (Node, v4 programming model) as the managed API of Static Web Apps,
    with Cosmos DB as the store. All logic lives in core.js; this file only connects it to Azure.
-   App settings (see docs/AZURE.md): COSMOS_CONNECTION_STRING, COSMOS_DATABASE, APP_ENV, SEED,
+   App settings (see docs/AZURE.md): COSMOS_CONNECTION_STRING, COSMOS_DATABASE, APP_ENV, SEED, ADMIN_EMAILS,
    ALLOWED_EMAIL_DOMAINS, ALLOWED_EMAILS (and AZURE_CLIENT_ID / AZURE_CLIENT_SECRET for tenant-locked sign-in). */
 const {app}=require("@azure/functions");
 const {CosmosClient}=require("@azure/cosmos");
@@ -24,6 +24,11 @@ const cosmosStore={
   async list(){
     const {items}=await containers();
     const {resources}=await items.items.query("SELECT * FROM c").fetchAll();
+    return resources;
+  },
+  async listType(type){
+    const {items}=await containers();
+    const {resources}=await items.items.query({query:"SELECT * FROM c WHERE c.type = @type",parameters:[{name:"@type",value:type}]}).fetchAll();
     return resources;
   },
   async put(doc,ifMatch){

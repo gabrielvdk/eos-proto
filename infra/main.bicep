@@ -21,6 +21,9 @@ param allowedEmailDomains string = '*@hoogendoorn.com,*@letsgrow.com'
 @description('Individual e-mail addresses that may use the app, comma-separated.')
 param allowedEmails string = 'gabrielvdk@gmail.com'
 
+@description('People who are always admin (and always allowed in), comma-separated. Admins maintain the organisation and assign people to teams.')
+param adminEmails string = 'gk@letsgrow.com,gabrielvdk@gmail.com'
+
 @description('What an empty database starts with: "org" = the organisation structure only, "sample" = also fictional goals, rocks and people.')
 @allowed(['org', 'sample'])
 param seed string = env == 'prod' ? 'org' : 'sample'
@@ -92,6 +95,7 @@ resource siteSettings 'Microsoft.Web/staticSites/config@2022-09-01' = {
     COSMOS_DATABASE: databaseName
     APP_ENV: env
     SEED: seed
+    ADMIN_EMAILS: adminEmails
     ALLOWED_EMAIL_DOMAINS: allowedEmailDomains
     ALLOWED_EMAILS: allowedEmails
   }, empty(entraClientId) ? {} : {

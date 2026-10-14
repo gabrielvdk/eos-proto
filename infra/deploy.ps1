@@ -3,7 +3,8 @@
   Creates or updates one EOS Tracker environment in Azure (resource group + Static Web App + Cosmos DB).
   Needs the Azure CLI (az) and a signed-in session (az login). Optional: the GitHub CLI (gh) to store the deployment token.
 
-  Who may use the app defaults to *@hoogendoorn.com, *@letsgrow.com and gabrielvdk@gmail.com (-AllowedEmailDomains / -AllowedEmails).
+  Who may use the app defaults to *@hoogendoorn.com, *@letsgrow.com and gabrielvdk@gmail.com (-AllowedEmailDomains / -AllowedEmails);
+  who is always admin defaults to gk@letsgrow.com and gabrielvdk@gmail.com (-AdminEmails).
 
 .EXAMPLE
   ./infra/deploy.ps1 -Env test -SetGitHubSecrets
@@ -18,6 +19,7 @@ param(
   [ValidateSet('', 'Free', 'Standard')][string]$Sku = '',
   [string]$AllowedEmailDomains = '*@hoogendoorn.com,*@letsgrow.com',
   [string]$AllowedEmails = 'gabrielvdk@gmail.com',
+  [string]$AdminEmails = 'gk@letsgrow.com,gabrielvdk@gmail.com',
   [ValidateSet('', 'org', 'sample')][string]$Seed = '',
   [string]$EntraTenantId = '',
   [string]$EntraClientId = '',
@@ -42,6 +44,7 @@ if ($Sku) { $params += "sku=$Sku" }
 if ($Seed) { $params += "seed=$Seed" }
 if ($AllowedEmailDomains) { $params += "allowedEmailDomains=$AllowedEmailDomains" }
 if ($AllowedEmails) { $params += "allowedEmails=$AllowedEmails" }
+if ($AdminEmails) { $params += "adminEmails=$AdminEmails" }
 if ($EntraClientId) { $params += "entraClientId=$EntraClientId"; $params += "entraClientSecret=$EntraClientSecret" }
 
 Write-Host 'Deploying infra/main.bicep (takes a few minutes)...'

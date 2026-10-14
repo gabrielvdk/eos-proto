@@ -49,6 +49,21 @@ The same `index.html` runs everywhere. At start-up it asks `/api/config`:
 
 `?backend=local` forces local mode, even on Azure. A small tag next to the app name shows which mode you're in: **Local**, **Mock API** or **test**. Prod shows no tag. In local mode the browser logs one harmless 404 for `/api/config`.
 
+### Roles: admins, members and people waiting for a team
+
+Getting in has two steps. First the **allow-list** decides who may sign in at all (`ALLOWED_EMAIL_DOMAINS`, `ALLOWED_EMAILS`, §4). Then each person's **role** decides what they see:
+
+| Role | Who | Sees and does |
+|---|---|---|
+| **Admin** | everyone in `ADMIN_EMAILS` (always, automatically), plus anyone an admin ticks "Admin" for | everything, plus the **Organisation** tab: add, rename, move and delete departments, teams and meetings; assign people to teams; make others admin |
+| **Member** | anyone assigned to at least one unit (team, department, meeting or the company) | the whole app (goals, rocks, Level 10, Rock Review) |
+| **Waiting** | signed in for the first time, not assigned yet | only "Welcome, you haven't been added to a team yet". The page checks every 30 seconds and opens the app once they're assigned |
+
+- **New people add themselves** by signing in. They appear at the top of the Organisation tab, marked as waiting, and the tab shows how many are waiting. Assign them with *+ Add to…*.
+- **Removing someone from every unit** puts them back to waiting. That's how you offboard someone while keeping their history.
+- **Enforced by the server, not just hidden in the page:** a waiting person gets no data at all, and only admins can change the organisation or people.
+- **Members currently see everything.** Per-team visibility is a possible later step.
+
 ### Saving and multiple users
 
 - The page keeps all data in memory. After every change it sends **only the records that changed**, in the background. "Saving…" appears in the top bar while that happens.
@@ -112,13 +127,16 @@ Set on each Static Web App (*Settings → Environment variables*, "Production" e
 | `SEED` | `sample` / `org` | what an **empty** database starts with (see below) |
 | `ALLOWED_EMAIL_DOMAINS` | `*@hoogendoorn.com,*@letsgrow.com` | who may use the app, comma-separated; `*@letsgrow.com`, `@letsgrow.com` and `letsgrow.com` all mean the same. `*` alone = everyone who can sign in (only use it with tenant-locked sign-in). **Empty = nobody** |
 | `ALLOWED_EMAILS` | `gabrielvdk@gmail.com` | extra individual addresses |
+| `ADMIN_EMAILS` | `gk@letsgrow.com,gabrielvdk@gmail.com` | always **admin**, and always allowed in, even if not on the lists above (see *Roles*) |
 | `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | | only for tenant-locked sign-in (§6) |
 
-The defaults in `infra/main.bicep` and `infra/deploy.ps1` are `*@hoogendoorn.com,*@letsgrow.com` and `gabrielvdk@gmail.com`. You can change them later in the portal (*Static Web App → Settings → Environment variables*); that takes effect immediately, without a deploy.
+The defaults in `infra/main.bicep` and `infra/deploy.ps1` are `*@hoogendoorn.com,*@letsgrow.com` and `gabrielvdk@gmail.com`; the admins are `gk@letsgrow.com,gabrielvdk@gmail.com`. You can change them later in the portal (*Static Web App → Settings → Environment variables*); that takes effect immediately, without a deploy.
 
 **`SEED`: sample or org.** This only matters once: the very first time the app opens on an **empty** database. After that the setting is ignored.
 - `sample`: the organisation plus fictional goals, rocks, Level 10 cards and ten fictional people, the same as the local demo. It's useful on Test to have something to click through.
-- `org`: only the organisation structure (Hoogendoorn, the departments and teams, Business Review). There are no goals, rocks, cards or fictional people; people appear as they sign in. Use this on Prod.
+- `org`: only the organisation structure (Hoogendoorn, the departments and teams, Business Review). There are no goals, rocks, cards or fictional people; people appear as they sign in, and wait until an admin assigns them. Use this on Prod.
+
+The database is seeded by the first **admin** who opens the app. Someone who isn't assigned yet only gets the waiting page, so they never trigger it.
 
 To start an environment over, delete its documents in *Data Explorer*; the next visit seeds again.
 
@@ -211,6 +229,7 @@ Re-running the deployment is safe. It rewrites the app settings, so pass the sam
 - `SEED` = `sample`
 - `ALLOWED_EMAIL_DOMAINS` = `*@hoogendoorn.com,*@letsgrow.com`
 - `ALLOWED_EMAILS` = `gabrielvdk@gmail.com`
+- `ADMIN_EMAILS` = `gk@letsgrow.com,gabrielvdk@gmail.com`
 
 **5. Deployment token.** In the Static Web App: *Overview → Manage deployment token* → copy.
 
@@ -224,7 +243,8 @@ Re-running the deployment is safe. It rewrites the app settings, so pass the sam
 
 ### Check that it works
 
-- The app opens after you sign in, shows your name top right, and has the right tag (Test) or no tag (Prod).
+- The app opens after you sign in, shows your name top right, and has the right tag (Test) or no tag (Prod). As an admin you also see the **Organisation** tab.
+- Sign in with another allowed account (e.g. a private browser window). It should get the waiting page and show up as waiting in your Organisation tab. Assign it to a team; within 30 seconds the other window opens the app.
 - Make a change, reload: it's still there. Open the site in a second browser profile as someone else: they see it too.
 - *Cosmos DB → Data Explorer → eostracker → items* shows the records.
 
@@ -275,7 +295,9 @@ That's the intended path: run Prod on `builtin` (with the allow-list) until IT h
 | The *Deploy to Azure* run is "skipped" | repository variable `AZURE_DEPLOY` isn't `true` |
 | The run fails at *Deploy* | wrong or missing `AZURE_STATIC_WEB_APPS_API_TOKEN` in that GitHub environment |
 | "Can't reach the server" | the API isn't running: check the run's API build step and the app settings (a missing `COSMOS_CONNECTION_STRING` breaks every call) |
-| "No access" | your address isn't covered by `ALLOWED_EMAIL_DOMAINS` / `ALLOWED_EMAILS` |
+| "No access" | your address isn't covered by `ALLOWED_EMAIL_DOMAINS` / `ALLOWED_EMAILS` / `ADMIN_EMAILS` |
+| "Welcome, you haven't been added to a team yet" | expected for new people: an admin assigns them in the Organisation tab |
+| No Organisation tab although you should be admin | your sign-in address differs from the one in `ADMIN_EMAILS` (check the name/tooltip top right) |
 | Sign-in loops or errors after switching to `entra` | redirect URI, ID tokens setting, client ID/secret, or an expired secret |
 | "…was changed by someone else at the same time" | two people edited the same item; the latest version is shown, so redo your change |
 | "Not saved · retrying…" | connection or server trouble; it retries automatically, so keep the tab open |
@@ -285,6 +307,6 @@ That's the intended path: run Prod on `builtin` (with the allow-list) until IT h
 ## 8. Security notes
 
 - The repository is public. It contains no secrets: the deployment token is a GitHub secret, and the database connection string and Entra secret are Static Web App app settings.
-- Every page and API call requires sign-in (`staticwebapp.config.json`). The API also checks the allow-list on every call.
+- Every page and API call requires sign-in (`staticwebapp.config.json`). The API also checks the allow-list and the caller's role on every call. People who are waiting get no data; only admins can change the organisation and people.
 - Pasted images are stored as attachments and served only to signed-in users.
 - All data is in West Europe.

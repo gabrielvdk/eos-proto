@@ -69,6 +69,30 @@ button{cursor:pointer}
 a.btn{text-decoration:none;color:inherit}
 a.btn.primary{color:#fff}
 .gated .tabs,.gated #teamFilterWrap{display:none}
+/* Organisation tab (admins): org tree + people */
+.tabn{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:999px;background:var(--amber);color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}
+.orggrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:16px;align-items:start}
+@media (max-width:1100px){.orggrid{grid-template-columns:1fr}}
+.opanel{padding:14px 16px 16px;display:grid;gap:4px}
+.opanel h2{margin:0 0 6px;font-size:14px;font-weight:700}
+.opanel h2.osub{margin-top:14px}
+.onote{margin:0 0 8px;font-size:12.5px;color:var(--ink-2)}
+.orow{display:flex;align-items:center;gap:8px;min-height:36px;padding-left:calc(var(--depth,0) * 22px)}
+.orow .oname{flex:1 1 auto;min-width:80px}
+.orow.company .oname,.orow.department .oname,.orow.forum .oname{font-weight:600}
+.orow .ometa{font-size:12px;color:var(--ink-3);white-space:nowrap}
+.orow .del{border:0;background:none;color:var(--ink-3);padding:4px;border-radius:6px;display:inline-flex;opacity:.55}
+.orow:hover .del{opacity:1}
+.orow .del:hover{color:var(--red);background:var(--red-soft)}
+.orow .del svg{width:15px;height:15px}
+select.ctl.sm{padding:3px 8px;font-size:12.5px;font-weight:500;border-radius:7px}
+.prow{display:grid;grid-template-columns:auto minmax(130px,1fr) minmax(0,1.7fr) auto;gap:10px;align-items:center;padding:9px 6px;border-top:1px solid var(--line)}
+.prow.waiting{background:var(--amber-soft);border-radius:8px;border-top-color:transparent}
+.pname{display:grid;min-width:0}
+.pname span{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.punits{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ochip.uchip{padding-left:8px;font-weight:500}
+@media (max-width:640px){.prow{grid-template-columns:auto 1fr}.punits,.prow .chkrow{grid-column:1/-1}}
 .gate{max-width:560px;margin:48px auto;padding:24px 28px;display:grid;gap:10px}
 .gate h1{font-family:var(--font-title);font-size:22px;margin:0}
 .gate p{margin:0;color:var(--ink-2)}
@@ -468,6 +492,7 @@ try{const t=localStorage.getItem("eos-theme");if(t==="light"||t==="dark")documen
     <button class="tab" role="tab" data-view="rocks" aria-selected="false">Rocks</button>
     <button class="tab" role="tab" data-view="l10" aria-selected="false">Level 10</button>
     <button class="tab" role="tab" data-view="review" aria-selected="false">Rock Review</button>
+    <button class="tab" role="tab" data-view="org" aria-selected="false" hidden>Organisation</button>
   </div>
   <div class="spacer"></div>
   <span class="savestate" id="saveState" aria-live="polite"></span>
@@ -540,8 +565,11 @@ const currentUserId=()=>session.userId;
 /* ---------- data model ----------
    All shared data lives in one object S (one per organisation; later: the database).
    S = {version, people, units, goals, rocks, cards}
-   people  [{id, name, color, email}]   on Azure everyone who signs in is added automatically (matched on email)
-   units   [{id, kind:"company"|"department"|"team"|"forum", name, parentId}]
+   people  [{id, name, color, email, unitIds:[unit id], admin}]   on Azure everyone who signs in is added automatically
+           (matched on email), without units. Role (roleOf): admin = admin:true or in the server's ADMIN_EMAILS ·
+           member = belongs to at least one unit · pending = neither: sees a "wait to be added to a team" page, nothing else.
+           Only admins change people and units (Organisation tab); the server enforces this.
+   units   [{id, kind:"company"|"department"|"team"|"forum", name, parentId, rank}]
            A team's parentId is its department; other units have none. A department without teams acts as its own team (HR).
            A forum is a meeting (Business Review) that acts like a team for rocks and Level 10, but has no goals;
            it also has {includeTracked, includeEscalated}: show rocks tracked in it / rocks with status "escalate".
@@ -552,14 +580,14 @@ const currentUserId=()=>session.userId;
    rank: display order (S.rocks and S.cards are kept sorted by it); a database keeps no array order.
    updates and history: [{at, who, text}], newest first; `at` is an ISO timestamp (older entries: a plain date, older updates: no `who`).
    Records refer to each other by id, never by name. */
-const DATA_VERSION=9;
+const DATA_VERSION=10;
 
 /* ---------- sample data (only used when this browser has no saved data) ---------- */
 const DEMO_YEAR=2026; // the sample content is written for this year
 const d=(m,day,y=DEMO_YEAR)=>`${y}-${pad2(m)}-${pad2(day)}`;
 function seedOrg(){
   const units=[];
-  const add=(kind,name,parentId=null,extra={})=>{const u={id:uid(),kind,name,parentId,...extra};units.push(u);return u};
+  const add=(kind,name,parentId=null,extra={})=>{const u={id:uid(),kind,name,parentId,rank:units.length,...extra};units.push(u);return u};
   add("company","Hoogendoorn");
   [
     ["Product & Technology",["Data Science","Research","LG Dev","IIVO Dev","Hardware","Controls"]],
@@ -573,12 +601,14 @@ function seedOrg(){
 }
 function seed(){
   const units=seedOrg(),U=name=>units.find(u=>u.name===name).id;
+  const P=(id,name,color,teams,admin)=>({id,name,color,unitIds:teams.map(U),...(admin?{admin:true}:{})});
   const people=[
-    {id:"p1",name:"Mara Visser",color:"#5B4BDB"},{id:"p2",name:"Tom Bakker",color:"#1F8FD1"},
-    {id:"p3",name:"Lena Groen",color:"#19A974"},{id:"p4",name:"Daan de Wit",color:"#E29A1C"},
-    {id:"p5",name:"Sofie Jansen",color:"#D93B4F"},{id:"p6",name:"Ravi Patel",color:"#0E7A5A"},
-    {id:"p7",name:"Jonas Müller",color:"#7C4DFF"},{id:"p8",name:"Eva Smit",color:"#00897B"},
-    {id:"p9",name:"Noor Haddad",color:"#C2185B"},{id:"p10",name:"Pieter van Dijk",color:"#5D4037"}
+    P("p1","Mara Visser","#5B4BDB",["Hoogendoorn","Business Review"],true),P("p2","Tom Bakker","#1F8FD1",["Sales","Direct Sales","Business Review"]),
+    P("p3","Lena Groen","#19A974",["Operations","LG Service Desk","Business Review"]),P("p4","Daan de Wit","#E29A1C",["Product & Technology","IIVO Dev"]),
+    P("p5","Sofie Jansen","#D93B4F",["Project Sales"]),P("p6","Ravi Patel","#0E7A5A",["LG Dev","Data Science"]),
+    P("p7","Jonas Müller","#7C4DFF",["Project Sales"]),P("p8","Eva Smit","#00897B",["Direct Sales"]),
+    P("p9","Noor Haddad","#C2185B",["IIVO Helpdesk"]),P("p10","Pieter van Dijk","#5D4037",["IIVO Dev"]),
+    P("p11","Nina Bos","#1F8FD1",[]), // just joined: waiting for an admin to add her to a team
   ];
   const G=(id,unit,title,parentId,description,deliverables)=>({id,unitId:U(unit),year:DEMO_YEAR,title,parentId,description,deliverables,
     history:[{at:d(1,19),who:"p2",text:"Deliverables updated"},{at:d(1,12),who:"p1",text:"Created"}]});
@@ -696,6 +726,7 @@ function seedCards(U){
 function migrate(data){
   if(!data.version)data=migrateV7(data); // → 8
   if(data.version<9)data=migrateV8(data); // → 9
+  if(data.version<10)data=migrateV9(data); // → 10
   return data;
 }
 // v7 and older: units referenced by name, stored goal levels, status labels, a single trackBR flag, no authors on updates
@@ -728,9 +759,24 @@ function migrateV8(data){
   data.cards.forEach((c,i)=>{c.rank??=i});
   return {...data,version:9};
 }
+/* v9: no team membership or admins yet. Existing people keep access: they join the units of the rocks and cards they own
+   (else the company). Data that was never on Azure (no e-mail addresses) makes its first person admin, so someone can manage it;
+   on Azure the admins come from ADMIN_EMAILS. Units get a rank (their order). */
+function migrateV9(data){
+  const company=data.units.find(u=>u.kind==="company");
+  data.units.forEach((u,i)=>{u.rank??=i});
+  data.people.forEach(p=>{
+    if(p.unitIds)return;
+    const owned=[...data.rocks.filter(r=>r.ownerId===p.id),...data.cards.filter(c=>(c.owners||[]).includes(p.id))].map(x=>x.unitId);
+    p.unitIds=[...new Set(owned)];
+    if(!p.unitIds.length&&company)p.unitIds=[company.id];
+  });
+  if(data.people.length&&!data.people.some(p=>p.admin)&&!data.people.some(p=>p.email))data.people[0].admin=true;
+  return {...data,version:10};
+}
 const byRank=(a,b)=>(a.rank??0)-(b.rank??0);
 const nextRank=list=>list.reduce((m,x)=>Math.max(m,x.rank??0),-1)+1;
-function prepareData(data){data.rocks.sort(byRank);data.cards.sort(byRank);return data}
+function prepareData(data){data.units.sort(byRank);data.rocks.sort(byRank);data.cards.sort(byRank);return data}
 
 /* ---------- backends ----------
    Where the data lives. Every backend fills S and the session on load() and stores changes on save().
@@ -793,6 +839,7 @@ function moveLegacyData(data){ // returns false when the new copy can't be store
    save() compares every record with the copy last stored and sends only what changed, each with its ETag, so a change
    someone else made in the meantime is detected (412: reload, your change is dropped) instead of silently overwritten. */
 const SYNCED=["people","units","goals","rocks","cards"];
+const ADMIN_ONLY=["people","units"]; // only admins may change these (the server enforces it)
 function createRemoteBackend(kind,transport,config){
   const synced=new Map(),etags=new Map(); // "collection/id" → JSON as last stored / its ETag
   const key=(c,id)=>`${c}/${id}`;
@@ -801,6 +848,7 @@ function createRemoteBackend(kind,transport,config){
   async function fetchAll(){
     const {status,json}=await transport("GET","data");
     if(status!==200)throw new Error(json?.error||(status===0?"The server can't be reached.":`Loading failed (error ${status}).`));
+    if(json.waiting)return {waiting:json.me,meId:json.meId}; // signed in, not in a team yet: the server sends nothing else
     if(json.meta?.version>DATA_VERSION)throw new Error("The data is newer than this version of the app (was an older version deployed again?). Reload the page; if that doesn't help, deploy the latest version.");
     const sync=new Map(),tags=new Map();
     const take=(c,rec)=>{tags.set(key(c,rec.id),rec._etag);delete rec._etag;sync.set(key(c,rec.id),JSON.stringify(rec))};
@@ -811,20 +859,26 @@ function createRemoteBackend(kind,transport,config){
       data=config.seed==="sample"?seed():{version:DATA_VERSION,people:[],units:seedOrg(),goals:[],rocks:[],cards:[]};
       data.people=[...json.people,...data.people];
     }else data={version:json.meta?.version??DATA_VERSION,...Object.fromEntries(SYNCED.map(c=>[c,json[c]]))};
-    return {data:prepareData(migrate(data)),sync,tags,meId:json.meId}; // migrated records differ from `sync`, so save() stores them
+    return {data:prepareData(migrate(data)),sync,tags,meId:json.meId,adminEmails:json.adminEmails||[]}; // migrated records differ from `sync`, so save() stores them
   }
   function adopt(snap){
     synced.clear();etags.clear();
     snap.sync.forEach((v,k)=>synced.set(k,v));snap.tags.forEach((v,k)=>etags.set(k,v));
-    S=snap.data;session.userId=snap.meId;
+    S=snap.data;session.userId=snap.meId;adminEmails=snap.adminEmails;
   }
+  /* what to store: records that differ from the last stored copy. People and units are only sent by admins (the server
+     refuses them from others); while such changes wait for an admin, e.g. after a migration, the data version isn't moved either. */
   function changes(){
     const now=new Map([["meta/meta",{c:"meta",rec:{id:"meta",version:S.version}}]]);
     SYNCED.forEach(c=>S[c].forEach(rec=>now.set(key(c,rec.id),{c,rec})));
-    const puts=[],dels=[];
-    for(const [k,{c,rec}] of now){const json=JSON.stringify(rec);if(synced.get(k)!==json)puts.push({k,c,rec,json})}
-    for(const k of synced.keys())if(!now.has(k))dels.push(k);
-    return {puts,dels};
+    const mine=c=>myRole()==="admin"||!ADMIN_ONLY.includes(c);
+    const puts=[],dels=[];let blocked=false;
+    for(const [k,{c,rec}] of now){
+      const json=JSON.stringify(rec);if(synced.get(k)===json)continue;
+      if(mine(c))puts.push({k,c,rec,json});else blocked=true;
+    }
+    for(const k of synced.keys())if(!now.has(k)){if(mine(k.split("/")[0]))dels.push(k);else blocked=true}
+    return {puts:blocked?puts.filter(p=>p.c!=="meta"):puts,dels};
   }
   async function putOne({k,c,rec,json}){
     const {status,json:res}=await transport("PUT",`items/${c}/${encodeURIComponent(rec.id)}`,{record:rec,ifMatch:etags.get(k)||null});
@@ -867,10 +921,16 @@ function createRemoteBackend(kind,transport,config){
       :`Not saved: ${p.error||`error ${p.status}`}`,7000);
     try{await load();render()}catch(e){toast(e.message,6000)} // back to what the server has
   }
-  async function load(){adopt(await fetchAll());return S}
+  async function load(){
+    const snap=await fetchAll();
+    if(snap.waiting){backend.waiting=snap.waiting;session.userId=snap.meId;S=null;return null}
+    adopt(snap);return S;
+  }
   return {
     kind,env:config.env,user:config.user,access:config.access,
+    waiting:null, // {name, email} while you wait to be added to a team
     load,
+    async stillWaiting(){const {status,json}=await transport("GET","data");return status!==200||!!json?.waiting},
     save(){
       if(flushing){again=true;return true}
       flushing=flush()
@@ -881,6 +941,7 @@ function createRemoteBackend(kind,transport,config){
     pending(){if(flushing)return true;if(!S)return false;const {puts,dels}=changes();return puts.length+dels.length>0}, // no S: stopped at a gate screen
     async refresh(stillIdle){ // quietly pick up other people's changes; true when something changed
       const snap=await fetchAll();
+      if(snap.waiting){location.reload();return false} // removed from every team meanwhile
       if(!stillIdle())return false;
       const before=JSON.stringify(S);adopt(snap);
       return JSON.stringify(S)!==before;
@@ -911,12 +972,12 @@ async function createMockTransport(){
     load:()=>{try{return JSON.parse(localStorage.getItem(MOCK_DB_KEY))}catch(e){return null}},
     save:data=>localStorage.setItem(MOCK_DB_KEY,JSON.stringify(data)), // throws when storage is full: shows as a failed save
   });
-  const store={list:()=>db().list(),put:(doc,ifMatch)=>db().put(doc,ifMatch),remove:(type,id)=>db().remove(type,id),
+  const store={list:()=>db().list(),listType:type=>db().listType(type),put:(doc,ifMatch)=>db().put(doc,ifMatch),remove:(type,id)=>db().remove(type,id),
     getAttachment:id=>db().getAttachment(id),putAttachment:doc=>db().putAttachment(doc)};
   const email=(new URLSearchParams(location.search).get("as")||"dev@example.com").toLowerCase();
   const principal={identityProvider:"aad",userId:"mock-"+email,userDetails:email,userRoles:["anonymous","authenticated"],claims:[]};
   const api=core.createApi({store,newId:uid,sha256:async s=>s, // unused: images stay inline because nothing serves attachments here
-    settings:{APP_ENV:"mock",SEED:"sample",ALLOWED_EMAIL_DOMAINS:"example.com",KEEP_INLINE_IMAGES:"true"}});
+    settings:{APP_ENV:"mock",SEED:"sample",ALLOWED_EMAIL_DOMAINS:"example.com",ADMIN_EMAILS:"dev@example.com",KEEP_INLINE_IMAGES:"true"}});
   return async(method,path,body)=>{
     const [route,a,b]=path.split("/").map(decodeURIComponent);
     const fn={config:api.config,data:api.data,items:method==="PUT"?api.putItem:api.deleteItem}[route];
@@ -964,6 +1025,7 @@ const $=(s,el=document)=>el.querySelector(s);
 const $$=(s,el=document)=>[...el.querySelectorAll(s)];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const plural=(n,word)=>`${n} ${word}${n===1?"":"s"}`;
+const peopleCount=n=>n===1?"1 person":`${n} people`;
 const toggleIn=(set,x)=>set.has(x)?set.delete(x):set.add(x);
 const replaceById=(list,rec)=>{const i=list.findIndex(x=>x.id===rec.id);if(i>=0)list[i]=rec;else list.push(rec)}; // by id: S may have been reloaded meanwhile
 const goal=id=>S.goals.find(g=>g.id===id);
@@ -987,9 +1049,19 @@ const levelOf=id=>UNIT_LEVEL[unit(id)?.kind]||"Team";
 const goalLevel=g=>levelOf(g.unitId);
 const deptOf=id=>{const u=unit(id);return u?.kind==="department"?u.id:u?.kind==="team"?u.parentId:null};
 const unitMatches=(id,filter)=>!filter||id===filter||(isDept(filter)&&deptOf(id)===filter); // a department filter includes its teams
-const boardsOf=dept=>{const ts=teamsOf(dept.id);return ts.length?ts:[dept]}; // a department without teams has its own board
-const hasBoard=id=>{const u=unit(id);return !!u&&(u.kind==="team"||u.kind==="forum"||(u.kind==="department"&&!teamsOf(u.id).length))};
-const defaultUnitId=()=>{const dep=departments()[0];return (dep&&boardsOf(dep)[0].id)||company().id}; // later: the signed-in user's team
+// Level 10 boards: every team and forum; a department without teams (HR) has its own, and keeps it while it still has cards
+const deptHasBoard=dept=>!teamsOf(dept.id).length||S.cards.some(c=>c.unitId===dept.id);
+const boardsOf=dept=>[...(deptHasBoard(dept)?[dept]:[]),...teamsOf(dept.id)];
+const hasBoard=id=>{const u=unit(id);return !!u&&(u.kind==="team"||u.kind==="forum"||(u.kind==="department"&&deptHasBoard(u)))};
+const defaultUnitId=()=>{
+  const mine=(person(session.userId)?.unitIds||[]).find(unit);if(mine)return mine; // your own team first
+  const dep=departments()[0];return (dep&&boardsOf(dep)[0]?.id)||company().id;
+};
+/* roles (see "data model"). adminEmails come from the server (ADMIN_EMAILS): those people are admin without the flag. */
+let adminEmails=[];
+const isAlwaysAdmin=p=>!!p?.email&&adminEmails.includes(p.email.toLowerCase());
+const roleOf=p=>!p?"pending":p.admin||isAlwaysAdmin(p)?"admin":(p.unitIds||[]).length?"member":"pending";
+const myRole=()=>roleOf(person(session.userId));
 const goalFilter=()=>isForum(teamFilter)?"":teamFilter; // forums have no goals: the plan shows everything
 // rocks: a forum shows its own rocks plus the rocks its rules pull in from other teams
 function rockMatches(r,filter){
@@ -1025,7 +1097,7 @@ function milestoneChanges(before,after){
   return out;
 }
 function toast(msg,ms=1600){
-  const t=$("#toast");if(Date.now()<(t._lock||0))return; // a long (warning) toast isn't overwritten by a routine "saved" toast
+  const t=$("#toast");if(ms<=2000&&Date.now()<(t._lock||0))return; // a long (warning) toast isn't overwritten by a routine "saved" toast, only by another long one
   t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),ms);
   if(ms>2000)t._lock=Date.now()+ms;
 }
@@ -1293,7 +1365,7 @@ function renderL10Pick(){
   return `<div class="viewhead"><h1>Level 10</h1></div><div class="board l10pick">
     <p><b>Level 10 meetings are held per team.</b> ${teamFilter?`You're viewing <b>${esc(unitName(teamFilter))}</b>, which isn't a team. `:""}Pick a team to open its board:</p>
     ${forums().length?group("Meetings",forums().map(f=>btn(f,"forum")).join("")):""}
-    ${depts.map(dep=>group(dep.name,boardsOf(dep).map(t=>btn(t,"team")).join(""))).join("")}
+    ${depts.filter(dep=>boardsOf(dep).length).map(dep=>group(dep.name,boardsOf(dep).map(t=>btn(t,"team")).join(""))).join("")}
   </div>`;
 }
 const imgCount=html=>(String(html||"").match(/<img/g)||[]).length;
@@ -1321,12 +1393,88 @@ function submitComposer(){ // Enter adds the card and keeps the composer open fo
   addCard(l10Add,t);render();
 }
 
+/* ---------- Organisation (admins only): the org tree and who belongs where ----------
+   Changes go through save() like everything else; the server only accepts them from admins. */
+const unitUsage=id=>{
+  const n=list=>list.filter(x=>x.unitId===id).length;
+  return {teams:teamsOf(id).length,goals:n(S.goals),rocks:n(S.rocks),cards:n(S.cards),people:S.people.filter(p=>(p.unitIds||[]).includes(id)).length};
+};
+function renderOrg(){
+  const people=[...S.people].sort((a,b)=>(roleOf(b)==="pending")-(roleOf(a)==="pending")||a.name.localeCompare(b.name)); // waiting people first, then A→Z
+  const waiting=people.filter(p=>roleOf(p)==="pending");
+  const head=`<div class="viewhead"><h1>Organisation</h1><span class="count">${S.units.length} units · ${peopleCount(S.people.length)}</span><div class="spacer"></div>
+    ${backend.kind!=="local"?`<button class="btn sm" data-act="orgrefresh" data-tip="Check for people who signed in just now">Refresh</button>`:""}</div>`;
+  // the tree: company, departments with their teams, meetings
+  const usage=u=>{
+    const x=unitUsage(u.id),bits=[x.people&&peopleCount(x.people),x.goals&&plural(x.goals,"goal"),x.rocks&&plural(x.rocks,"rock"),x.cards&&plural(x.cards,"card")].filter(Boolean);
+    return `<span class="ometa">${bits.join(" · ")}</span>`;
+  };
+  const del=u=>`<button class="del" data-act="unitdel" data-id="${u.id}" aria-label="Delete ${esc(u.name)}" data-tip="Delete">${ICONS.trash}</button>`;
+  const row=(u,depth,extra="")=>`<div class="orow ${u.kind}" style="--depth:${depth}"><span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span>
+    <input class="inline oname" value="${esc(u.name)}" data-act="unitname" data-id="${u.id}" aria-label="Name of ${esc(u.name)}">${usage(u)}${extra}${u.kind==="company"?"":del(u)}</div>`;
+  const moveSel=t=>`<select class="ctl sm" data-act="unitmove" data-id="${t.id}" aria-label="Department of ${esc(t.name)}">${departments().map(dep=>`<option value="${dep.id}" ${dep.id===t.parentId?"selected":""}>${esc(dep.name)}</option>`).join("")}</select>`;
+  const rule=(f,key,label,tip)=>`<label class="chkrow" data-tip="${tip}"><input type="checkbox" data-act="forumrule" data-rule="${key}" data-id="${f.id}" ${f[key]?"checked":""}>${label}</label>`;
+  const tree=`<section class="board opanel"><h2>Structure</h2>
+    ${row(company(),0)}
+    ${departments().map(dep=>row(dep,1,`<button class="btn sm ghost" data-act="addteam" data-id="${dep.id}">+ Team</button>`)+teamsOf(dep.id).map(t=>row(t,2,moveSel(t))).join("")).join("")}
+    ${S.units.filter(u=>u.kind==="team"&&!u.parentId).map(t=>row(t,1,`<span class="ometa">no department</span>`)).join("")}
+    <div><button class="btn sm" data-act="addunit" data-kind="department">+ Department</button></div>
+    <h2 class="osub">Meetings</h2>
+    ${forums().map(f=>row(f,0,rule(f,"includeTracked","Tracked rocks","Shows rocks that are marked “Track in "+esc(f.name)+"”")+rule(f,"includeEscalated","Escalated rocks","Shows every rock with status OT - Escalate"))).join("")}
+    <div><button class="btn sm" data-act="addunit" data-kind="forum">+ Meeting</button></div>
+  </section>`;
+  // people: waiting first, then everyone with their units and the admin switch
+  const unitOptions=p=>{
+    const opt=u=>(p.unitIds||[]).includes(u.id)?"":`<option value="${u.id}">${esc(u.name)}</option>`;
+    return `<option value="">+ Add to…</option><optgroup label="Company">${opt(company())}</optgroup>`
+      +(forums().length?`<optgroup label="Meetings">${forums().map(opt).join("")}</optgroup>`:"")
+      +departments().map(dep=>`<optgroup label="${esc(dep.name)}">${opt(dep)}${teamsOf(dep.id).map(opt).join("")}</optgroup>`).join("");
+  };
+  const personRow=p=>{
+    const role=roleOf(p),always=isAlwaysAdmin(p),units=(p.unitIds||[]).filter(unit);
+    return `<div class="prow ${role==="pending"?"waiting":""}">
+      ${avatarHTML(p.id)}
+      <div class="pname"><b>${esc(p.name)}${p.id===session.userId?` <span class="muted">(you)</span>`:""}</b><span class="muted">${esc(p.email||"")}</span></div>
+      <div class="punits">${units.map(id=>`<span class="ochip uchip"><span class="dot" style="background:var(--${levelOf(id).toLowerCase()})"></span>${esc(unitName(id))}<button data-act="unassign" data-id="${p.id}" data-unit="${id}" aria-label="Remove from ${esc(unitName(id))}">×</button></span>`).join("")}
+        <select class="ctl sm" data-act="assign" data-id="${p.id}" aria-label="Add ${esc(p.name)} to a team">${unitOptions(p)}</select></div>
+      <label class="chkrow" ${always?'data-tip="Always admin (ADMIN_EMAILS setting)"':""}><input type="checkbox" data-act="admin" data-id="${p.id}" ${role==="admin"?"checked":""} ${always?"disabled":""}>Admin</label>
+    </div>`;
+  };
+  const peoplePanel=`<section class="board opanel"><h2>People</h2>
+    ${waiting.length?`<p class="onote"><b>${peopleCount(waiting.length)} waiting for a team.</b> They have signed in but see nothing until you add them to a team, department or meeting.</p>`:""}
+    <p class="muted onote">People appear here when they first sign in. Admins can change the organisation and people; everyone in a team can use the rest of the app.</p>
+    ${people.map(personRow).join("")}
+  </section>`;
+  return head+`<div class="orggrid">${tree}${peoplePanel}</div>`;
+}
+function addUnit(kind,parentId=null){
+  const base=kind==="forum"?"New meeting":kind==="team"?"New team":"New department";
+  let name=base;for(let i=2;S.units.some(u=>u.name===name);i++)name=`${base} ${i}`;
+  const u={id:uid(),kind,name,parentId,rank:nextRank(S.units),...(kind==="forum"?{includeTracked:true,includeEscalated:false}:{})};
+  S.units.push(u);S.units.sort(byRank);save();render();
+  const inp=$(`[data-act="unitname"][data-id="${u.id}"]`);inp?.focus();inp?.select();
+}
+// the page someone sees while they wait to be added to a team
+const waitingHTML=(name,email,hint)=>`<div class="board gate"><h1>Welcome, ${esc(name)}</h1>
+  <p>You're signed in${email?` as <b>${esc(email)}</b>`:""}, but you haven't been added to a team yet. An administrator will do that for you; until then there's nothing to see here.</p>
+  <p class="muted">${esc(hint)}</p></div>`;
+
 /* ---------- render ---------- */
-const VIEWS={plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10};
+const VIEWS={plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10,org:renderOrg};
 function render(){
   if(!S)return; // still loading, or stopped at a "no access" / error screen
   refreshToday();
-  const app=$("#app");
+  const app=$("#app"),role=myRole();
+  document.body.classList.toggle("gated",role==="pending");
+  if(role==="pending"){ // local mode: the simulated user isn't in a team (on Azure the server sends no data at all, see showWaiting)
+    const me=person(session.userId);
+    app.innerHTML=waitingHTML(me?.name||"there",me?.email,"Pick someone else under “You” (top right) to continue.");
+    return;
+  }
+  const orgTab=$('.tab[data-view="org"]'),waiting=S.people.filter(p=>roleOf(p)==="pending").length;
+  orgTab.hidden=role!=="admin";
+  orgTab.innerHTML=`Organisation${waiting?` <span class="tabn" title="${peopleCount(waiting)} waiting for a team">${waiting}</span>`:""}`;
+  if(view==="org"&&role!=="admin")view="plan";
   app.innerHTML=VIEWS[view]();
   app.classList.toggle("wide",view!=="plan");
   tfPicker?.refresh(); // views can change teamFilter (e.g. the Level 10 team picker)
@@ -1871,8 +2019,48 @@ const APP_ACTIONS={
     const col=$(`.kcol[data-col="${to}"]`);if(!col)return;
     col.scrollIntoView({block:"nearest",behavior:"smooth"});col.classList.remove("flash");void col.offsetWidth;col.classList.add("flash"); // restart the flash
   },
+  // Organisation (admins)
+  orgrefresh:async()=>{try{if(await backend.refresh(()=>true))render();toast("Up to date")}catch(e){toast(e.message,5000)}},
+  addunit:b=>addUnit(b.dataset.kind),
+  addteam:(b,id)=>addUnit("team",id),
+  unitdel:async(b,id)=>{
+    const u=unit(id),x=unitUsage(id);
+    const blockers=[[x.teams,"team"],[x.goals,"goal"],[x.rocks,"rock"],[x.cards,"Level 10 card"]].filter(([n])=>n).map(([n,w])=>plural(n,w));
+    if(blockers.length){toast(`Can't delete ${u.name}: it still has ${blockers.join(", ")}. Move or delete those first.`,6000);return}
+    if(!await askConfirm(`Delete “${u.name}”?${x.people?` ${peopleCount(x.people)} will be removed from it.`:""}`,"Delete"))return;
+    S.units=S.units.filter(v=>v.id!==id);
+    S.people.forEach(p=>{if((p.unitIds||[]).includes(id))p.unitIds=p.unitIds.filter(v=>v!==id)});
+    S.rocks.forEach(r=>{if((r.trackIn||[]).includes(id)){r.trackIn=r.trackIn.filter(v=>v!==id);logHist(r,`No longer tracked in ${u.name} (deleted)`)}});
+    if(teamFilter===id)teamFilter="";
+    save();render();toast(`${u.name} deleted`);
+  },
+  unassign:(b,id)=>{
+    const p=person(id),unitId=b.dataset.unit;
+    p.unitIds=(p.unitIds||[]).filter(v=>v!==unitId);save();render();
+    toast(roleOf(p)==="pending"?`${p.name} is no longer in any team and can't use EOS Tracker until added again`:`${p.name} removed from ${unitName(unitId)}`,4000);
+  },
 };
 const APP_CHANGES={
+  // Organisation (admins)
+  unitname:el=>{
+    const u=unit(el.dataset.id),name=el.value.trim();
+    if(!name||name===u.name){el.value=u.name;return}
+    if(S.units.some(v=>v!==u&&v.name.toLowerCase()===name.toLowerCase())){toast(`There's already a unit called “${name}”`,4000);el.value=u.name;return}
+    u.name=name;save();render();toast("Renamed");
+  },
+  unitmove:el=>{const t=unit(el.dataset.id);t.parentId=el.value;save();render();toast(`${t.name} moved to ${unitName(el.value)}`)},
+  forumrule:el=>{unit(el.dataset.id)[el.dataset.rule]=el.checked;save();render()},
+  assign:el=>{
+    const p=person(el.dataset.id),id=el.value;if(!id)return;
+    const wasWaiting=roleOf(p)==="pending";
+    p.unitIds=[...(p.unitIds||[]),id];save();render();
+    toast(wasWaiting?`${p.name} added to ${unitName(id)} and can now use EOS Tracker`:`${p.name} added to ${unitName(id)}`,4000);
+  },
+  admin:el=>{
+    const p=person(el.dataset.id);
+    if(el.checked)p.admin=true;else delete p.admin;
+    save();render();toast(el.checked?`${p.name} is now an admin`:`${p.name} is no longer an admin`);
+  },
   levelfilter:el=>{el.checked?levelFilter.add(el.value):levelFilter.delete(el.value);render()},
   year:el=>{planYear=Number(el.value);render()},
   quarter:el=>{quarterFilter=el.value;rrScroll=null;render()},
@@ -2030,9 +2218,10 @@ function drawTopBar(){
   if(kind==="local"){ // simulated sign-in: pick who you are
     box.innerHTML=`<label for="me-in" data-tip="Simulated sign-in (local mode): pick who you are">You</label>`+pickerHTML("me",{dot:true});
     initPicker("me",{get:()=>session.userId,set:v=>{if(v){session.userId=v;render()}},display:personName,dotColor:id=>person(id)?.color,allowNone:false,noun:"people",
-      groups:()=>[{name:"Sign in as (simulated)",items:S.people.map(p=>({id:p.id,title:p.name,color:p.color}))}]});
+      groups:()=>[{name:"Sign in as (simulated)",items:S.people.map(p=>({id:p.id,title:p.name,color:p.color,label:{admin:"Admin",pending:"Waiting"}[roleOf(p)]||""}))}]});
   }else{
-    box.innerHTML=`${avatarHTML(session.userId)}<span class="uname" data-tip="${esc(backend.user?.email||"")}">${esc(personName(session.userId))}</span>`
+    const name=S?personName(session.userId):backend.waiting?.name||""; // no S while waiting to be added to a team
+    box.innerHTML=`${S?avatarHTML(session.userId):""}<span class="uname" data-tip="${esc(backend.user?.email||"")}">${esc(name)}</span>`
       +(kind==="api"?`<a class="btn ghost sm" href="/.auth/logout?post_logout_redirect_uri=/">Sign out</a>`:"");
   }
 }
@@ -2041,6 +2230,13 @@ function showSaveState(text,bad=false){const el=$("#saveState");el.textContent=t
 function showGate(title,text,actions){
   S=null;document.body.classList.add("gated");
   $("#app").innerHTML=`<div class="board gate"><h1>${esc(title)}</h1><p>${esc(text)}</p><div class="row">${actions}</div></div>`;
+}
+// Azure/mock: you're signed in but not in a team, so the server sent no data. Checks every 30 s and opens the app once you're added.
+function showWaiting(){
+  const w=backend.waiting;
+  document.body.classList.add("gated");drawTopBar();
+  $("#app").innerHTML=waitingHTML(w.name,w.email,"This page checks every 30 seconds and opens EOS Tracker as soon as you've been added.");
+  setInterval(async()=>{if(!document.hidden&&!await backend.stillWaiting().catch(()=>true))location.reload()},30000);
 }
 /* other people's changes: picked up when you come back to the tab and every minute, but only while you aren't editing */
 const isIdle=()=>!!S&&backend.kind!=="local"&&!document.hidden&&!modalState&&!updOpen&&!l10Add&&!stMenu.btn&&!dragId
@@ -2060,8 +2256,11 @@ async function init(){
   try{backend=await pickBackend()}catch(e){return showGate("Can't reach the server",e.message,retry)}
   if(backend.access&&!backend.access.ok)return showGate("No access",backend.access.reason,signOut);
   try{await backend.load()}catch(e){return showGate("Couldn't load the data",e.message,retry)}
+  if(backend.waiting)return showWaiting(); // signed in, but not in a team yet
   const p=loadPrefs();
-  teamFilter=unit(p.teamFilter)?p.teamFilter:"";
+  teamFilter=p.teamFilter===undefined // first visit: your own team or department (not the company or a meeting: those show "All teams")
+    ?(person(session.userId)?.unitIds||[]).find(id=>["team","department"].includes(unit(id)?.kind))||""
+    :unit(p.teamFilter)?p.teamFilter:"";
   quarterFilter=quarterParts(p.quarter)?p.quarter:quarterOf(TODAY);
   planYear=Number.isInteger(p.planYear)?p.planYear:TODAY.getFullYear();
   drawTopBar();

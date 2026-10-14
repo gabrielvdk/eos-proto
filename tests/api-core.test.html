@@ -23,16 +23,23 @@ const eq=(a,b,msg)=>assert(JSON.stringify(a)===JSON.stringify(b),`${msg||"not eq
 const sha256=async s=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,"0")).join("");
 let n=0;const newId=()=>"id"+(++n);
 const user=(email,claims=[])=>({identityProvider:"aad",userId:"u-"+email,userDetails:email,userRoles:["anonymous","authenticated"],claims});
+// ana is an admin through ADMIN_EMAILS; everyone else starts as "pending"
 function setup(settings={ALLOWED_EMAIL_DOMAINS:"letsgrow.com"}){
   const store=createMemoryStore();
-  return {store,api:createApi({store,settings:{APP_ENV:"test",SEED:"sample",...settings},sha256,newId})};
+  return {store,api:createApi({store,settings:{APP_ENV:"test",SEED:"sample",ADMIN_EMAILS:"ana.de.vries@letsgrow.com",...settings},sha256,newId})};
 }
-const ana=user("ana.de.vries@letsgrow.com");
+const ana=user("ana.de.vries@letsgrow.com"),bob=user("bob@letsgrow.com");
+// ana (admin) assigns someone to a unit, the way the Organisation tab does
+async function assign(api,principal,unitIds){
+  const me=(await api.data({principal})).json.meId;
+  const people=(await api.data({principal:ana})).json.people,p=people.find(x=>x.id===me);
+  return api.putItem({principal:ana,params:{collection:"people",id:p.id},body:{record:{...p,unitIds},ifMatch:p._etag}});
+}
 const PNG="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
 test("access: nobody gets in until an allow-list is set",async()=>{
   const {api}=setup({});
-  const r=await api.data({principal:ana});eq(r.status,403);assert(/isn't configured/.test(r.json.error));
+  const r=await api.data({principal:bob});eq(r.status,403);assert(/isn't configured/.test(r.json.error));
 });
 test("access: not signed in → 401",async()=>{const {api}=setup();eq((await api.data({principal:null})).status,401)});
 test("access: allowed domain, other domain, single e-mail, *",async()=>{
@@ -62,11 +69,43 @@ test("parsePrincipal: decodes the Static Web Apps header, ignores junk",async()=
   eq(parsePrincipal(btoa(JSON.stringify(ana)),atob).userDetails,ana.userDetails);
   eq(parsePrincipal("not base64!",atob),null);eq(parsePrincipal(null,atob),null);
 });
-test("data: first visit adds you to people once; returns meId",async()=>{
+test("data: first visit adds you to people once (without a team); returns meId and role",async()=>{
   const {api}=setup();
   const a=(await api.data({principal:ana})).json,b=(await api.data({principal:ana})).json;
-  eq(a.people.length,1);eq(b.people.length,1);eq(a.meId,b.meId);eq(a.people[0].name,"Ana De Vries");
+  eq(a.people.length,1);eq(b.people.length,1);eq(a.meId,b.meId);eq(a.people[0].name,"Ana De Vries");eq(a.people[0].unitIds,[]);
+  eq(a.role,"admin");eq(a.adminEmails,["ana.de.vries@letsgrow.com"]);
   assert(a.people[0]._etag,"records carry _etag");assert(!("type" in a.people[0]),"no partition key in records");eq(a.meta,null);
+});
+test("roles: a new person waits, sees nothing and can change nothing",async()=>{
+  const {api}=setup();
+  await api.putItem({principal:ana,params:{collection:"goals",id:"g1"},body:{record:{id:"g1",title:"Secret goal"}}});
+  const r=(await api.data({principal:bob})).json;
+  eq(Object.keys(r).sort(),["me","meId","role","waiting"]);eq([r.waiting,r.role,r.me.email],[true,"pending","bob@letsgrow.com"]);
+  eq((await api.putItem({principal:bob,params:{collection:"rocks",id:"r1"},body:{record:{id:"r1"}}})).status,403,"no writes");
+  eq((await api.deleteItem({principal:bob,params:{collection:"goals",id:"g1"}})).status,403,"no deletes");
+  eq((await api.attachment({principal:bob,params:{id:"0".repeat(64)}})).status,403,"no images");
+  eq((await api.data({principal:ana})).json.people.map(p=>p.email).sort(),["ana.de.vries@letsgrow.com","bob@letsgrow.com"],"admins see who's waiting");
+});
+test("roles: once assigned, a member sees everything and edits work, but not the org tree or people",async()=>{
+  const {api}=setup();
+  eq((await assign(api,bob,["u-sales"])).status,200);
+  const r=(await api.data({principal:bob})).json;eq([r.role,!!r.waiting],["member",false]);
+  eq((await api.putItem({principal:bob,params:{collection:"rocks",id:"r1"},body:{record:{id:"r1"}}})).status,200,"rocks");
+  eq((await api.putItem({principal:bob,params:{collection:"meta",id:"meta"},body:{record:{id:"meta",version:10}}})).status,200,"meta (migrations)");
+  eq((await api.putItem({principal:bob,params:{collection:"units",id:"u1"},body:{record:{id:"u1"}}})).status,403,"units");
+  const me=r.people.find(p=>p.id===r.meId);
+  eq((await api.putItem({principal:bob,params:{collection:"people",id:me.id},body:{record:{...me,admin:true}}})).status,403,"can't make yourself admin");
+  eq((await api.deleteItem({principal:bob,params:{collection:"units",id:"u1"}})).status,403,"no unit deletes");
+});
+test("roles: ADMIN_EMAILS are always admin and always allowed in; promoted admins too",async()=>{
+  const {api}=setup({ALLOWED_EMAIL_DOMAINS:"hoogendoorn.com",ADMIN_EMAILS:"gk@letsgrow.com, GabrielVdK@gmail.com"});
+  eq(api.access(user("gabrielvdk@gmail.com")).ok,true,"admin outside the allow-list");
+  eq(api.roleOf(null,"gk@letsgrow.com"),"admin");
+  eq(api.roleOf({unitIds:[]},"x@hoogendoorn.com"),"pending");
+  eq(api.roleOf({unitIds:["u1"]},"x@hoogendoorn.com"),"member");
+  eq(api.roleOf({unitIds:[],admin:true},"x@hoogendoorn.com"),"admin");
+  const gk=user("gk@letsgrow.com");
+  eq((await api.putItem({principal:gk,params:{collection:"units",id:"u1"},body:{record:{id:"u1",kind:"team",name:"X"}}})).status,200,"admin edits the org tree");
 });
 test("items: create, update with ETag, stale ETag → 412",async()=>{
   const {api}=setup();
