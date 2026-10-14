@@ -55,7 +55,7 @@ Getting in has two steps. First the **allow-list** decides who may sign in at al
 
 | Role | Who | Sees and does |
 |---|---|---|
-| **Admin** | everyone in `ADMIN_EMAILS` (always, automatically), plus anyone an admin ticks "Admin" for | everything, plus the **Organisation** tab (add, rename, move and delete departments, teams and meetings) and the **People** tab (assign people to units, make others admin) |
+| **Admin** | everyone in `ADMIN_EMAILS` (always, automatically), plus anyone an admin ticks "Admin" for | everything, plus the **Organisation** menu item. Its *Organisation* tab is for adding, renaming, deleting and dragging departments, teams and meetings into order; its *People* tab is for assigning people to units and making others admin |
 | **Member** | anyone assigned to at least one unit (team, department, meeting or the company) | see below |
 | **Waiting** | signed in for the first time, not assigned yet | only "Welcome, you haven't been added to a team yet". The page checks every 30 seconds and opens the app once they're assigned |
 
@@ -68,10 +68,10 @@ Getting in has two steps. First the **allow-list** decides who may sign in at al
 | a **team** | that team only (not the department above it) | that team |
 | a **meeting** (Business Review) | the meeting's own rocks, plus every rock it shows (tracked or escalated). They can change those fully, but can't move them to another team | that meeting |
 
-- **Everyone assigned sees the full One Year Plan and all rocks**, and can open every goal and rock. Items you can't change open as view-only.
+- **Everyone assigned sees the full One Year Plan**, and can open every goal. **Rocks are limited to your branch**: those of the company, your own units, the departments above them and the teams below them, plus the rocks shown by meetings you're in. Items you can't change open as view-only.
 - **New goals and rocks** can only be put in units you have rights on (the Team field only offers those). A rock's owner must be someone with rights on its team. Moving an item to another unit needs rights on that unit too.
 - **The Team filter** (top right) shows your branch: the company, your own units, the departments above them and the teams below them.
-- **New people add themselves** by signing in. They appear at the top of the People tab, marked as waiting, and the tab shows how many are waiting. Assign them with *+ Add to…*.
+- **New people add themselves** by signing in. They appear at the top of *Organisation → People*, marked as waiting, and the Organisation menu item shows how many are waiting. Assign them with *+ Add to…*.
 - **Removing someone from every unit** puts them back to waiting. That's how you offboard someone while keeping their history.
 - **Enforced by the server, not just hidden in the page:**
   - a waiting person gets no data at all;
@@ -258,7 +258,7 @@ Re-running the deployment is safe. It rewrites the app settings, so pass the sam
 ### Check that it works
 
 - The app opens after you sign in, shows your name top right, and has the right tag (Test) or no tag (Prod). As an admin you also see the **Organisation** and **People** tabs.
-- Sign in with another allowed account (e.g. a private browser window). It should get the waiting page and show up as waiting on your People tab. Assign it to a team; within 30 seconds the other window opens the app. It sees only that team's Level 10 board, and other teams' rocks open as view-only.
+- Sign in with another allowed account (e.g. a private browser window). It should get the waiting page and show up as waiting under *Organisation → People*. Assign it to a team; within 30 seconds the other window opens the app. It sees only that team's Level 10 board, and other teams' rocks open as view-only.
 - Make a change, reload: it's still there. Open the site in a second browser profile as someone else: they see it too.
 - *Cosmos DB → Data Explorer → eostracker → items* shows the records.
 
@@ -310,8 +310,8 @@ That's the intended path: run Prod on `builtin` (with the allow-list) until IT h
 | The run fails at *Deploy* | wrong or missing `AZURE_STATIC_WEB_APPS_API_TOKEN` in that GitHub environment |
 | "Can't reach the server" | the API isn't running: check the run's API build step and the app settings (a missing `COSMOS_CONNECTION_STRING` breaks every call) |
 | "No access" | your address isn't covered by `ALLOWED_EMAIL_DOMAINS` / `ALLOWED_EMAILS` / `ADMIN_EMAILS` |
-| "Welcome, you haven't been added to a team yet" | expected for new people: an admin assigns them on the People tab |
-| No Organisation/People tabs although you should be admin | your sign-in address differs from the one in `ADMIN_EMAILS` (check the name/tooltip top right) |
+| "Welcome, you haven't been added to a team yet" | expected for new people: an admin assigns them under *Organisation → People* |
+| No Organisation menu item although you should be admin | your sign-in address differs from the one in `ADMIN_EMAILS` (check the name/tooltip top right) |
 | "View only" on a goal or rock | it belongs to a unit you're not in (or below); add the person to that unit, or to the department/company above it |
 | Sign-in loops or errors after switching to `entra` | redirect URI, ID tokens setting, client ID/secret, or an expired secret |
 | "…was changed by someone else at the same time" | two people edited the same item; the latest version is shown, so redo your change |

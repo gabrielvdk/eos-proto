@@ -72,6 +72,14 @@ a.btn.primary{color:#fff}
 /* Organisation tab (admins): org tree + people */
 .tabn{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:999px;background:var(--amber);color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}
 .orgwrap{max-width:920px}
+.mtabs.vtabs{padding:0;margin:-4px 0 14px;max-width:920px}
+.orow .grip{display:inline-flex;color:var(--ink-3);cursor:grab;opacity:.45;flex:none;width:16px}
+.orow .grip.off{cursor:default;opacity:0}
+.orow:hover .grip:not(.off){opacity:1}
+.orow .grip svg,.grip.inline svg{width:14px;height:14px}
+.grip.inline{display:inline-flex;vertical-align:-2px;color:var(--ink-3)}
+.orow.dragging{opacity:.35}
+.opanel .kph{margin:0}
 /* view only (items of teams you have no rights on) */
 .stbtn.ro{display:inline-block;cursor:default;padding-right:11px}
 .stbtn.ro::after{display:none}
@@ -248,6 +256,7 @@ td.updcell{position:relative}
 .pop textarea{border:1px solid var(--line-strong);border-radius:8px;padding:8px;min-height:64px;resize:vertical;background:var(--surface);width:100%}
 .pop textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
 .pop .row{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.pop .pophead{font-size:12.5px;color:var(--ink-2)}
 .pop .hint{font-size:11.5px;color:var(--ink-3);margin-right:auto}
 
 /* milestones subtable */
@@ -467,6 +476,7 @@ table.rr tbody td.rk{padding:9px 12px;height:auto}
 .rkhead .titlebtn .t{display:block}
 .rkhead .updbtn{margin-left:auto}
 .rkmeta .idsbtn{margin-left:auto;border:0;background:none;color:var(--line-strong);padding:2px;border-radius:5px;display:inline-flex}
+.rkmeta .idsbtn.on{color:var(--accent);background:var(--accent-soft)}
 .rkmeta .idsbtn:hover{color:var(--accent);background:var(--accent-soft)}
 .rkmeta .idsbtn svg{width:16px;height:16px}
 .updbtn.has{color:var(--ink-2)}
@@ -505,7 +515,6 @@ try{const t=localStorage.getItem("eos-theme");if(t==="light"||t==="dark")documen
     <button class="tab" role="tab" data-view="l10" aria-selected="false">Level 10</button>
     <button class="tab" role="tab" data-view="review" aria-selected="false">Rock Review</button>
     <button class="tab" role="tab" data-view="org" aria-selected="false" hidden>Organisation</button>
-    <button class="tab" role="tab" data-view="people" aria-selected="false" hidden>People</button>
   </div>
   <div class="spacer"></div>
   <span class="savestate" id="saveState" aria-live="polite"></span>
@@ -1031,6 +1040,7 @@ const collapsed=new Set();  // tree view: goal ids whose children are hidden
 const expanded=new Set();   // Rocks: rock ids whose milestones are shown
 let updOpen=null;           // quick-update popover: {kind:"rock"|"ms:<rock id>", id, draft}
 let l10Add=null;            // Level 10: column key whose "add card" composer is open
+let idsOpen=null;           // Rock Review → IDS popover: {rockId, draft}
 let rrScroll=null;          // Rock Review horizontal scroll; null = jump to the current week on next render
 let tfPicker=null;          // top-bar team picker (refreshed on render so its label follows teamFilter)
 
@@ -1181,6 +1191,7 @@ const ICONS={
   trash:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 9h5.6l.7-9"/></svg>',
   check:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg>',
   image:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="6" cy="6.5" r="1.2"/><path d="M14 11l-3.5-3.5L4 13"/></svg>',
+  grip:'<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.2"/><circle cx="10" cy="4" r="1.2"/><circle cx="6" cy="8" r="1.2"/><circle cx="10" cy="8" r="1.2"/><circle cx="6" cy="12" r="1.2"/><circle cx="10" cy="12" r="1.2"/></svg>',
   ids:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h7M2.5 8h5M2.5 12h4"/><path d="M12 8.5v5M9.5 11h5"/></svg>',
   sun:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2M16.2 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/></svg>',
   moon:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M16.5 12.3A7 7 0 0 1 7.7 3.5a7 7 0 1 0 8.8 8.8z"/></svg>',
@@ -1240,7 +1251,15 @@ const viewTitle=(title,id)=>`<h1>${title}${id?` <span class="dim">· ${esc(unitN
 const quarterSelectHTML=()=>`<select class="ctl" data-act="quarter" aria-label="Quarter">${quarterList().map(q=>`<option ${q===quarterFilter?"selected":""}>${q}</option>`).join("")}</select>`;
 const legendHTML=(items,extra="")=>`<div class="legend" style="margin-top:10px">${items.map(([color,label])=>`<span><i class="sw" style="background:var(--${color})"></i> ${label}</span>`).join("")}${extra}</div>`;
 const noRocksHTML=hint=>`<div class="empty"><b>No rocks for ${esc(quarterFilter)}${teamFilter?` in ${esc(unitName(teamFilter))}`:""} yet</b>${hint}</div>`;
-const shownRocks=()=>S.rocks.filter(r=>r.quarter===quarterFilter&&rockMatches(r,teamFilter));
+/* the rocks you see this quarter: those of the chosen team, or with "All teams" those of your branch (rights.branch:
+   the company, your units and the units above and below them) plus the rocks the meetings you're in show; admins: all */
+function shownRocks(){
+  const q=S.rocks.filter(r=>r.quarter===quarterFilter);
+  if(teamFilter)return q.filter(r=>rockMatches(r,teamFilter));
+  if(myRole()==="admin")return q;
+  const branch=new Set(rights.branch(me())),meetings=forums().filter(f=>canEditUnit(f.id));
+  return q.filter(r=>branch.has(r.unitId)||meetings.some(f=>rockMatches(r,f.id)));
+}
 
 /* ---------- One Year Plan ---------- */
 const az=(a,b)=>a.title.localeCompare(b.title);
@@ -1306,7 +1325,8 @@ function goalRow(g,depth,hasKids,isCtx){
 /* ---------- Rocks ---------- */
 function renderRocks(){
   const rocks=shownRocks();
-  const head=`<div class="viewhead">${viewTitle("Rocks",teamFilter)}<span class="count">${rocks.length} this quarter</span><div class="spacer"></div>
+  const title=!teamFilter&&myRole()!=="admin"?`<h1>Rocks <span class="dim">· your teams</span></h1>`:viewTitle("Rocks",teamFilter);
+  const head=`<div class="viewhead">${title}<span class="count">${rocks.length} this quarter</span><div class="spacer"></div>
     ${quarterSelectHTML()}${myUnits().length?`<button class="btn primary" data-act="newrock">+ New rock</button>`:""}</div>`;
   const cols=`<thead><tr><th class="fit">Title</th><th class="fit">Owner</th><th class="fit">Status</th><th class="fit">Progress</th><th>Last update</th><th class="fit">Goal</th></tr></thead>`;
   let rows=rocks.length?rocks.map(rockRow).join(""):`<tr><td colspan="6">${noRocksHTML("Add the first 90-day rock for this quarter.")}</td></tr>`;
@@ -1338,6 +1358,7 @@ function rockRow(r){
 
 /* ---------- Rock Review (meeting view: rocks × weeks) ---------- */
 function renderReview(){
+  if(!teamFilter)return renderReviewPick(); // a review is always of one meeting, department or team
   const rocks=shownRocks();
   // weeks span the quarter, widened to include every milestone deadline of the shown rocks
   let [start,end]=quarterRange(quarterFilter);
@@ -1377,10 +1398,10 @@ function renderReview(){
   }).join("");
   if(!rocks.length){left=`<tr><td class="rk">${noRocksHTML("Add rocks in the Rocks tab.")}</td></tr>`;right=`<tr><td colspan="${weeks.length}"></td></tr>`}
   // the update popover lives outside the tables so it is never covered by the next row
-  const openRock=updOpen?.kind==="rock"?rocks.find(r=>r.id===updOpen.id):null;
+  const openRock=updOpen?.kind==="rock"?rocks.find(r=>r.id===updOpen.id):null,idsRock=idsOpen?rocks.find(r=>r.id===idsOpen.rockId):null;
   const legend=legendHTML([["green","done"],["red","overdue"],["amber","due within 7 days"],["grey-fill","to do"]],"<span>· Click a milestone to mark it done</span>");
   return head+`<div class="board rrwrap"><table class="rr rr-left"><thead><tr><th class="rk">Rock</th></tr></thead><tbody>${left}</tbody></table>`
-    +`<div class="scroll rr-scroll"><table class="rr rr-right">${cols}<tbody>${right}</tbody></table></div></div>`+legend+(openRock?updPopHTML(openRock,"rock"):"");
+    +`<div class="scroll rr-scroll"><table class="rr rr-right">${cols}<tbody>${right}</tbody></table></div></div>`+legend+(openRock?updPopHTML(openRock,"rock"):"")+(idsRock?idsPopHTML(idsRock):"");
 }
 function syncReviewRows(){
   const L=$$(".rr-left tr"),R=$$(".rr-right tr");
@@ -1398,12 +1419,28 @@ const boardOk=id=>hasBoard(id)&&canSeeBoard(id); // a board that exists and that
 const idsTarget=r=>boardOk(teamFilter)?teamFilter:boardOk(r.unitId)?r.unitId:null;
 function idsBtnHTML(r){
   const t=idsTarget(r);if(!t)return "";
-  return `<button class="idsbtn" data-act="rock2ids" data-id="${r.id}" aria-label="Add to IDS" data-tip="${esc(`Add to the IDS list of ${unitName(t)}:\nRock Review: ${r.title}`)}">${ICONS.ids}</button>`;
+  return `<button class="idsbtn ${idsOpen?.rockId===r.id?"on":""}" data-act="idsopen" data-id="${r.id}" aria-label="Add to IDS" data-tip="${esc(`Add to the IDS list of ${unitName(t)}`)}">${ICONS.ids}</button>`;
 }
-function rockToIDS(r){
-  const unitId=idsTarget(r),title=`Rock Review: ${r.title}`;if(!unitId)return;
+// the IDS popover: a text box prefilled with the rock, so you can add your question or point before adding it
+function idsPopHTML(r){
+  return `<div class="pop" data-idspop><div class="pophead">Add to the IDS list of <b>${esc(unitName(idsTarget(r)))}</b></div>
+    <textarea data-ids-text aria-label="Issue to discuss"></textarea>
+    <div class="row"><span class="hint">Enter to add · Esc to cancel</span><button class="btn sm" data-act="idscancel">Cancel</button><button class="btn sm primary" data-act="idsadd">Add</button></div></div>`;
+}
+function placeIdsPop(){
+  const pop=$("[data-idspop]"),ta=$("[data-ids-text]"),btn=$(".idsbtn.on");if(!pop||!ta)return;
+  if(btn){
+    const r=btn.getBoundingClientRect(),w=Math.min(360,innerWidth-16);
+    pop.style.width=w+"px";pop.style.top=(r.bottom+6)+"px";pop.style.left=Math.max(8,Math.min(r.left,innerWidth-w-8))+"px";
+  }
+  ta.value=idsOpen.draft;ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length); // cursor at the end: type your question
+}
+function closeIdsPop(){if(idsOpen){idsOpen=null;render()}}
+function addIdsFromPop(){
+  const ta=$("[data-ids-text]"),r=idsOpen&&rock(idsOpen.rockId);if(!ta||!r)return;
+  const title=ta.value.trim(),unitId=idsTarget(r);if(!title){ta.focus();return}
   if(S.cards.some(c=>c.unitId===unitId&&c.column==="ids"&&c.title===title)){toast(`Already on the IDS list of ${unitName(unitId)}`);return}
-  addCard("ids",title,unitId);toast(`Added to IDS · ${unitName(unitId)}`);
+  idsOpen=null;addCard("ids",title,unitId);render();toast(`Added to IDS · ${unitName(unitId)}`);
 }
 
 /* ---------- Level 10 (weekly meeting, per team or forum) ---------- */
@@ -1434,20 +1471,31 @@ function renderL10(){
   };
   return head+`<div class="l10">${agenda}<div class="kboard">${COLS.map(column).join("")}</div></div>`;
 }
-function renderL10Pick(){
-  const openCount=id=>S.cards.filter(c=>c.unitId===id&&c.column!=="done").length;
-  const btn=(u,color)=>{const n=openCount(u.id);return `<button class="pteam" data-act="pickteam" data-id="${u.id}"><span class="dot" style="background:var(--${color})"></span>${esc(u.name)}${n?`<span class="n">${n} open</span>`:""}</button>`};
-  const group=(name,html)=>`<div class="pdept"><div class="grp">${esc(name)}</div><div class="pteams">${html}</div></div>`;
-  const depts=departments().sort((a,b)=>(b.id===teamFilter)-(a.id===teamFilter)); // a selected department is listed first
-  const mine=list=>list.filter(u=>canSeeBoard(u.id)); // only the boards of your units and the units below them
-  const meetings=mine(forums()),groups=depts.map(dep=>[dep,mine(boardsOf(dep))]).filter(([,b])=>b.length);
-  const why=!teamFilter?"":hasBoard(teamFilter)?`You're viewing <b>${esc(unitName(teamFilter))}</b>, which isn't one of your teams. `:`You're viewing <b>${esc(unitName(teamFilter))}</b>, which isn't a team. `;
-  if(!meetings.length&&!groups.length)return `<div class="viewhead"><h1>Level 10</h1></div><div class="board l10pick"><p><b>Level 10 meetings are held per team.</b> You can open the boards of the teams you're in; you aren't in a team with a board yet.</p></div>`;
-  return `<div class="viewhead"><h1>Level 10</h1></div><div class="board l10pick">
-    <p><b>Level 10 meetings are held per team.</b> ${why}Pick one of your teams to open its board:</p>
-    ${meetings.length?group("Meetings",meetings.map(f=>btn(f,"forum")).join("")):""}
-    ${groups.map(([dep,boards])=>group(dep.name,boards.map(t=>btn(t,"team")).join(""))).join("")}
+/* a page of one-click buttons that set the team filter, grouped Company · Meetings · per department (department, then its
+   teams); used by Level 10 and Rock Review when no team is chosen. intro is HTML; countOf(id) gives the small label. */
+function unitPickPage(head,intro,units,countOf){
+  const ids=new Set(units.map(u=>u.id));
+  const btn=u=>{const n=countOf(u.id);return `<button class="pteam" data-act="pickteam" data-id="${u.id}"><span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span>${esc(u.name)}${n?`<span class="n">${n}</span>`:""}</button>`};
+  const group=(name,list)=>{const shown=list.filter(u=>ids.has(u.id));return shown.length?`<div class="pdept"><div class="grp">${esc(name)}</div><div class="pteams">${shown.map(btn).join("")}</div></div>`:""};
+  return head+`<div class="board l10pick"><p>${intro}</p>
+    ${group("Company",[company()])}${group("Meetings",forums())}
+    ${departments().map(dep=>group(dep.name,[dep,...teamsOf(dep.id)])).join("")}
+    ${group("Other teams",S.units.filter(u=>u.kind==="team"&&!u.parentId))}
   </div>`;
+}
+function renderL10Pick(){
+  const boards=S.units.filter(u=>boardOk(u.id)); // only the boards of your units and the units below them
+  const why=!teamFilter?"":hasBoard(teamFilter)?`You're viewing <b>${esc(unitName(teamFilter))}</b>, which isn't one of your teams. `:`You're viewing <b>${esc(unitName(teamFilter))}</b>, which isn't a team. `;
+  const head=`<div class="viewhead"><h1>Level 10</h1></div>`;
+  if(!boards.length)return head+`<div class="board l10pick"><p><b>Level 10 meetings are held per team.</b> You can open the boards of the teams you're in; you aren't in a team with a board yet.</p></div>`;
+  const open=id=>{const n=S.cards.filter(c=>c.unitId===id&&c.column!=="done").length;return n?`${n} open`:""};
+  return unitPickPage(head,`<b>Level 10 meetings are held per team.</b> ${why}Pick one of your teams to open its board:`,boards,open);
+}
+function renderReviewPick(){
+  const head=`<div class="viewhead"><h1>Rock Review</h1><div class="spacer"></div>${quarterSelectHTML()}</div>`;
+  const units=S.units.filter(u=>rights.branch(me()).includes(u.id));
+  const count=id=>{const n=S.rocks.filter(r=>r.quarter===quarterFilter&&rockMatches(r,id)).length;return n?plural(n,"rock"):""};
+  return unitPickPage(head,`<b>Rock Review is held per meeting, department or team.</b> Pick one to review its rocks for ${esc(quarterFilter)}:`,units,count);
 }
 const imgCount=html=>(String(html||"").match(/<img/g)||[]).length;
 function addCard(column,title,unitId=teamFilter){
@@ -1474,40 +1522,44 @@ function submitComposer(){ // Enter adds the card and keeps the composer open fo
   addCard(l10Add,t);render();
 }
 
-/* ---------- Organisation (admins only): the org tree and who belongs where ----------
+/* ---------- Organisation (admins only): one page with two tabs, the org tree and the people ----------
    Changes go through save() like everything else; the server only accepts them from admins. */
+let orgTab="structure"; // structure | people
 const unitUsage=id=>{
   const n=list=>list.filter(x=>x.unitId===id).length;
   return {teams:teamsOf(id).length,goals:n(S.goals),rocks:n(S.rocks),cards:n(S.cards),people:S.people.filter(p=>(p.unitIds||[]).includes(id)).length};
 };
+function renderOrgPage(){
+  const waiting=S.people.filter(p=>roleOf(p)==="pending").length;
+  const head=`<div class="viewhead"><h1>Organisation</h1><span class="count">${S.units.length} units · ${peopleCount(S.people.length)}${waiting?` · ${waiting} waiting`:""}</span><div class="spacer"></div>
+    ${orgTab==="people"&&backend.kind!=="local"?`<button class="btn sm" data-act="orgrefresh" data-tip="Check for people who signed in just now">Refresh</button>`:""}</div>`;
+  const tab=(key,label)=>`<button role="tab" data-act="orgtab" data-tab="${key}" aria-selected="${orgTab===key}">${label}</button>`;
+  const tabs=`<div class="mtabs vtabs" role="tablist">${tab("structure","Organisation")}${tab("people",`People${waiting?` <span class="tabn">${waiting}</span>`:""}`)}</div>`;
+  return head+tabs+`<div class="orgwrap">${orgTab==="people"?renderPeople():renderOrg()}</div>`;
+}
+// the org tree; departments and teams are reordered (and teams moved to another department) by dragging their handle
 function renderOrg(){
-  const head=`<div class="viewhead"><h1>Organisation</h1><span class="count">${S.units.length} units</span></div>`;
-  const usage=u=>{
-    const x=unitUsage(u.id),bits=[x.people&&peopleCount(x.people),x.goals&&plural(x.goals,"goal"),x.rocks&&plural(x.rocks,"rock"),x.cards&&plural(x.cards,"card")].filter(Boolean);
-    return `<span class="ometa">${bits.join(" · ")}</span>`;
-  };
   const del=u=>`<button class="del" data-act="unitdel" data-id="${u.id}" aria-label="Delete ${esc(u.name)}" data-tip="Delete">${ICONS.trash}</button>`;
-  const row=(u,depth,extra="")=>`<div class="orow ${u.kind}" style="--depth:${depth}"><span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span>
-    <input class="inline oname" value="${esc(u.name)}" data-act="unitname" data-id="${u.id}" aria-label="Name of ${esc(u.name)}">${usage(u)}${extra}${u.kind==="company"?"":del(u)}</div>`;
-  const moveSel=t=>`<select class="ctl sm" data-act="unitmove" data-id="${t.id}" aria-label="Department of ${esc(t.name)}">${departments().map(dep=>`<option value="${dep.id}" ${dep.id===t.parentId?"selected":""}>${esc(dep.name)}</option>`).join("")}</select>`;
+  const grip=u=>`<span class="grip" data-tip="Drag to move" aria-hidden="true">${ICONS.grip}</span>`;
+  const row=(u,depth,extra="")=>`<div class="orow ${u.kind}" data-unit-row="${u.id}" style="--depth:${depth}">${["department","team"].includes(u.kind)?grip(u):`<span class="grip off"></span>`}
+    <span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span>
+    <input class="inline oname" value="${esc(u.name)}" data-act="unitname" data-id="${u.id}" aria-label="Name of ${esc(u.name)}">${extra}${u.kind==="company"?"":del(u)}</div>`;
   const rule=(f,key,label,tip)=>`<label class="chkrow" data-tip="${tip}"><input type="checkbox" data-act="forumrule" data-rule="${key}" data-id="${f.id}" ${f[key]?"checked":""}>${label}</label>`;
-  return head+`<div class="orgwrap"><section class="board opanel"><h2>Structure</h2>
-    <p class="muted onote">Rights flow down: people in a department can change that department and all its teams; people in ${esc(company().name)} (directors) can change everything. Assign people on the People tab.</p>
+  return `<section class="board opanel">
+    <p class="muted onote">Rights flow down: people in a department can change that department and all its teams; people in ${esc(company().name)} (directors) can change everything. Drag <span class="grip inline">${ICONS.grip}</span> to reorder departments and teams, or to move a team to another department.</p>
     ${row(company(),0)}
-    ${departments().map(dep=>row(dep,1,`<button class="btn sm ghost" data-act="addteam" data-id="${dep.id}">+ Team</button>`)+teamsOf(dep.id).map(t=>row(t,2,moveSel(t))).join("")).join("")}
+    ${departments().map(dep=>row(dep,1,`<button class="btn sm ghost" data-act="addteam" data-id="${dep.id}">+ Team</button>`)+teamsOf(dep.id).map(t=>row(t,2)).join("")).join("")}
     ${S.units.filter(u=>u.kind==="team"&&!u.parentId).map(t=>row(t,1,`<span class="ometa">no department</span>`)).join("")}
     <div><button class="btn sm" data-act="addunit" data-kind="department">+ Department</button></div>
     <h2 class="osub">Meetings</h2>
     <p class="muted onote">Members of a meeting see its Level 10 board and can fully edit the rocks it shows.</p>
     ${forums().map(f=>row(f,0,rule(f,"includeTracked","Tracked rocks","Shows rocks that are marked “Track in "+esc(f.name)+"”")+rule(f,"includeEscalated","Escalated rocks","Shows every rock with status OT - Escalate"))).join("")}
     <div><button class="btn sm" data-act="addunit" data-kind="forum">+ Meeting</button></div>
-  </section></div>`;
+  </section>`;
 }
 function renderPeople(){
   const people=[...S.people].sort((a,b)=>(roleOf(b)==="pending")-(roleOf(a)==="pending")||a.name.localeCompare(b.name)); // waiting people first, then A→Z
   const waiting=people.filter(p=>roleOf(p)==="pending");
-  const head=`<div class="viewhead"><h1>People</h1><span class="count">${peopleCount(S.people.length)}${waiting.length?` · ${waiting.length} waiting`:""}</span><div class="spacer"></div>
-    ${backend.kind!=="local"?`<button class="btn sm" data-act="orgrefresh" data-tip="Check for people who signed in just now">Refresh</button>`:""}</div>`;
   const unitOptions=p=>{
     const opt=u=>(p.unitIds||[]).includes(u.id)?"":`<option value="${u.id}">${esc(u.name)}</option>`;
     return `<option value="">+ Add to…</option><optgroup label="Company">${opt(company())}</optgroup>`
@@ -1524,11 +1576,46 @@ function renderPeople(){
       <label class="chkrow" ${always?'data-tip="Always admin (ADMIN_EMAILS setting)"':""}><input type="checkbox" data-act="admin" data-id="${p.id}" ${role==="admin"?"checked":""} ${always?"disabled":""}>Admin</label>
     </div>`;
   };
-  return head+`<div class="orgwrap"><section class="board opanel">
+  return `<section class="board opanel">
     ${waiting.length?`<p class="onote"><b>${peopleCount(waiting.length)} waiting for a team.</b> They have signed in but see nothing until you add them to a team, department or meeting.</p>`:""}
-    <p class="muted onote">People appear here when they first sign in. Add them to the units they work in: they can change the goals, rocks and Level 10 boards of those units and everything below them (directors: add them to ${esc(company().name)}). Everyone assigned can see all goals and rocks. Admins also manage the organisation and people.</p>
+    <p class="muted onote">People appear here when they first sign in. Add them to the units they work in: they can change the goals, rocks and Level 10 boards of those units and everything below them (directors: add them to ${esc(company().name)}). Everyone assigned sees all goals, and the rocks of their own branch. Admins also manage the organisation and people.</p>
     ${people.map(personRow).join("")}
-  </section></div>`;
+  </section>`;
+}
+/* dragging in the org tree: a team goes before/after another team (and into that team's department) or to the top of a
+   department; a department goes before/after another department. Order = rank, like rocks and cards. */
+let orgDrag=null,orgDrop=null; // the unit being dragged; where it would land {parentId, beforeId}
+const orgMarker=document.createElement("div");orgMarker.className="kph";
+function orgDropPlace(drag,target,row,y){
+  const r=row.getBoundingClientRect(),upper=y<r.top+r.height/2,rowOf=id=>$(`[data-unit-row="${id}"]`);
+  const peers=(kind,parentId)=>S.units.filter(u=>u!==drag&&u.kind===kind&&(kind!=="team"||u.parentId===parentId));
+  const after=(list,u)=>list[list.indexOf(u)+1]?.id||null;
+  if(drag.kind==="team"){
+    if(target.kind==="team"&&target!==drag){
+      const list=peers("team",target.parentId);
+      return {parentId:target.parentId,beforeId:upper?target.id:after(list,target),marker:[row,upper?"before":"after"]};
+    }
+    if(target.kind==="department")return {parentId:target.id,beforeId:peers("team",target.id)[0]?.id||null,marker:[row,"after"]};
+  }
+  if(drag.kind==="department"){
+    const dep=target.kind==="department"?target:target.kind==="team"&&target.parentId?unit(target.parentId):null;
+    if(!dep||dep===drag)return null;
+    const list=peers("department");
+    if(upper&&target===dep)return {parentId:null,beforeId:dep.id,marker:[row,"before"]};
+    const last=teamsOf(dep.id).filter(t=>t!==drag).pop();
+    return {parentId:null,beforeId:after(list,dep),marker:[rowOf((last||dep).id),"after"]};
+  }
+  return null;
+}
+function moveUnit(id,parentId,beforeId){
+  const u=unit(id);if(!u||beforeId===id)return;
+  const peers=S.units.filter(x=>x!==u&&x.kind===u.kind&&(u.kind!=="team"||x.parentId===parentId));
+  const at=beforeId?peers.findIndex(x=>x.id===beforeId):-1,pos=at<0?peers.length:at;
+  const prev=peers[pos-1]?.rank,next=peers[pos]?.rank,moved=u.kind==="team"&&u.parentId!==parentId;
+  if(u.kind==="team")u.parentId=parentId;
+  u.rank=prev===undefined&&next===undefined?nextRank(S.units):prev===undefined?next-1:next===undefined?prev+1:(prev+next)/2;
+  S.units.sort(byRank);save();render();
+  if(moved)toast(`${u.name} moved to ${unitName(parentId)}`);
 }
 function addUnit(kind,parentId=null){
   const base=kind==="forum"?"New meeting":kind==="team"?"New team":"New department";
@@ -1543,8 +1630,8 @@ const waitingHTML=(name,email,hint)=>`<div class="board gate"><h1>Welcome, ${esc
   <p class="muted">${esc(hint)}</p></div>`;
 
 /* ---------- render ---------- */
-const VIEWS={plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10,org:renderOrg,people:renderPeople};
-const ADMIN_VIEWS=["org","people"];
+const VIEWS={plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10,org:renderOrgPage};
+const ADMIN_VIEWS=["org"];
 function render(){
   if(!S)return; // still loading, or stopped at a "no access" / error screen
   refreshToday();refreshRights();
@@ -1556,9 +1643,9 @@ function render(){
     app.innerHTML=waitingHTML(me?.name||"there",me?.email,"Pick someone else under “You” (top right) to continue.");
     return;
   }
-  const waiting=S.people.filter(p=>roleOf(p)==="pending").length,peopleTab=$('.tab[data-view="people"]');
-  ADMIN_VIEWS.forEach(v=>{$(`.tab[data-view="${v}"]`).hidden=role!=="admin"});
-  peopleTab.innerHTML=`People${waiting?` <span class="tabn" title="${peopleCount(waiting)} waiting for a team">${waiting}</span>`:""}`;
+  const waiting=S.people.filter(p=>roleOf(p)==="pending").length,orgTabBtn=$('.tab[data-view="org"]');
+  orgTabBtn.hidden=role!=="admin";
+  orgTabBtn.innerHTML=`Organisation${waiting?` <span class="tabn" title="${peopleCount(waiting)} waiting for a team">${waiting}</span>`:""}`;
   if(ADMIN_VIEWS.includes(view)&&role!=="admin")view="plan";
   app.innerHTML=VIEWS[view]();
   app.classList.toggle("wide",view!=="plan");
@@ -1567,7 +1654,7 @@ function render(){
   $$(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===view));
   if(view==="l10"&&l10Add)$("#app .kcompose textarea")?.focus();
   if(view==="review"){syncReviewRows();restoreReviewScroll()}
-  placeUpdPop();
+  placeUpdPop();placeIdsPop();
   savePrefs();
 }
 
@@ -2151,8 +2238,10 @@ const APP_ACTIONS={
     r.milestones.push(m);logHist(r,`Milestone “${m.title}” added`);expanded.add(id);save();render();
     const inp=$(`[data-act="mtitle"][data-id="${m.id}"]`);inp?.focus();inp?.select();
   },
-  pickteam:(b,id)=>{teamFilter=id;l10Add=null;render()},
-  rock2ids:(b,id)=>rockToIDS(rock(id)),
+  pickteam:(b,id)=>{teamFilter=id;l10Add=null;rrScroll=null;render()},
+  idsopen:(b,id)=>{idsOpen=idsOpen?.rockId===id?null:{rockId:id,draft:`Rock to Discuss: ${rock(id).title}`};updOpen=null;render()},
+  idscancel:()=>closeIdsPop(),
+  idsadd:()=>addIdsFromPop(),
   kadd:b=>{l10Add=b.dataset.col;render()},
   kaddcancel:()=>{l10Add=null;render()},
   kaddsave:()=>submitComposer(),
@@ -2163,6 +2252,7 @@ const APP_ACTIONS={
     col.scrollIntoView({block:"nearest",behavior:"smooth"});col.classList.remove("flash");void col.offsetWidth;col.classList.add("flash"); // restart the flash
   },
   // Organisation (admins)
+  orgtab:b=>{orgTab=b.dataset.tab;render()},
   orgrefresh:async()=>{try{if(await backend.refresh(()=>true))render();toast("Up to date")}catch(e){toast(e.message,5000)}},
   addunit:b=>addUnit(b.dataset.kind),
   addteam:(b,id)=>addUnit("team",id),
@@ -2191,7 +2281,6 @@ const APP_CHANGES={
     if(S.units.some(v=>v!==u&&v.name.toLowerCase()===name.toLowerCase())){toast(`There's already a unit called “${name}”`,4000);el.value=u.name;return}
     u.name=name;save();render();toast("Renamed");
   },
-  unitmove:el=>{const t=unit(el.dataset.id);t.parentId=el.value;save();render();toast(`${t.name} moved to ${unitName(el.value)}`)},
   forumrule:el=>{unit(el.dataset.id)[el.dataset.rule]=el.checked;save();render()},
   assign:el=>{
     const p=person(el.dataset.id),id=el.value;if(!id)return;
@@ -2253,7 +2342,10 @@ $("#app").addEventListener("click",e=>{
   fn(b,b.dataset.id);
 });
 $("#app").addEventListener("change",e=>APP_CHANGES[e.target.dataset.act]?.(e.target));
-$("#app").addEventListener("input",e=>{if(e.target.matches("[data-pop-text]")&&updOpen)updOpen.draft=e.target.value});
+$("#app").addEventListener("input",e=>{
+  if(e.target.matches("[data-pop-text]")&&updOpen)updOpen.draft=e.target.value;
+  if(e.target.matches("[data-ids-text]")&&idsOpen)idsOpen.draft=e.target.value;
+});
 $("#app").addEventListener("keydown",e=>{
   const t=e.target;
   if(t.matches(".kcompose textarea")){ // Level 10 composer: Enter adds, Esc closes
@@ -2261,6 +2353,9 @@ $("#app").addEventListener("keydown",e=>{
   }
   else if(t.matches("[data-pop-text]")){ // quick-update popover: Enter posts, Esc closes
     if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();postQuickUpdate()}else if(e.key==="Escape")closeUpdPop();
+  }
+  else if(t.matches("[data-ids-text]")){ // IDS popover: Enter adds, Esc cancels
+    if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();addIdsFromPop()}else if(e.key==="Escape")closeIdsPop();
   }
   else if(t.matches(".kcard")&&(e.key==="Enter"||e.key===" ")){e.preventDefault();cardModal(card(t.dataset.card))}
   else if(t.matches("input.inline")&&e.key==="Enter")t.blur(); // commits via "change"
@@ -2286,6 +2381,26 @@ $("#app").addEventListener("drop",e=>{
   dragId=null;dropMarker.remove();moveCard(id,col.dataset.col,before);
 });
 $("#app").addEventListener("dragend",()=>{dragId=null;dropMarker.remove();$$(".kcard.dragging").forEach(k=>k.classList.remove("dragging"))});
+/* Organisation: drag departments and teams by their handle (only the handle makes a row draggable, so the name stays editable) */
+$("#app").addEventListener("mousedown",e=>{const g=e.target.closest(".orow .grip:not(.off)");if(g)g.closest(".orow").draggable=true});
+document.addEventListener("mouseup",()=>{if(!orgDrag)$$(".orow[draggable]").forEach(r=>r.removeAttribute("draggable"))});
+$("#app").addEventListener("dragstart",e=>{
+  const row=e.target.closest?.(".orow[draggable]");if(!row)return;
+  orgDrag=unit(row.dataset.unitRow);hideTip();
+  e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",orgDrag.id);setTimeout(()=>row.classList.add("dragging"));
+});
+$("#app").addEventListener("dragover",e=>{
+  if(!orgDrag)return;
+  const row=e.target.closest(".orow");const place=row&&orgDropPlace(orgDrag,unit(row.dataset.unitRow),row,e.clientY);if(!place)return;
+  e.preventDefault();e.dataTransfer.dropEffect="move";
+  orgDrop=place;const [el,where]=place.marker;el[where](orgMarker);
+});
+$("#app").addEventListener("drop",e=>{
+  if(!orgDrag||!orgDrop)return;e.preventDefault();
+  const {parentId,beforeId}=orgDrop,id=orgDrag.id;endOrgDrag();moveUnit(id,parentId,beforeId);
+});
+const endOrgDrag=()=>{orgDrag=null;orgDrop=null;orgMarker.remove();$$(".orow").forEach(r=>{r.classList.remove("dragging");r.removeAttribute("draggable")})};
+$("#app").addEventListener("dragend",()=>{if(orgDrag)endOrgDrag()});
 
 $("#modal").addEventListener("click",e=>{
   const b=e.target.closest("[data-m]"),fn=b&&MODAL_ACTIONS[b.dataset.m];if(fn)fn(b,b.dataset.id);
@@ -2323,6 +2438,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modalState)requestC
 document.addEventListener("mousedown",e=>{ // clicking outside closes the status menu and the quick-update popover
   if(stMenu.btn&&!e.target.closest("#stmenu")&&e.target.closest("[data-m='status'],[data-act='statusmenu']")!==stMenu.btn)closeStatusMenu();
   if(updOpen&&!e.target.closest("[data-pop]")&&!e.target.closest('[data-act="addupd"]'))closeUpdPop();
+  if(idsOpen&&!e.target.closest("[data-idspop]")&&!e.target.closest('[data-act="idsopen"]'))closeIdsPop();
 });
 document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el!==tipEl)el?showTip(el):hideTip()});
 document.addEventListener("scroll",e=>{ // capture: also scrolls inside elements
@@ -2331,9 +2447,9 @@ document.addEventListener("scroll",e=>{ // capture: also scrolls inside elements
   if(stMenu.btn&&!el.closest?.("#stmenu"))closeStatusMenu();
   if(el.classList?.contains("rr-scroll")){ // Rock Review: remember the position; a real scroll closes the popover (it is positioned to its button)
     if(Math.abs(el.scrollLeft-(rrScroll??0))<1)return;
-    rrScroll=el.scrollLeft;closeUpdPop();
+    rrScroll=el.scrollLeft;closeUpdPop();closeIdsPop();
   }
-  else if(el===document)closeUpdPop();
+  else if(el===document){closeUpdPop();closeIdsPop()}
 },true);
 window.addEventListener("resize",()=>closeStatusMenu());
 document.addEventListener("visibilitychange",()=>{ // back to this tab: pick up other people's changes; redraw when the date has changed
@@ -2382,7 +2498,7 @@ function showWaiting(){
   setInterval(async()=>{if(!document.hidden&&!await backend.stillWaiting().catch(()=>true))location.reload()},30000);
 }
 /* other people's changes: picked up when you come back to the tab and every minute, but only while you aren't editing */
-const isIdle=()=>!!S&&backend.kind!=="local"&&!document.hidden&&!modalState&&!updOpen&&!l10Add&&!stMenu.btn&&!dragId
+const isIdle=()=>!!S&&backend.kind!=="local"&&!document.hidden&&!modalState&&!updOpen&&!idsOpen&&!l10Add&&!stMenu.btn&&!dragId&&!orgDrag
   &&!$("#cbackdrop").classList.contains("open")&&!$("#lightbox").classList.contains("open")
   &&!document.activeElement?.matches("input,textarea,select,[contenteditable]")&&!backend.pending();
 async function refreshFromServer(){
