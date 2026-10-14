@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 450" font-family="Segoe UI, Figtree, Helvetica, Arial, sans-serif" font-size="13">
+  <title>EOS Tracker on Azure: architecture</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5B6778"/>
+    </marker>
+  </defs>
+  <rect width="1040" height="450" fill="#FFFFFF"/>
+
+  <!-- Azure resource group -->
+  <rect x="200" y="112" width="828" height="204" rx="14" fill="#F3F5F9" stroke="#C9D0DB" stroke-dasharray="6 4"/>
+  <text x="216" y="134" font-weight="700" fill="#5B6778">Azure · one resource group per environment (test / prod) · West Europe</text>
+
+  <!-- Browser -->
+  <rect x="20" y="170" width="140" height="88" rx="10" fill="#FFFFFF" stroke="#C9D0DB"/>
+  <rect x="20" y="170" width="6" height="88" rx="3" fill="#8A95A6"/>
+  <text x="38" y="200" font-weight="700" fill="#1C2430">Browser</text>
+  <text x="38" y="220" fill="#5B6778">index.html</text>
+  <text x="38" y="238" fill="#5B6778">(the whole app)</text>
+
+  <!-- Static Web App -->
+  <rect x="240" y="150" width="200" height="130" rx="10" fill="#FFFFFF" stroke="#C9D0DB"/>
+  <rect x="240" y="150" width="6" height="130" rx="3" fill="#2F6FE4"/>
+  <text x="258" y="178" font-weight="700" fill="#1C2430">Static Web App</text>
+  <text x="258" y="200" fill="#5B6778">serves index.html</text>
+  <text x="258" y="218" fill="#5B6778">Microsoft sign-in (/.auth)</text>
+  <text x="258" y="236" fill="#5B6778">sign-in required everywhere</text>
+  <text x="258" y="262" fill="#8A95A6" font-size="12">Free (Test) · Standard (Prod)</text>
+
+  <!-- API -->
+  <rect x="530" y="150" width="200" height="130" rx="10" fill="#FFFFFF" stroke="#C9D0DB"/>
+  <rect x="530" y="150" width="6" height="130" rx="3" fill="#19A974"/>
+  <text x="548" y="178" font-weight="700" fill="#1C2430">API · Azure Functions</text>
+  <text x="548" y="200" fill="#5B6778">api/src (Node)</text>
+  <text x="548" y="218" fill="#5B6778">allow-list check</text>
+  <text x="548" y="236" fill="#5B6778">load / save records</text>
+  <text x="548" y="262" fill="#8A95A6" font-size="12">managed by the Static Web App</text>
+
+  <!-- Cosmos DB (cylinder) -->
+  <path d="M818 166 V264 A96 14 0 0 0 1010 264 V166" fill="#FFFFFF" stroke="#C9D0DB"/>
+  <ellipse cx="914" cy="166" rx="96" ry="14" fill="#FFFFFF" stroke="#C9D0DB"/>
+  <ellipse cx="914" cy="166" rx="96" ry="14" fill="none" stroke="#5B4BDB" stroke-width="2"/>
+  <text x="914" y="202" text-anchor="middle" font-weight="700" fill="#1C2430">Cosmos DB · serverless</text>
+  <text x="914" y="222" text-anchor="middle" fill="#5B6778">database eostracker</text>
+  <text x="914" y="240" text-anchor="middle" fill="#5B6778">containers: items,</text>
+  <text x="914" y="258" text-anchor="middle" fill="#5B6778">attachments</text>
+
+  <!-- GitHub -->
+  <rect x="240" y="18" width="200" height="66" rx="10" fill="#FFFFFF" stroke="#C9D0DB"/>
+  <rect x="240" y="18" width="6" height="66" rx="3" fill="#1C2430"/>
+  <text x="258" y="42" font-weight="700" fill="#1C2430">GitHub · eos-proto</text>
+  <text x="258" y="62" fill="#5B6778">Actions: main → Test</text>
+  <text x="258" y="78" fill="#5B6778">production → Prod</text>
+
+  <!-- Entra ID -->
+  <rect x="240" y="366" width="200" height="66" rx="10" fill="#FFFFFF" stroke="#C9D0DB"/>
+  <rect x="240" y="366" width="6" height="66" rx="3" fill="#1F8FD1"/>
+  <text x="258" y="390" font-weight="700" fill="#1C2430">Microsoft Entra ID</text>
+  <text x="258" y="410" fill="#5B6778">builtin (any Microsoft account)</text>
+  <text x="258" y="426" fill="#5B6778">or entra (your tenant only)</text>
+
+  <!-- arrows -->
+  <line x1="160" y1="214" x2="238" y2="214" stroke="#5B6778" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="199" y="196" text-anchor="middle" fill="#5B6778" font-size="11.5">HTTPS</text>
+  <text x="199" y="209" text-anchor="middle" fill="#5B6778" font-size="11.5">+ sign-in</text>
+
+  <line x1="440" y1="214" x2="528" y2="214" stroke="#5B6778" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="484" y="196" text-anchor="middle" fill="#5B6778" font-size="11.5">/api/*</text>
+  <text x="484" y="209" text-anchor="middle" fill="#5B6778" font-size="11.5">+ who you are</text>
+
+  <line x1="730" y1="214" x2="816" y2="214" stroke="#5B6778" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="773" y="196" text-anchor="middle" fill="#5B6778" font-size="11.5">connection</text>
+  <text x="773" y="209" text-anchor="middle" fill="#5B6778" font-size="11.5">string (key)</text>
+
+  <line x1="340" y1="84" x2="340" y2="148" stroke="#5B6778" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="350" y="103" fill="#5B6778" font-size="11.5">deploys on every push</text>
+
+  <line x1="340" y1="366" x2="340" y2="282" stroke="#5B6778" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="350" y="340" fill="#5B6778" font-size="11.5">sign-in</text>
+</svg>

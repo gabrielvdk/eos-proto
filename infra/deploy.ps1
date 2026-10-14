@@ -3,10 +3,12 @@
   Creates or updates one EOS Tracker environment in Azure (resource group + Static Web App + Cosmos DB).
   Needs the Azure CLI (az) and a signed-in session (az login). Optional: the GitHub CLI (gh) to store the deployment token.
 
+  Who may use the app defaults to *@hoogendoorn.com, *@letsgrow.com and gabrielvdk@gmail.com (-AllowedEmailDomains / -AllowedEmails).
+
 .EXAMPLE
-  ./infra/deploy.ps1 -Env test -AllowedEmailDomains letsgrow.com -SetGitHubSecrets
+  ./infra/deploy.ps1 -Env test -SetGitHubSecrets
 .EXAMPLE
-  ./infra/deploy.ps1 -Env prod -AllowedEmailDomains "*" -EntraTenantId <tenant> -EntraClientId <id> -EntraClientSecret <secret> -SetGitHubSecrets
+  ./infra/deploy.ps1 -Env prod -EntraTenantId <tenant> -EntraClientId <id> -EntraClientSecret <secret> -SetGitHubSecrets
 
   Re-running is safe. It rewrites the app settings, so pass the same parameters again (including the Entra secret for prod).
 #>
@@ -14,8 +16,8 @@ param(
   [Parameter(Mandatory = $true)][ValidateSet('test', 'prod')][string]$Env,
   [string]$Location = 'westeurope',
   [ValidateSet('', 'Free', 'Standard')][string]$Sku = '',
-  [string]$AllowedEmailDomains = '',
-  [string]$AllowedEmails = '',
+  [string]$AllowedEmailDomains = '*@hoogendoorn.com,*@letsgrow.com',
+  [string]$AllowedEmails = 'gabrielvdk@gmail.com',
   [ValidateSet('', 'org', 'sample')][string]$Seed = '',
   [string]$EntraTenantId = '',
   [string]$EntraClientId = '',

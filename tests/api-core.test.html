@@ -42,6 +42,13 @@ test("access: allowed domain, other domain, single e-mail, *",async()=>{
   eq(setup({ALLOWED_EMAILS:"x@evil.com"}).api.access(user("X@Evil.com")).ok,true,"single e-mail, any case");
   eq(setup({ALLOWED_EMAIL_DOMAINS:"*"}).api.access(user("x@evil.com")).ok,true,"*");
 });
+test("access: the default lists (domains as *@x, @x or x; one personal address)",async()=>{
+  const {api}=setup({ALLOWED_EMAIL_DOMAINS:"*@hoogendoorn.com, @letsgrow.com",ALLOWED_EMAILS:"gabrielvdk@gmail.com"});
+  eq(api.access(user("a@hoogendoorn.com")).ok,true,"*@domain");
+  eq(api.access(user("a@letsgrow.com")).ok,true,"@domain");
+  eq(api.access(user("GabrielVdK@gmail.com")).ok,true,"personal address");
+  eq(api.access(user("someone@gmail.com")).ok,false,"other gmail");
+});
 test("config: tells the app it runs on the API, with the user and access",async()=>{
   const {api}=setup();const r=(await api.config({principal:ana})).json;
   eq([r.app,r.backend,r.env,r.seed,r.user.email,r.user.name,r.access.ok],["eos-tracker","api","test","sample","ana.de.vries@letsgrow.com","Ana De Vries",true]);

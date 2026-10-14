@@ -57,7 +57,7 @@
       const domains=list(settings.ALLOWED_EMAIL_DOMAINS),emails=list(settings.ALLOWED_EMAILS);
       if(!domains.length&&!emails.length)
         return {ok:false,status:403,email,reason:"Access isn't configured yet: set ALLOWED_EMAIL_DOMAINS or ALLOWED_EMAILS in the app settings."};
-      const ok=domains.includes("*")||emails.includes(email)||domains.some(d=>email.endsWith("@"+d.replace(/^@/,"")));
+      const ok=domains.includes("*")||emails.includes(email)||domains.some(d=>email.endsWith("@"+d.replace(/^\*?@/,""))); // "letsgrow.com", "@letsgrow.com" and "*@letsgrow.com" all work
       return ok?{ok:true,status:200,email}:{ok:false,status:403,email,reason:`${email||"This account"} has no access to EOS Tracker.`};
     }
     const deny=a=>reply(a.status,{error:a.reason});

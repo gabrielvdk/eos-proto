@@ -8,16 +8,7 @@ How EOS Tracker runs on Azure, how the environments fit together, and how to cre
 
 ## 1. Architecture
 
-```mermaid
-flowchart LR
-  user([Browser]) -- "HTTPS + Microsoft sign-in" --> swa
-  subgraph azure [Azure · one resource group per environment]
-    swa["Static Web App<br/>index.html + sign-in (/.auth)"] -- "/api/*<br/>with the signed-in user" --> fn["API · Azure Functions<br/>api/src (managed by the Static Web App)"]
-    fn -- "connection string<br/>(app setting)" --> cosmos[("Cosmos DB · serverless<br/>database eostracker<br/>containers items, attachments")]
-  end
-  gh["GitHub · gabrielvdk/eos-proto"] -- "GitHub Actions on push<br/>main → Test, production → Prod" --> swa
-  entra["Microsoft Entra ID"] -. "sign-in" .- swa
-```
+![EOS Tracker on Azure: the browser talks to the Static Web App (page + sign-in), which passes /api calls to the API (Azure Functions), which stores data in Cosmos DB. GitHub deploys on every push; Entra ID handles sign-in.](architecture.svg)
 
 | Part | What it does | Where in the repo |
 |---|---|---|
@@ -27,6 +18,24 @@ flowchart LR
 | **Sign-in** | Static Web Apps' built-in Microsoft sign-in. *Built-in* mode needs no keys; *Entra* mode locks it to your own tenant | §6 |
 | **Deployment** | GitHub Actions workflow: copies `index.html` and the config into `dist/`, builds `api/`, uploads to the Static Web App | `.github/workflows/azure-deploy.yml` |
 | **Infrastructure as code** | Bicep template for one environment, plus a PowerShell script that runs it | `infra/main.bicep`, `infra/deploy.ps1` |
+
+### Cosmos DB: account, database, containers
+
+Cosmos DB has three levels:
+- **Account:** the Azure resource, e.g. `eostracker-test-ab12cd`.
+- **Database:** `eostracker`.
+- **Containers:** each holds JSON documents, comparable to tables. EOS Tracker uses two:
+
+| Container | Holds | Partition key |
+|---|---|---|
+| `items` | every record as its own JSON document: one per person, unit (company, department, team, forum), goal, rock (milestones included) and card, plus one `meta` document with the data version | `/type` (`people`, `units`, `goals`, `rocks`, `cards`, `meta`) |
+| `attachments` | pasted images, one document per image (named after its SHA-256 hash, so the same image is stored once) | `/id` |
+
+**How the API can create them.** The API connects with the account's **connection string** (app setting `COSMOS_CONNECTION_STRING`). That string contains the account's primary key, which gives full control over that one Cosmos DB account. That's enough to create the database and containers on first use (`createIfNotExists`); no Azure role or extra permission is involved. Two consequences:
+- **Treat the connection string as a password.** It lives only in the Static Web App's app settings, never in the repo.
+- **If it ever leaks,** regenerate the key (*Cosmos DB → Keys → Regenerate*) and update the app setting.
+
+When `infra/main.bicep` is used, the database and containers already exist, and the API's create step does nothing. Managed identities, which would avoid keys, aren't available for the API that Static Web Apps manages for you.
 
 ### How the page finds its backend
 
@@ -100,18 +109,32 @@ Set on each Static Web App (*Settings → Environment variables*, "Production" e
 | `COSMOS_CONNECTION_STRING` | `AccountEndpoint=https://…;AccountKey=…;` | Cosmos DB account → *Settings → Keys → Primary connection string* |
 | `COSMOS_DATABASE` | `eostracker` | database name (created if missing) |
 | `APP_ENV` | `test` / `prod` | shown as a tag in the app (`prod` shows none) |
-| `SEED` | `sample` / `org` | what an **empty** database starts with |
-| `ALLOWED_EMAIL_DOMAINS` | `letsgrow.com` | who may use the app (comma-separated). `*` = everyone who can sign in; only use `*` with tenant-locked sign-in. **Empty = nobody** |
-| `ALLOWED_EMAILS` | `someone@partner.com` | extra individual addresses |
+| `SEED` | `sample` / `org` | what an **empty** database starts with (see below) |
+| `ALLOWED_EMAIL_DOMAINS` | `*@hoogendoorn.com,*@letsgrow.com` | who may use the app, comma-separated; `*@letsgrow.com`, `@letsgrow.com` and `letsgrow.com` all mean the same. `*` alone = everyone who can sign in (only use it with tenant-locked sign-in). **Empty = nobody** |
+| `ALLOWED_EMAILS` | `gabrielvdk@gmail.com` | extra individual addresses |
 | `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | | only for tenant-locked sign-in (§6) |
 
-GitHub (*Settings → Environments → `test` / `prod`*):
+The defaults in `infra/main.bicep` and `infra/deploy.ps1` are `*@hoogendoorn.com,*@letsgrow.com` and `gabrielvdk@gmail.com`. You can change them later in the portal (*Static Web App → Settings → Environment variables*); that takes effect immediately, without a deploy.
+
+**`SEED`: sample or org.** This only matters once: the very first time the app opens on an **empty** database. After that the setting is ignored.
+- `sample`: the organisation plus fictional goals, rocks, Level 10 cards and ten fictional people, the same as the local demo. It's useful on Test to have something to click through.
+- `org`: only the organisation structure (Hoogendoorn, the departments and teams, Business Review). There are no goals, rocks, cards or fictional people; people appear as they sign in. Use this on Prod.
+
+To start an environment over, delete its documents in *Data Explorer*; the next visit seeds again.
+
+GitHub (*repo → Settings → Environments → `test` / `prod`*):
 
 | Kind | Name | Value |
 |---|---|---|
 | secret | `AZURE_STATIC_WEB_APPS_API_TOKEN` | the Static Web App's deployment token |
-| variable | `AUTH_MODE` | `builtin` (default) or `entra` |
+| variable | `AUTH_MODE` | `builtin` (default when not set) or `entra` |
 | variable | `ENTRA_TENANT_ID` | your tenant ID (only for `entra`) |
+
+**`AUTH_MODE` lives in GitHub, not in Azure.** It's a variable of the GitHub *environment* (so Test and Prod can differ). The deploy workflow reads it when it builds the site:
+- `builtin` (or not set): it uploads `azure/staticwebapp.config.json` as is.
+- `entra`: it first adds the tenant-locked sign-in, using `ENTRA_TENANT_ID`.
+
+To change it, set the variable, then push, or run the workflow by hand (*Actions → Deploy to Azure → Run workflow*). `deploy.ps1 -SetGitHubSecrets` sets it for you.
 
 Repository variable (*Settings → Secrets and variables → Actions → Variables*): `AZURE_DEPLOY` = `true`. Until this is set, the workflow is skipped, so pushes before Azure exists don't fail.
 
@@ -121,20 +144,29 @@ Repository variable (*Settings → Secrets and variables → Actions → Variabl
 
 Do this once for **test**, then repeat it for **prod**. Each environment gets its own resource group, Static Web App and Cosmos DB account, so they're fully separate.
 
+**Bicep or by hand?** Both end in the same result; pick one.
+- **Option A, the script (Bicep):** a one-off command per environment, about five minutes, and the same every time. Run it again only when the infrastructure itself changes (a new setting or resource). Code changes never need it; those deploy by `git push`.
+- **Option B, the portal:** everything done by hand with the web interface, no tools needed. That's fine for two environments.
+- You can mix them: create Test by hand to learn the pieces, then Prod with the script.
+
 ### Option A: Azure CLI + Bicep (recommended)
 
-Prerequisites: the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`winget install Microsoft.AzureCLI`), with rights to create resource groups in the subscription. Optionally the [GitHub CLI](https://cli.github.com/) (`winget install GitHub.cli`, then `gh auth login`) so the script can store the deployment token in GitHub for you.
+You need the Azure CLI and rights to create resource groups in the subscription. There are two ways to run it:
+- **Azure Cloud Shell, nothing to install.** In the Azure portal, click the `>_` icon in the top bar and choose **PowerShell**. It already has the Azure CLI and Bicep and is signed in as you. Get the code with `git clone https://github.com/gabrielvdk/eos-proto; cd eos-proto` (after the latest commit is pushed), then run the commands below without the `az login` line. To store the deployment token in GitHub from there, run `gh auth login` first, or leave out `-SetGitHubSecrets` and copy the token by hand.
+- **Your own PC.** Install the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`winget install Microsoft.AzureCLI`; it installs Bicep automatically on first use). Optionally install the [GitHub CLI](https://cli.github.com/) (`winget install GitHub.cli`, then `gh auth login`) so the script can store the deployment token in GitHub. Then run, from the repo folder:
 
 ```powershell
 az login
 az account set --subscription "<subscription name or id>"
 
-# Test: Free plan, sample data, built-in Microsoft sign-in, only letsgrow.com addresses
-./infra/deploy.ps1 -Env test -AllowedEmailDomains letsgrow.com -SetGitHubSecrets
+# Test: Free plan, sample data, built-in Microsoft sign-in
+./infra/deploy.ps1 -Env test -SetGitHubSecrets
 
 # Prod: Standard plan, organisation only. Built-in sign-in until the Entra app registration exists (§6)
-./infra/deploy.ps1 -Env prod -AllowedEmailDomains letsgrow.com -SetGitHubSecrets
+./infra/deploy.ps1 -Env prod -SetGitHubSecrets
 ```
+
+Access defaults to `*@hoogendoorn.com,*@letsgrow.com` plus `gabrielvdk@gmail.com`. Override with `-AllowedEmailDomains` / `-AllowedEmails`.
 
 The script creates the resource group and deploys `infra/main.bicep`. That creates the Cosmos DB account, the database, both containers and the Static Web App, and sets all app settings. It then prints the site URL and the sign-in redirect URI. With `-SetGitHubSecrets` it also stores the deployment token and the variables in GitHub; without it, it prints what to set by hand (§4).
 
@@ -149,8 +181,7 @@ Without the script, the same thing in plain Azure CLI:
 
 ```powershell
 az group create --name rg-eostracker-test --location westeurope
-az deployment group create --resource-group rg-eostracker-test --template-file infra/main.bicep `
-  --parameters env=test allowedEmailDomains=letsgrow.com
+az deployment group create --resource-group rg-eostracker-test --template-file infra/main.bicep --parameters env=test
 az staticwebapp secrets list --name eostracker-test --query properties.apiKey --output tsv   # deployment token for GitHub
 ```
 
@@ -173,7 +204,13 @@ Re-running the deployment is safe. It rewrites the app settings, so pass the sam
 - Deployment source: **Other**. GitHub Actions in this repo deploys with a token; don't let Azure create a workflow.
 - Region for the API: **West Europe**. *Review + create*.
 
-**4. App settings.** In the Static Web App: *Settings → Environment variables → Production → Add* each setting from §4: `COSMOS_CONNECTION_STRING`, `COSMOS_DATABASE` = `eostracker`, `APP_ENV` = `test`, `SEED` = `sample`, `ALLOWED_EMAIL_DOMAINS` = `letsgrow.com`. *Apply*.
+**4. App settings.** In the Static Web App: *Settings → Environment variables → Production → Add* each setting from §4, then *Apply*:
+- `COSMOS_CONNECTION_STRING` = the string from step 2
+- `COSMOS_DATABASE` = `eostracker`
+- `APP_ENV` = `test`
+- `SEED` = `sample`
+- `ALLOWED_EMAIL_DOMAINS` = `*@hoogendoorn.com,*@letsgrow.com`
+- `ALLOWED_EMAILS` = `gabrielvdk@gmail.com`
 
 **5. Deployment token.** In the Static Web App: *Overview → Manage deployment token* → copy.
 
@@ -207,13 +244,19 @@ There are two modes, chosen per environment with the GitHub variable `AUTH_MODE`
 2. Copy the **Application (client) ID** and the **Directory (tenant) ID** from *Overview*.
 3. *Certificates & secrets → New client secret* → copy the **Value**. Note when it expires and renew it before then (step 5 again).
 4. *Authentication* → tick **ID tokens** (under *Implicit grant and hybrid flows*) → Save.
-5. In the Static Web App (Standard plan): *Environment variables* → add `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET`. With the CLI: `./infra/deploy.ps1 -Env prod -AllowedEmailDomains "*" -EntraTenantId <tenant> -EntraClientId <id> -EntraClientSecret <secret> -SetGitHubSecrets`.
+5. In the Static Web App (Standard plan): *Environment variables* → add `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET`. With the CLI: `./infra/deploy.ps1 -Env prod -EntraTenantId <tenant> -EntraClientId <id> -EntraClientSecret <secret> -SetGitHubSecrets`.
 6. In GitHub environment `prod`: `AUTH_MODE` = `entra`, `ENTRA_TENANT_ID` = the tenant ID.
 7. Push to `production`. The workflow adds the tenant-locked sign-in to `staticwebapp.config.json`.
 
 You can now set `ALLOWED_EMAIL_DOMAINS` to `*` (everyone in the tenant), or keep a domain list. To allow only named people: *Enterprise applications → EOS Tracker → Properties → Assignment required = Yes*, then add them under *Users and groups*.
 
-People are matched on their e-mail address, so switching from `builtin` to `entra` keeps everyone's history and ownership.
+### Starting with `builtin`, switching to `entra` later
+
+That's the intended path: run Prod on `builtin` (with the allow-list) until IT has done steps 1–4, then switch.
+- **Nothing in the data changes.** People are matched on their e-mail address, not on a sign-in ID, so everyone keeps their history, owned rocks and cards.
+- **No code change.** Do steps 5–7 above. Afterwards everyone signs in once more, and only accounts from your tenant can get in.
+- **Plan.** `entra` needs the Standard plan, which Prod already has. On Test (Free plan) keep `builtin`, or upgrade it (*Static Web App → Hosting plan*) if you want to test the switch first.
+- **Personal addresses** such as `gabrielvdk@gmail.com` can't sign in under `entra`; they aren't in your tenant. If you still need one, have IT invite it as a guest in Entra. A guest may sign in with a different e-mail form, so check the name top right after the first sign-in and adjust `ALLOWED_EMAILS` if needed.
 
 ---
 
@@ -223,7 +266,7 @@ People are matched on their e-mail address, so switching from `builtin` to `entr
 - **Backups.** Cosmos DB takes periodic backups by default (every 4 hours, two kept). For longer or point-in-time restore, switch the account to continuous backup (*Settings → Backup & Restore*). You can always export documents from *Data Explorer*.
 - **Custom domain.** In the Static Web App: *Settings → Custom domains*. With `entra`, add the new `…/.auth/login/aad/callback` redirect URI to the app registration.
 - **Who has access.** Change `ALLOWED_EMAIL_DOMAINS` / `ALLOWED_EMAILS` in the app settings. It takes effect immediately, without a deploy.
-- **Start over (Test).** Delete the documents (or the `eostracker` database) in Data Explorer. The next visit starts fresh with `SEED` data.
+- **Start over (Test).** Delete the documents in Data Explorer. The next visit starts fresh with `SEED` data.
 
 ### Troubleshooting
 

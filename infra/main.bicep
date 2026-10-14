@@ -15,11 +15,11 @@ param location string = 'westeurope'
 @allowed(['Free', 'Standard'])
 param sku string = env == 'prod' ? 'Standard' : 'Free'
 
-@description('E-mail domains that may use the app, comma-separated (e.g. "letsgrow.com"). "*" = everyone who can sign in (only with tenant-locked sign-in).')
-param allowedEmailDomains string = ''
+@description('E-mail domains that may use the app, comma-separated ("letsgrow.com" or "*@letsgrow.com"). "*" = everyone who can sign in (only with tenant-locked sign-in).')
+param allowedEmailDomains string = '*@hoogendoorn.com,*@letsgrow.com'
 
 @description('Individual e-mail addresses that may use the app, comma-separated.')
-param allowedEmails string = ''
+param allowedEmails string = 'gabrielvdk@gmail.com'
 
 @description('What an empty database starts with: "org" = the organisation structure only, "sample" = also fictional goals, rocks and people.')
 @allowed(['org', 'sample'])
