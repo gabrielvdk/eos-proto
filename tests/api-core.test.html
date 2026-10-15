@@ -180,6 +180,41 @@ test("organisation: membership is managed in your own units and below",async()=>
   eq(w(["C"],x,null),false,"people are created at sign-in, not by members");
   eq(w(["C"],null,x),false,"… nor deleted by them");
 });
+const DT={id:"P",kind:"forum",name:"DT Team",private:true,includeTracked:false,includeEscalated:false};
+test("private meetings: only their direct members, not directors, not admins",async()=>{
+  const R=createRights({units:[...UNITS,DT],people:[],adminEmails:["boss@x.com"]});
+  const dir={unitIds:["C"]},mem={unitIds:["P"]},br={unitIds:["F"]},admin={email:"boss@x.com",unitIds:[]};
+  eq([R.hasRights(dir,"P"),R.hasRights(admin,"P"),R.hasRights(mem,"P")],[false,false,true],"rights");
+  eq([R.canSeeBoard(dir,"P"),R.canSeeBoard(admin,"P"),R.canSeeBoard(mem,"P")],[false,false,true],"board");
+  const rock={id:"r",unitId:"P",status:"escalate",trackIn:["F"]};
+  eq([R.canSeeRock(dir,rock),R.canSeeRock(br,rock),R.canSeeRock(admin,rock),R.canSeeRock(mem,rock)],[false,false,false,true],"rocks: not even escalated or tracked ones show elsewhere");
+  eq([R.writeAllowed(admin,"rocks",null,{id:"x",unitId:"P"}),R.writeAllowed(mem,"rocks",null,{id:"x",unitId:"P"})],[false,true],"writing rocks");
+  eq([R.writeAllowed(admin,"cards",{id:"c",unitId:"P"},null),R.writeAllowed(mem,"cards",{id:"c",unitId:"P"},null)],[false,true],"deleting cards");
+  eq([R.branch(dir).includes("P"),R.branch(admin).includes("P"),R.branch(mem).includes("P")],[false,false,true],"team filter");
+  eq([R.writeAllowed(dir,"units",DT,{...DT,name:"X"}),R.writeAllowed(dir,"units",DT,{...DT,private:false}),R.writeAllowed(dir,"units",DT,null)],[false,false,false],"a director can't rename, un-private or delete it");
+  eq([R.writeAllowed(admin,"units",DT,{...DT,private:false}),R.writeAllowed(mem,"units",DT,{...DT,private:false})],[false,true],"… nor an admin; members can");
+  const x={id:"x",name:"X",email:"x@a.com",unitIds:["T1"]};
+  eq([R.writeAllowed(dir,"people",x,{...x,unitIds:["T1","P"]}),R.writeAllowed(mem,"people",x,{...x,unitIds:["T1","P"]})],[false,true],"members add members; directors can't");
+  eq(R.writeAllowed(admin,"people",{...admin,id:"a",name:"A"},{...admin,id:"a",name:"A",unitIds:["P"]}),true,"break-glass: an admin can add themselves");
+});
+test("server: rocks are only sent where you have rights; private meeting content only to its members",async()=>{
+  const {api}=setup();await tree(api);await asAna(api,"units",DT);
+  const dir=user("dir@letsgrow.com"),dave=user("dave@letsgrow.com"),erin=user("erin@letsgrow.com");
+  await assign(api,bob,["P"]);await assign(api,dir,["C"]);await assign(api,dave,["T1"]);await assign(api,erin,["F"]);
+  const put=(p,rec)=>api.putItem({principal:p,params:{collection:"rocks",id:rec.id},body:{record:rec}}).then(r=>r.status);
+  eq(await put(ana,{id:"rP",unitId:"P",status:"escalate"}),403,"an admin can't put a rock in the DT Team");
+  eq(await put(bob,{id:"rP",unitId:"P",status:"escalate"}),200,"its member can");
+  await asAna(api,"rocks",{id:"r1",unitId:"T1"});await asAna(api,"rocks",{id:"r2",unitId:"T2",status:"escalate"});await asAna(api,"rocks",{id:"r3",unitId:"T3"});
+  await api.putItem({principal:bob,params:{collection:"cards",id:"cP"},body:{record:{id:"cP",unitId:"P"}}});
+  const rocks=async p=>(await api.data({principal:p})).json.rocks.map(r=>r.id).sort();
+  eq(await rocks(bob),["rP"],"DT member: the DT rock (and nothing else here)");
+  eq(await rocks(dir),["r1","r2","r3"],"director: every team, not the DT Team");
+  eq(await rocks(ana),["r1","r2","r3"],"admin: every team, not the DT Team");
+  eq(await rocks(dave),["r1"],"team member: own team only");
+  eq(await rocks(erin),["r2"],"Business Review member: the escalated rock, never the escalated DT rock");
+  eq((await api.data({principal:dir})).json.cards.map(c=>c.id),[],"the DT board isn't sent to the director");
+  eq((await api.data({principal:bob})).json.cards.map(c=>c.id),["cP"],"… only to its member");
+});
 test("server: a team member onboards a newcomer, into their own team only",async()=>{
   const {api}=setup();await tree(api);await assign(api,bob,["T1"]);
   const carol=user("carol@letsgrow.com");eq((await api.data({principal:carol})).json.waiting,true,"carol waits");

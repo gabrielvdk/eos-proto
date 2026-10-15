@@ -59,12 +59,16 @@
    Who may see and change what. The tree: company → departments → teams; meetings (forums) and teams without a department
    hang under the company. Rights flow down, never up: belonging to a unit gives rights on it and on everything below it
    (a director in the company has rights everywhere; a team member has none on the department above). Admins: everything,
-   even without any unit, and only admins grant the admin flag. Everyone assigned sees everything in the organisation.
+   even without any unit, and only admins grant the admin flag. Everyone assigned sees the whole organisation
+   and all goals; rocks and Level 10 boards only where they have rights.
    - goals, rocks, cards: change them in units you have rights on. Goals live on any unit; rocks and Level 10 boards only
      on teams and meetings ("team level"). A meeting's members also fully edit the rocks the meeting shows.
    - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
    - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
-     its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it. */
+     its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it.
+   - private meetings (unit.private, e.g. the DT Team): only their direct members see and change their rocks and board.
+     Rights don't flow into them, not even for admins; their rocks never show up in other meetings; only members rename,
+     delete or un-private them. Admins can still add themselves as a member (break-glass, visible to everyone). */
 function createRights({units,people,adminEmails}){
   const byId=new Map(units.map(u=>[u.id,u]));
   const company=units.find(u=>u.kind==="company");
@@ -75,45 +79,57 @@ function createRights({units,people,adminEmails}){
   const admins=(adminEmails||[]).map(e=>String(e).toLowerCase());
   const isAdmin=p=>!!p&&(p.admin===true||admins.includes(String(p.email||"").toLowerCase()));
   const memberOf=p=>(p&&p.unitIds)||[];
+  const isMember=(p,unitId)=>memberOf(p).includes(unitId); // directly, not through a unit above
+  const isPrivate=unitId=>byId.get(unitId)?.private===true;
   const role=p=>isAdmin(p)?"admin":memberOf(p).length?"member":"pending";
-  const hasRights=(p,unitId)=>isAdmin(p)||memberOf(p).some(m=>m===unitId||(above.get(unitId)||[]).includes(m));
-  const inForum=(f,r)=>r.unitId===f.id||(f.includeTracked&&(r.trackIn||[]).includes(f.id))||(f.includeEscalated&&r.status==="escalate");
+  const hasRights=(p,unitId)=>isPrivate(unitId)?isMember(p,unitId)
+    :isAdmin(p)||memberOf(p).some(m=>m===unitId||(above.get(unitId)||[]).includes(m));
+  const canSeeContent=(p,unitId)=>!isPrivate(unitId)||isMember(p,unitId); // a private meeting's rocks and cards: members only
+  // the rocks a meeting shows: its own, and (if its rules say so) tracked or escalated ones, never a private meeting's
+  const inForum=(f,r)=>r.unitId===f.id||(!isPrivate(r.unitId)&&((f.includeTracked&&(r.trackIn||[]).includes(f.id))||(f.includeEscalated&&r.status==="escalate")));
   // rocks: your units' rocks, plus every rock a meeting you're in shows (its members fully edit those)
   const canEditRock=(p,r)=>hasRights(p,r.unitId)||units.some(f=>f.kind==="forum"&&inForum(f,r)&&hasRights(p,f.id));
   const teamLevel=id=>{const u=byId.get(id);return !!u&&(u.kind==="team"||u.kind==="forum")}; // where rocks and boards live
   const canEdit={goals:(p,g)=>hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
-  // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins
-  const canManageUnit=(p,u)=>isAdmin(p)||(u.kind!=="company"&&!!parentOf(u)&&hasRights(p,parentOf(u).id));
+  // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins;
+  // a private meeting only by its own members
+  const canManageUnit=(p,u)=>u.private===true||isPrivate(u.id)?isMember(p,u.id)
+    :isAdmin(p)||(u.kind!=="company"&&!!parentOf(u)&&hasRights(p,parentOf(u).id));
+  const canManageMembers=(p,unitId)=>hasRights(p,unitId)||isAdmin(p); // admins may always add themselves (break-glass)
   // a record's fields apart from some keys (and _etag etc.), to check that nothing else changed
   const fieldsBut=(x,skip)=>JSON.stringify(Object.keys(x||{}).filter(k=>!skip.includes(k)&&k[0]!=="_").sort().map(k=>[k,x[k]]));
   return {
-    isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,
+    isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,canManageMembers,isMember,isPrivate,canSeeContent,inForum,
+    canSeeRock:canEditRock, // rocks: you see exactly the ones you can change (your teams and below, plus what your meetings show)
     canEditGoal:canEdit.goals,
     canEditCard:canEdit.cards,
     canSeeBoard:(p,unitId)=>teamLevel(unitId)&&hasRights(p,unitId), // Level 10: the team and meeting boards of your units and below
-    canManageMembers:hasRights, // add / remove people in this unit
-    // the team filter: the company, your units, the units above them and the units below them
+    // the team filter: the company, your units, the units above them and the units below them (private meetings: members only)
     branch(p){
-      if(isAdmin(p))return units.map(u=>u.id);
-      const mine=memberOf(p),ids=new Set(company?[company.id]:[]);
+      const ids=new Set(company?[company.id]:[]);
+      if(isAdmin(p))units.forEach(u=>ids.add(u.id));
+      const mine=memberOf(p);
       for(const m of mine){ids.add(m);(above.get(m)||[]).forEach(id=>ids.add(id))}
       for(const u of units)if((above.get(u.id)||[]).some(id=>mine.includes(id)))ids.add(u.id);
-      return units.map(u=>u.id).filter(id=>ids.has(id));
+      return units.map(u=>u.id).filter(id=>ids.has(id)&&canSeeContent(p,id));
     },
     // may p replace `before` with `after` in a collection (before = null: create, after = null: delete)? Checked on every write.
     writeAllowed(p,collection,before,after){
       if(role(p)==="pending")return false;
       if((collection==="rocks"||collection==="cards")&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
+      if((collection==="rocks"||collection==="cards")&&[before,after].some(x=>x&&!canSeeContent(p,x.unitId)))return false; // private: admins too
+      if(collection==="units"&&before&&before.private===true&&!isMember(p,before.id))return false; // only members change a private meeting, admins too
       if(isAdmin(p)||collection==="meta")return true;
       if(collection==="units"){ // structure: rights on the unit above, before and after (moving a team needs both departments)
         if(!before&&!after)return false;
         if(after&&(after.kind==="company"||(before&&before.kind!==after.kind)))return false;
+        if(!before&&after.private===true)return !!parentOf(after)&&hasRights(p,parentOf(after).id); // creating a private meeting
         return (!before||canManageUnit(p,before))&&(!after||canManageUnit(p,after));
       }
       if(collection==="people"){ // membership only: nothing else of a person changes, and every unit added or removed is yours
         if(!before||!after||fieldsBut(before,["unitIds"])!==fieldsBut(after,["unitIds"]))return false; // people are created at sign-in
         const was=memberOf(before),now=memberOf(after);
-        return [...now.filter(id=>!was.includes(id)),...was.filter(id=>!now.includes(id))].every(id=>hasRights(p,id));
+        return [...now.filter(id=>!was.includes(id)),...was.filter(id=>!now.includes(id))].every(id=>canManageMembers(p,id));
       }
       const can=canEdit[collection];if(!can)return false;
       if(before&&!can(p,before))return false;
@@ -203,6 +219,7 @@ function createRights({units,people,adminEmails}){
         const rights=createRights({units:out.units,people:out.people,adminEmails}),role=rights.role(me);
         if(role==="pending")return reply(200,{waiting:true,role,meId:me.id,me:{name:me.name,email:a.email}}); // nothing else until assigned
         out.cards=out.cards.filter(c=>rights.canSeeBoard(me,c.unitId)); // Level 10 boards only where you have rights
+        out.rocks=out.rocks.filter(r=>rights.canSeeRock(me,r)); // only the rocks you may change: your teams and below, your meetings
         return reply(200,{...out,meId:me.id,role,adminEmails});
       },
       async putItem({principal,params,body}){

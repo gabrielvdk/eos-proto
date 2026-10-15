@@ -387,7 +387,12 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 /* level 10: agenda + kanban board */
 .l10{display:grid;grid-template-columns:250px minmax(0,1fr);gap:16px;align-items:start}
 @media (max-width:980px){.l10{grid-template-columns:1fr}}
-.agenda{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 10px 8px;position:sticky;top:76px}
+.agenda{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 10px 8px}
+.l10side{display:grid;gap:12px;align-content:start;position:sticky;top:76px}
+.boardpeople .plist{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:2px}
+.boardpeople .plist li{display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:13px}
+.boardpeople .plist .avatar{width:22px;height:22px;font-size:10px}
+.boardpeople .who{margin:6px 6px 4px;font-size:12px;color:var(--ink-3)}
 .agh{display:flex;align-items:baseline;justify-content:space-between;padding:0 6px 6px;border-bottom:1px solid var(--line)}
 .agh h2{margin:0;font-size:14px;font-weight:700}
 .agenda ol{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:1px}
@@ -620,10 +625,11 @@ function seedOrg(){
     ["Finance",["Legal","Accounting","Business Strategy"]],
     ["HR",[]],
   ].forEach(([name,teams])=>{const dep=add("department",name);teams.forEach(t=>add("team",t,dep.id))});
+  add("forum","DT Team",null,{includeTracked:false,includeEscalated:false,private:true}); // the directors (DT): private, members only
   add("forum","Business Review",null,{includeTracked:true,includeEscalated:true}); // every 4 weeks, team leaders
   return units;
 }
-/* The sample: the real organisation plus two management teams and a Leadership Team meeting, and test personas.
+/* The sample: the real organisation plus two management teams, and test personas.
    Pick a persona under "You" (top right, local mode) to see what that role can see and do; every persona's teams have goals,
    rocks and a filled Level 10 board. The colleagues own rocks and to-dos. */
 function seed(){
@@ -634,13 +640,12 @@ function seed(){
   };
   add("team","Sales MT",U("Sales"));
   add("team","Product & Technology MT",U("Product & Technology"));
-  add("forum","Leadership Team",null,{includeTracked:false,includeEscalated:false}); // the directors' weekly meeting
   const P=(id,name,color,teams,admin)=>({id,name,color,unitIds:teams.map(U),...(admin?{admin:true}:{})});
   const people=[
     // personas
-    P("p1","Director","#5B4BDB",["Hoogendoorn","Leadership Team"]),
-    P("p2","Head of Sales","#1F8FD1",["Sales","Leadership Team","Business Review"]),
-    P("p3","Head of Product & Technology","#0E7A5A",["Product & Technology","Leadership Team","Business Review"]),
+    P("p1","Director","#5B4BDB",["Hoogendoorn","DT Team"]), // the only DT Team member: nobody else sees its rocks and board
+    P("p2","Head of Sales","#1F8FD1",["Sales","Sales MT","Business Review"]),
+    P("p3","Head of Product & Technology","#0E7A5A",["Product & Technology","Product & Technology MT","Business Review"]),
     P("p4","Direct Sales member","#19A974",["Direct Sales"]),
     P("p5","Project Sales member","#E29A1C",["Project Sales"]),
     P("p6","Ops team lead","#D93B4F",["LG Service Desk","Business Review"]),
@@ -655,7 +660,6 @@ function seed(){
     P("c7","Ravi Patel","#0E7A5A",["Data Science"]),P("c8","Mila de Boer","#E29A1C",["Data Science"]),
     P("c9","Daan de Wit","#E29A1C",["Research"]),P("c10","Iris Kok","#5B4BDB",["Research"]),
     P("c11","Mara Visser","#C2185B",["Sales MT"]),P("c12","Pieter van Dijk","#5D4037",["Product & Technology MT"]),
-    P("c13","Femke Bos","#1F8FD1",["Leadership Team"]),
   ];
   const G=(id,unit,title,parentId,description,deliverables)=>({id,unitId:U(unit),year:DEMO_YEAR,title,parentId,description,deliverables,
     history:[{at:d(1,19),who:"p2",text:"Deliverables updated"},{at:d(1,12),who:"p1",text:"Created"}]});
@@ -683,10 +687,10 @@ function seed(){
     ({id,unitId:U(unit),quarter,title,ownerId,status,goalId,description,deliverables,milestones,updates});
   const Q="Q4 2026";
   const rocks=[
-    // Leadership Team
-    R("r1","Leadership Team",Q,"Annual plan 2027","p1","on_track","g1","Agree the 2027 one-year plan and budget with all departments.","Plan • Budget • Department goals",
+    // DT Team (private: the Director only)
+    R("r1","DT Team",Q,"Annual plan 2027","p1","on_track","g1","Agree the 2027 one-year plan and budget with all departments.","Plan • Budget • Department goals",
       [M("Draft company goals",true,d(10,2)),M("Department goals in",false,d(10,30)),M("Budget agreed",false,d(11,27)),M("Plan published",false,d(12,11))],[W(10,9,"Company goals drafted, departments are working on theirs.")]),
-    R("r2","Leadership Team",Q,"Engagement survey and offsite","c13","on_track","g3","Run the survey and the autumn offsite, publish the follow-ups.","Survey results • 3 actions agreed",
+    R("r2","DT Team",Q,"Engagement survey and offsite","p1","on_track","g3","Run the survey and the autumn offsite, publish the follow-ups.","Survey results • 3 actions agreed",
       [M("Send survey",true,d(10,10)),M("Offsite",false,d(10,24)),M("Share results and actions",false,d(11,7))]),
     // Sales MT
     R("r3","Sales MT","Q3 2026","Packages and pricing","p2","done","g4","Three standard packages with price bands per market.","Package sheet • Price bands",
@@ -752,10 +756,10 @@ function seedCards(U){
   const C=(unit,column,title,description,owners,day,by,updates=[])=>({id:uid(),unitId:U(unit),column,title,description,owners,createdBy:by,createdAt:d(10,day),
     updates:updates.map(([dd,text])=>({at:d(10,dd),who:owners[0]||by,text})),history:[{at:d(10,day),who:by,text:"Created"}]});
   return [
-    C("Leadership Team","ids","Office move: one floor or two?","The landlord offers a second floor from March.",[],8,"p1"),
-    C("Leadership Team","ids","Rock to Discuss: Annual plan 2027 – budget envelope per department","",[],12,"p2"),
-    C("Leadership Team","todo","Share the 2027 planning calendar","",["p1"],6,"p1"),
-    C("Leadership Team","done","Confirm offsite venue","",["c13"],2,"c13"),
+    C("DT Team","ids","Office move: one floor or two?","The landlord offers a second floor from March.",[],8,"p1"),
+    C("DT Team","ids","Rock to Discuss: Annual plan 2027 – budget envelope per department","",[],12,"p1"),
+    C("DT Team","todo","Share the 2027 planning calendar","",["p1"],6,"p1"),
+    C("DT Team","done","Confirm offsite venue","",["p1"],2,"p1"),
     C("Business Review","ids","Rock to Discuss: Sign DACH partner – exclusivity for Austria?","The preferred partner wants exclusivity; without it we may lose them.",[],8,"p2"),
     C("Business Review","ids","Rock to Discuss: Customer journey map – who owns the friction list?","",[],9,"p6"),
     C("Business Review","todo","Decide on DACH exclusivity","",["p2"],9,"p2",[[12,"Options paper drafted."]]),
@@ -1167,12 +1171,16 @@ const defaultUnitId=kind=>{
    Who may see and change what. The tree: company → departments → teams; meetings (forums) and teams without a department
    hang under the company. Rights flow down, never up: belonging to a unit gives rights on it and on everything below it
    (a director in the company has rights everywhere; a team member has none on the department above). Admins: everything,
-   even without any unit, and only admins grant the admin flag. Everyone assigned sees everything in the organisation.
+   even without any unit, and only admins grant the admin flag. Everyone assigned sees the whole organisation
+   and all goals; rocks and Level 10 boards only where they have rights.
    - goals, rocks, cards: change them in units you have rights on. Goals live on any unit; rocks and Level 10 boards only
      on teams and meetings ("team level"). A meeting's members also fully edit the rocks the meeting shows.
    - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
    - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
-     its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it. */
+     its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it.
+   - private meetings (unit.private, e.g. the DT Team): only their direct members see and change their rocks and board.
+     Rights don't flow into them, not even for admins; their rocks never show up in other meetings; only members rename,
+     delete or un-private them. Admins can still add themselves as a member (break-glass, visible to everyone). */
 function createRights({units,people,adminEmails}){
   const byId=new Map(units.map(u=>[u.id,u]));
   const company=units.find(u=>u.kind==="company");
@@ -1183,45 +1191,57 @@ function createRights({units,people,adminEmails}){
   const admins=(adminEmails||[]).map(e=>String(e).toLowerCase());
   const isAdmin=p=>!!p&&(p.admin===true||admins.includes(String(p.email||"").toLowerCase()));
   const memberOf=p=>(p&&p.unitIds)||[];
+  const isMember=(p,unitId)=>memberOf(p).includes(unitId); // directly, not through a unit above
+  const isPrivate=unitId=>byId.get(unitId)?.private===true;
   const role=p=>isAdmin(p)?"admin":memberOf(p).length?"member":"pending";
-  const hasRights=(p,unitId)=>isAdmin(p)||memberOf(p).some(m=>m===unitId||(above.get(unitId)||[]).includes(m));
-  const inForum=(f,r)=>r.unitId===f.id||(f.includeTracked&&(r.trackIn||[]).includes(f.id))||(f.includeEscalated&&r.status==="escalate");
+  const hasRights=(p,unitId)=>isPrivate(unitId)?isMember(p,unitId)
+    :isAdmin(p)||memberOf(p).some(m=>m===unitId||(above.get(unitId)||[]).includes(m));
+  const canSeeContent=(p,unitId)=>!isPrivate(unitId)||isMember(p,unitId); // a private meeting's rocks and cards: members only
+  // the rocks a meeting shows: its own, and (if its rules say so) tracked or escalated ones, never a private meeting's
+  const inForum=(f,r)=>r.unitId===f.id||(!isPrivate(r.unitId)&&((f.includeTracked&&(r.trackIn||[]).includes(f.id))||(f.includeEscalated&&r.status==="escalate")));
   // rocks: your units' rocks, plus every rock a meeting you're in shows (its members fully edit those)
   const canEditRock=(p,r)=>hasRights(p,r.unitId)||units.some(f=>f.kind==="forum"&&inForum(f,r)&&hasRights(p,f.id));
   const teamLevel=id=>{const u=byId.get(id);return !!u&&(u.kind==="team"||u.kind==="forum")}; // where rocks and boards live
   const canEdit={goals:(p,g)=>hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
-  // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins
-  const canManageUnit=(p,u)=>isAdmin(p)||(u.kind!=="company"&&!!parentOf(u)&&hasRights(p,parentOf(u).id));
+  // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins;
+  // a private meeting only by its own members
+  const canManageUnit=(p,u)=>u.private===true||isPrivate(u.id)?isMember(p,u.id)
+    :isAdmin(p)||(u.kind!=="company"&&!!parentOf(u)&&hasRights(p,parentOf(u).id));
+  const canManageMembers=(p,unitId)=>hasRights(p,unitId)||isAdmin(p); // admins may always add themselves (break-glass)
   // a record's fields apart from some keys (and _etag etc.), to check that nothing else changed
   const fieldsBut=(x,skip)=>JSON.stringify(Object.keys(x||{}).filter(k=>!skip.includes(k)&&k[0]!=="_").sort().map(k=>[k,x[k]]));
   return {
-    isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,
+    isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,canManageMembers,isMember,isPrivate,canSeeContent,inForum,
+    canSeeRock:canEditRock, // rocks: you see exactly the ones you can change (your teams and below, plus what your meetings show)
     canEditGoal:canEdit.goals,
     canEditCard:canEdit.cards,
     canSeeBoard:(p,unitId)=>teamLevel(unitId)&&hasRights(p,unitId), // Level 10: the team and meeting boards of your units and below
-    canManageMembers:hasRights, // add / remove people in this unit
-    // the team filter: the company, your units, the units above them and the units below them
+    // the team filter: the company, your units, the units above them and the units below them (private meetings: members only)
     branch(p){
-      if(isAdmin(p))return units.map(u=>u.id);
-      const mine=memberOf(p),ids=new Set(company?[company.id]:[]);
+      const ids=new Set(company?[company.id]:[]);
+      if(isAdmin(p))units.forEach(u=>ids.add(u.id));
+      const mine=memberOf(p);
       for(const m of mine){ids.add(m);(above.get(m)||[]).forEach(id=>ids.add(id))}
       for(const u of units)if((above.get(u.id)||[]).some(id=>mine.includes(id)))ids.add(u.id);
-      return units.map(u=>u.id).filter(id=>ids.has(id));
+      return units.map(u=>u.id).filter(id=>ids.has(id)&&canSeeContent(p,id));
     },
     // may p replace `before` with `after` in a collection (before = null: create, after = null: delete)? Checked on every write.
     writeAllowed(p,collection,before,after){
       if(role(p)==="pending")return false;
       if((collection==="rocks"||collection==="cards")&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
+      if((collection==="rocks"||collection==="cards")&&[before,after].some(x=>x&&!canSeeContent(p,x.unitId)))return false; // private: admins too
+      if(collection==="units"&&before&&before.private===true&&!isMember(p,before.id))return false; // only members change a private meeting, admins too
       if(isAdmin(p)||collection==="meta")return true;
       if(collection==="units"){ // structure: rights on the unit above, before and after (moving a team needs both departments)
         if(!before&&!after)return false;
         if(after&&(after.kind==="company"||(before&&before.kind!==after.kind)))return false;
+        if(!before&&after.private===true)return !!parentOf(after)&&hasRights(p,parentOf(after).id); // creating a private meeting
         return (!before||canManageUnit(p,before))&&(!after||canManageUnit(p,after));
       }
       if(collection==="people"){ // membership only: nothing else of a person changes, and every unit added or removed is yours
         if(!before||!after||fieldsBut(before,["unitIds"])!==fieldsBut(after,["unitIds"]))return false; // people are created at sign-in
         const was=memberOf(before),now=memberOf(after);
-        return [...now.filter(id=>!was.includes(id)),...was.filter(id=>!now.includes(id))].every(id=>hasRights(p,id));
+        return [...now.filter(id=>!was.includes(id)),...was.filter(id=>!now.includes(id))].every(id=>canManageMembers(p,id));
       }
       const can=canEdit[collection];if(!can)return false;
       if(before&&!can(p,before))return false;
@@ -1255,7 +1275,7 @@ const goalFilter=()=>isForum(teamFilter)?"":teamFilter; // forums have no goals:
 function rockMatches(r,filter){
   const f=isForum(filter)?unit(filter):null;
   if(!f)return unitMatches(r.unitId,filter);
-  return r.unitId===f.id||(f.includeTracked&&(r.trackIn||[]).includes(f.id))||(f.includeEscalated&&r.status==="escalate");
+  return rights.inForum(f,r); // never a private meeting's rocks
 }
 // years and quarters offered in the pickers: this year (+ next), plus every one that has data
 function yearList(){
@@ -1356,14 +1376,11 @@ const viewTitle=(title,id)=>`<h1>${title}${id?` <span class="dim">· ${esc(unitN
 const quarterSelectHTML=()=>`<select class="ctl" data-act="quarter" aria-label="Quarter">${quarterList().map(q=>`<option ${q===quarterFilter?"selected":""}>${q}</option>`).join("")}</select>`;
 const legendHTML=(items,extra="")=>`<div class="legend" style="margin-top:10px">${items.map(([color,label])=>`<span><i class="sw" style="background:var(--${color})"></i> ${label}</span>`).join("")}${extra}</div>`;
 const noRocksHTML=hint=>`<div class="empty"><b>No rocks for ${esc(quarterFilter)}${teamFilter?` in ${esc(unitName(teamFilter))}`:""} yet</b>${hint}</div>`;
-/* the rocks you see this quarter: those of the chosen team, or with "All teams" those of your branch (rights.branch:
-   the company, your units and the units above and below them) plus the rocks the meetings you're in show; admins: all */
+/* the rocks you see this quarter: exactly the ones you may change (rights.canSeeRock: your teams and the teams below your
+   units, plus what the meetings you are in show; directors all, private meetings members only), narrowed to the chosen team */
 function shownRocks(){
-  const q=S.rocks.filter(r=>r.quarter===quarterFilter);
-  if(teamFilter)return q.filter(r=>rockMatches(r,teamFilter));
-  if(myRole()==="admin")return q;
-  const branch=new Set(rights.branch(me())),meetings=forums().filter(f=>canEditUnit(f.id));
-  return q.filter(r=>branch.has(r.unitId)||meetings.some(f=>rockMatches(r,f.id)));
+  const q=S.rocks.filter(r=>r.quarter===quarterFilter&&rights.canSeeRock(me(),r)); // the same rule the server applies
+  return teamFilter?q.filter(r=>rockMatches(r,teamFilter)):q;
 }
 
 /* ---------- One Year Plan ---------- */
@@ -1574,7 +1591,21 @@ function renderL10(){
       :`<button class="kadd" data-act="kadd" data-col="${key}">+ Add ${key==="ids"?"issue":"to-do"}</button>`;
     return `<section class="kcol k-${key}" data-col="${key}"><header><h2>${label}</h2><span class="n">${cs.length}</span></header><div class="klist">${cs.map(cardHTML).join("")}</div>${add}</section>`;
   };
-  return head+`<div class="l10">${agenda}<div class="kboard">${COLS.map(column).join("")}</div></div>`;
+  return head+`<div class="l10"><div class="l10side">${agenda}${boardPeopleHTML(teamFilter)}</div><div class="kboard">${COLS.map(column).join("")}</div></div>`;
+}
+/* below the agenda: who is in this team (or meeting), and who else can see its board and rocks — everyone with rights on it:
+   people in the units above it (department, directors) and admins; for a private meeting nobody else */
+function boardPeopleHTML(unitId){
+  const members=unitMembers(unitId).sort((a,b)=>a.name.localeCompare(b.name));
+  const others=S.people.filter(p=>!rights.isMember(p,unitId)&&roleOf(p)!=="pending"&&rights.canSeeBoard(p,unitId));
+  const above=others.filter(p=>!rights.isAdmin(p)||(p.unitIds||[]).length),admins=others.filter(p=>!above.includes(p));
+  const names=list=>list.map(p=>esc(p.name)).join(", ");
+  const who=rights.isPrivate(unitId)?`<b>Private:</b> only these members see this board and its rocks.`
+    :!others.length?"Nobody else sees this board and its rocks."
+    :`Also visible to ${above.length?`${names(above)} (above this ${isForum(unitId)?"meeting":"team"})`:""}${above.length&&admins.length?" and ":""}${admins.length?`admins: ${names(admins)}`:""}.`;
+  return `<aside class="agenda boardpeople" aria-label="Who sees this board"><div class="agh"><h2>Members</h2><span class="muted">${members.length}</span></div>
+    <ul class="plist">${members.map(p=>`<li>${avatarHTML(p.id)}<span>${esc(p.name)}</span></li>`).join("")||`<li class="muted">No members yet</li>`}</ul>
+    <p class="who">${who}</p></aside>`;
 }
 /* the team picker of Level 10 and Rock Review (both are held per team or meeting), shown while no team is chosen:
    your teams and meetings, grouped Meetings · per department; with a department selected, only its teams.
@@ -1596,7 +1627,7 @@ function renderTeamPick(title,what,label,extraHead=""){
 const renderL10Pick=()=>renderTeamPick("Level 10","to open its board",
   id=>{const n=S.cards.filter(c=>c.unitId===id&&c.column!=="done").length;return n?`${n} open`:""});
 const renderReviewPick=()=>renderTeamPick("Rock Review",`to review its rocks for ${esc(quarterFilter)}`,
-  id=>{const n=S.rocks.filter(r=>r.quarter===quarterFilter&&rockMatches(r,id)).length;return n?plural(n,"rock"):""},quarterSelectHTML());
+  id=>{const n=S.rocks.filter(r=>r.quarter===quarterFilter&&rights.canSeeRock(me(),r)&&rockMatches(r,id)).length;return n?plural(n,"rock"):""},quarterSelectHTML());
 const imgCount=html=>(String(html||"").match(/<img/g)||[]).length;
 function addCard(column,title,unitId=teamFilter){
   const c={id:uid(),unitId,column,rank:nextRank(S.cards),title,description:"",owners:[],createdBy:currentUserId(),createdAt:nowStamp(),updates:[],history:[]};
@@ -1656,7 +1687,7 @@ function renderOrg(){
     ${top?`<div><button class="btn sm" data-act="addunit" data-kind="department">+ Department</button></div>`:""}
     <h2 class="osub">Meetings</h2>
     <p class="muted onote">Members of a meeting see its Level 10 board, can fully edit the rocks it shows, and add members, like a team.</p>
-    ${forums().map(f=>row(f,0,rule(f,"includeTracked","Tracked rocks","Shows rocks that are marked “Track in "+esc(f.name)+"”")+rule(f,"includeEscalated","Escalated rocks","Shows every rock with status OT - Escalate"))).join("")}
+    ${forums().map(f=>row(f,0,rule(f,"includeTracked","Tracked rocks","Shows rocks that are marked “Track in "+esc(f.name)+"”")+rule(f,"includeEscalated","Escalated rocks","Shows every rock with status OT - Escalate")+rule(f,"private","Private","Only its members see its rocks and Level 10 board: nobody else, not directors, not admins"))).join("")}
     ${top?`<div><button class="btn sm" data-act="addunit" data-kind="forum">+ Meeting</button></div>`:""}
   </section>`;
 }
@@ -1931,15 +1962,35 @@ async function deleteGoal(){
 
 /* rock modal: left tabs Details · Milestones (modalState.left), right tabs Updates · History (modalState.tab) */
 function rockModal(r){
-  const obj=r?structuredClone(r):{id:uid(),unitId:defaultUnitId("rock"),quarter:quarterFilter,title:"",ownerId:currentUserId(),status:"not_set",goalId:null,
+  const unitId=defaultUnitId("rock");
+  const obj=r?structuredClone(r):{id:uid(),unitId,quarter:quarterFilter,title:"",ownerId:rights.isMember(me(),unitId)?currentUserId():null,status:"not_set",goalId:null,
     trackIn:[],description:"",deliverables:"",milestones:[],updates:[],history:[]};
   obj.trackIn??=[];obj.updates??=[];
   startModal({kind:"rock",obj,orig:r,isNew:!r,tab:"updates",left:"details",readOnly:!!r&&!canEditRock(r)});
 }
 const msDateCls=m=>!m.deadline?"empty":m.done?"":isPast(m.deadline)?"over":isSoon(m.deadline)?"soon":"";
-// owners: people with rights on the rock's team (it or a unit above it), plus the current owner if they've moved on
-const ownerOptions=(unitId,current)=>opt(S.people.filter(p=>p.id===current||(roleOf(p)!=="pending"&&rights.hasRights(p,unitId))),current,
-  p=>p.name+(p.id===current&&!rights.hasRights(p,unitId)?" (not in this team)":""),p=>p.id);
+/* the owner field of rocks and Level 10 cards: chips plus a searchable picker of the unit's actual members (direct members:
+   not people in a unit above, not admins). multi: a card has several owners; a rock has one, and picking replaces it.
+   Owners who aren't in the unit (any more) stay visible, marked. modalState.ownerField = the field of the open modal. */
+const unitMembers=unitId=>S.people.filter(p=>rights.isMember(p,unitId));
+const ownerFieldHTML=()=>`<div class="owners"><div class="chips" id="f-ownchips"></div>${pickerHTML("f-owneradd")}</div>`;
+function initOwnerField({unitId,get,set,multi}){
+  let current=unitId;
+  const draw=()=>{
+    const members=new Set(unitMembers(current).map(p=>p.id));
+    $("#f-ownchips").innerHTML=get().filter(person).map(id=>`<span class="ochip">${ownerHTML(id)}${esc(personName(id))}${members.has(id)?"":` <span class="muted">(not in this team)</span>`}${multi?`<button data-m="ownerdel" data-id="${id}" aria-label="Remove ${esc(personName(id))}">×</button>`:""}</span>`).join("");
+    picker.refresh();
+  };
+  const picker=initPicker("f-owneradd",{get:()=>"",display:()=>"",allowNone:false,noun:"members",placeholder:multi?"Add owner…":"Choose owner…",
+    set:v=>{if(v&&!get().includes(v)){set(multi?[...get(),v]:[v]);draw()}},
+    emptyText:()=>`${unitName(current)} has no members yet: add them under Organisation → People.`,
+    groups:()=>[{name:`Members of ${unitName(current)}`,items:unitMembers(current).filter(p=>!get().includes(p.id)).map(p=>({id:p.id,title:p.name,color:p.color}))}]});
+  draw();
+  return {
+    remove:id=>{set(get().filter(x=>x!==id));draw()},
+    setUnit:id=>{current=id;draw()}, // the item moved to another team: offer that team's members
+  };
+}
 function drawRockModalReadOnly(){
   const {obj:r,tab,left}=modalState,g=goal(r.goalId);
   const msRow=m=>`<div class="msr ${m.done?"done":""}"><span class="mck">${ICONS.check}</span><span class="mt rotitle">${esc(m.title)}</span>
@@ -1969,11 +2020,11 @@ function drawRockModal(){
       <button class="x" data-m="msdel" data-id="${m.id}" aria-label="Delete milestone" title="Delete milestone">${ICONS.trash}</button></div>`;
   const milestones=`<div class="body"><div class="msl">${r.milestones.map(msRow).join("")||`<div class="muted" style="padding:6px">No milestones yet.</div>`}</div>
     <div><button class="btn sm" data-m="msadd">+ Add milestone</button></div></div>`;
-  const trackable=forums().filter(f=>f.includeTracked);
+  const trackable=rights.isPrivate(r.unitId)?[]:forums().filter(f=>f.includeTracked&&!f.private); // a private meeting's rocks stay private
   const details=`<div class="body">
     ${field("Title",`<input id="f-title" value="${esc(r.title)}" placeholder="What will be done in 90 days?">`)}
     <div class="grid3">
-      ${field("Owner",`<select id="f-owner">${ownerOptions(r.unitId,r.ownerId)}</select>`)}
+      ${field("Owner",ownerFieldHTML())}
       ${field("Team",unitPickerHTML(r.unitId))}
       ${field("Quarter",`<select id="f-quarter">${opt(quarterList().concat(quarterList().includes(r.quarter)?[]:[r.quarter]),r.quarter)}</select>`)}
     </div>
@@ -1993,16 +2044,17 @@ function drawRockModal(){
   <footer>${isNew?"":`<button class="btn danger" data-m="delrock">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="saverock">${isNew?"Create rock":"Save changes"}</button></footer>`,true);
   if(left==="details"){
     initUnitPicker("rock");initRockGoalPicker(r);
-    $("#f-unit-id").addEventListener("change",()=>{ // another team: offer that team's people as owner (keep the owner if they're in it)
-      const sel=$("#f-owner"),unitId=$("#f-unit-id").value,cur=sel.value,p=person(cur);
-      const keep=p&&rights.hasRights(p,unitId)?cur:(rights.hasRights(me(),unitId)?currentUserId():"");
-      sel.innerHTML=ownerOptions(unitId,keep);if(keep)sel.value=keep;
+    modalState.ownerField=initOwnerField({unitId:r.unitId,get:()=>r.ownerId?[r.ownerId]:[],set:ids=>{r.ownerId=ids[0]||null},multi:false});
+    $("#f-unit-id").addEventListener("change",()=>{ // another team: keep the owner if they're in it, else you (if you are), else choose
+      const unitId=$("#f-unit-id").value;
+      if(!rights.isMember(person(r.ownerId),unitId))r.ownerId=rights.isMember(me(),unitId)?currentUserId():null;
+      modalState.ownerField.setUnit(unitId);
     });
   }
 }
 function syncRockFields(){
   const r=modalState.obj;if(!$("#f-title"))return; // Details tab not shown; status and goal are set directly
-  r.title=$("#f-title").value;r.ownerId=$("#f-owner").value;r.unitId=$("#f-unit-id").value;r.quarter=$("#f-quarter").value;
+  r.title=$("#f-title").value;r.unitId=$("#f-unit-id").value;r.quarter=$("#f-quarter").value; // the owner is set by its field
   r.description=$("#f-desc").value;r.deliverables=$("#f-deliv").value;
   const boxes=$$("#modal [data-track]"),shown=new Set(boxes.map(b=>b.dataset.track));
   r.trackIn=[...r.trackIn.filter(id=>!shown.has(id)),...boxes.filter(b=>b.checked).map(b=>b.dataset.track)];
@@ -2017,6 +2069,10 @@ function saveRock(){
   const {obj:r,orig:o,isNew}=modalState;
   r.title=r.title.trim();
   if(!r.title){if(!$("#f-title")){modalState.left="details";drawRockModal()}$("#f-title").focus();return}
+  if(!r.ownerId&&unitMembers(r.unitId).length){ // a rock needs an owner (unless the team has no members yet)
+    if(!$("#f-owneradd-in")){modalState.left="details";drawRockModal()}
+    toast("Choose an owner: one of the team's members.",3000);$("#f-owneradd-in").focus();return;
+  }
   r.milestones=r.milestones.map(x=>({...x,title:x.title.trim()})).filter(x=>x.title);
   if(isNew)logHist(r,"Created");
   else{
@@ -2063,7 +2119,7 @@ function drawCardModal(){
     ${field("Title",`<input id="f-title" value="${esc(c.title)}">`)}
     <div class="grid2">
       ${field("Column",`<div class="seg colseg" role="group" aria-label="Column">${COLS.map(col=>`<button data-m="cardcol" data-col="${col.key}" aria-pressed="${c.column===col.key}">${col.label}</button>`).join("")}</div>`)}
-      ${field("Owners",`<div class="owners"><div class="chips" id="f-ownchips"></div>${pickerHTML("f-owneradd")}</div>`)}
+      ${field("Owners",ownerFieldHTML())}
     </div>
     <div class="field"><label for="f-cdesc">Description</label><div id="f-cdesc" class="rte" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Add detail… paste a screenshot with Ctrl+V">${sanitizeHTML(c.description)}</div></div>
     <div class="muted" style="font-size:12px">Added by ${esc(personName(c.createdBy))} on ${fmtDate(c.createdAt)}</div>
@@ -2071,13 +2127,8 @@ function drawCardModal(){
   ${sidePaneHTML(c,tab)}
   </div>
   <footer><button class="btn danger" data-m="carddel">Delete</button><span class="spacer"></span><button class="btn" data-m="close">Cancel</button><button class="btn primary" data-m="cardsave">Save changes</button></footer>`,true);
-  drawCardOwners();
-  initPicker("f-owneradd",{get:()=>"",set:v=>{if(v&&!c.owners.includes(v)){c.owners.push(v);drawCardOwners()}},display:()=>"",allowNone:false,noun:"people",placeholder:"Add owner…",
-    groups:()=>[{name:`People in ${unitName(c.unitId)}`,items:S.people.filter(p=>!c.owners.includes(p.id)&&roleOf(p)!=="pending"&&rights.hasRights(p,c.unitId)).map(p=>({id:p.id,title:p.name,color:p.color}))}]});
+  modalState.ownerField=initOwnerField({unitId:c.unitId,get:()=>c.owners,set:ids=>{c.owners=ids},multi:true});
   initRichText($("#f-cdesc"));
-}
-function drawCardOwners(){
-  $("#f-ownchips").innerHTML=modalState.obj.owners.filter(person).map(id=>`<span class="ochip">${ownerHTML(id)}${esc(personName(id))}<button data-m="ownerdel" data-id="${id}" aria-label="Remove ${esc(personName(id))}">×</button></span>`).join("");
 }
 function syncCardFields(){
   const c=modalState.obj;if(!$("#f-title"))return;
@@ -2395,7 +2446,7 @@ const APP_CHANGES={
     if(S.units.some(v=>v!==u&&v.name.toLowerCase()===name.toLowerCase())){toast(`There's already a unit called “${name}”`,4000);el.value=u.name;return}
     u.name=name;save();render();toast("Renamed");
   },
-  forumrule:el=>{const f=unit(el.dataset.id);if(!canManageUnit(f)){render();return viewOnly()}f[el.dataset.rule]=el.checked;save();render()},
+  forumrule:el=>{const f=unit(el.dataset.id),after={...f,[el.dataset.rule]:el.checked};if(!rights.writeAllowed(me(),"units",f,after)){render();return toast(el.dataset.rule==="private"?"Only members of a meeting can make it private or public.":"View only: you can change the meetings below your own units.",4000)}f[el.dataset.rule]=el.checked;save();render()},
   assign:el=>{
     const p=person(el.dataset.id),id=el.value;if(!id)return;if(!canManageMembers(id)){render();return viewOnly()}
     const wasWaiting=roleOf(p)==="pending";
@@ -2444,7 +2495,7 @@ const MODAL_ACTIONS={
     modalState.obj.column=b.dataset.col;
     $$('#modal [data-m="cardcol"]').forEach(x=>x.setAttribute("aria-pressed",x===b));$("#modal header h2").textContent=`${colLabel(b.dataset.col)} item`;
   },
-  ownerdel:(b,id)=>{modalState.obj.owners=modalState.obj.owners.filter(x=>x!==id);drawCardOwners()},
+  ownerdel:(b,id)=>modalState.ownerField?.remove(id),
   cardsave:saveCard,
   carddel:deleteCard,
 };
