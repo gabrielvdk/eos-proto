@@ -469,9 +469,9 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .lightbox.open{display:flex}
 .lightbox img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:var(--shadow);background:#fff}
 
-/* scorecard (a spreadsheet: every cell is an input; who · measurable · goal stay put while the weeks scroll) */
-.scwrap{overflow-x:auto}
-table.sc{border-collapse:separate;border-spacing:0;width:100%;min-width:max-content;font-variant-numeric:tabular-nums}
+/* scorecard (a spreadsheet: every cell is an input; measurable · who · goal stay put while the weeks scroll) */
+.scwrap{overflow-x:auto;width:fit-content;max-width:100%}
+table.sc{border-collapse:separate;border-spacing:0;width:max-content;font-variant-numeric:tabular-nums}
 table.sc th,table.sc td{padding:0;border-bottom:1px solid var(--line);border-left:1px solid var(--line);height:auto;background:var(--surface)}
 table.sc th:first-child,table.sc td:first-child{border-left:0}
 table.sc thead th{position:sticky;top:0;z-index:2;padding:8px 10px;text-align:left;font-size:12px;font-weight:700;color:var(--ink-2);background:var(--canvas);vertical-align:bottom}
@@ -481,17 +481,23 @@ table.sc thead th.c-wk span{font-weight:500;color:var(--ink-3)}
 table.sc thead th.c-wk.cur{background:var(--accent)}
 table.sc thead th.c-wk.cur b,table.sc thead th.c-wk.cur span{color:#fff}
 table.sc td.c-wk.cur{background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
-table.sc .c-who{position:sticky;left:0;z-index:1;width:170px;min-width:170px}
-table.sc .c-title{position:sticky;left:170px;z-index:1;width:320px;min-width:320px}
-table.sc .c-goal{position:sticky;left:490px;z-index:1;width:110px;min-width:110px;border-right:1px solid var(--line-strong)}
+table.sc .c-title{position:sticky;left:0;z-index:1;width:340px;min-width:340px}
+table.sc .c-who{position:sticky;left:340px;z-index:1;width:52px;min-width:52px;text-align:center}
+table.sc .c-goal{position:sticky;left:392px;z-index:1;width:120px;min-width:120px;border-right:1px solid var(--line-strong)}
 table.sc thead .c-who,table.sc thead .c-title,table.sc thead .c-goal{z-index:3}
-table.sc .c-wk{width:84px;min-width:84px}
+table.sc .c-wk{width:104px;min-width:104px}
 table.sc tbody tr:last-child td{border-bottom:0}
-.scwho{display:flex;align-items:center;gap:6px;padding:0 6px 0 8px}
-.scwho .avatar{width:22px;height:22px;font-size:10px}
-.scwho select{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;padding:8px 0;cursor:pointer;text-overflow:ellipsis}
-.scwho select:focus{outline:2px solid var(--accent);outline-offset:-2px;border-radius:4px}
-.scwho select:disabled{cursor:default;opacity:1;appearance:none}
+.scwho{position:relative;display:flex;align-items:center;justify-content:center;height:36px}
+.scwho .avatar{width:26px;height:26px;font-size:10.5px}
+.scwho .avatar.none{background:none;border:1.5px dashed var(--line-strong);color:var(--ink-3);font-size:13px;font-weight:600}
+.scwho select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font:inherit} /* invisible, on top of the avatar: a click opens the list */
+.scwho select:disabled{cursor:default}
+.scwho:focus-within .avatar{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+.scwho:hover .avatar.none{border-color:var(--accent);color:var(--accent)}
+.schelp{display:inline-flex;align-items:center;gap:5px;cursor:help}
+.schelp i{font-style:normal;width:15px;height:15px;border-radius:50%;background:var(--line);color:var(--ink-2);font-size:10.5px;display:inline-flex;align-items:center;justify-content:center}
+.scmore{float:left;border:0;background:none;color:var(--accent);font:inherit;font-size:12px;font-weight:600;padding:2px 4px;margin:-2px 0 0 -6px;border-radius:5px}
+.scmore:hover{background:var(--accent-soft)}
 .scc{display:block;width:100%;border:0;margin:0;padding:9px 10px;background:transparent;color:var(--ink);font:inherit;font-size:13.5px;outline:none;cursor:cell}
 .c-wk .scc,.c-goal .scc{text-align:right}
 .c-title .scc{font-weight:600;padding-right:34px}
@@ -875,7 +881,7 @@ function seedMeasurables(U){
     values:Object.fromEntries(weeks.map(w=>[w,Math.max(0,+(Math.round((base+(rnd()*2-1)*spread)/step)*step).toFixed(2))])),history:[{at:d(9,29),who:ownerId,text:"Created"}]});
   return [
     M("DT Team","Revenue booked","p12","€250k+",265000,70000,1000),
-    M("DT Team","Cash position","p1","€1.5M+",1600000,200000,10000),
+    M("DT Team","Cash position","p1","€1,5M+",1600000,200000,10000),
     M("DT Team","Open vacancies","p11","<= 6",6,3),
     M("DT Team","Customer escalations","p1","0",0.6,1.4),
     M("Business Review","Rocks off track","p3","<= 3",3,2),
@@ -1778,15 +1784,21 @@ function submitComposer(){ // Enter adds the card and keeps the composer open fo
    Works like a spreadsheet: every cell is an input. Click or arrow to a cell and type to replace it; Enter / ↓ moves down,
    Shift+Enter / ↑ up, Tab / → right, Shift+Tab / ← left; F2 or a double-click edits inside the text; Esc undoes; Delete
    clears. Pasting a block copied from Excel fills the cells from the one you're in (adding rows when it runs past the
-   last one). Alt+↑/↓ moves a row. The empty row at the bottom adds a measurable as soon as you type in it.
-   Columns: who · measurable · goal · the last SC_WEEKS weeks, left to right like Rock Review (this week on the right). A value is green
-   when it meets the goal, red when it doesn't. Cells are updated in place (no re-render), so the cursor stays put. */
-const SC_WEEKS=13;
-const scWeeks=()=>Array.from({length:SC_WEEKS},(_,i)=>{const x=mondayOf(TODAY);x.setDate(x.getDate()-7*(SC_WEEKS-1-i));return x}); // oldest first
+   last one). Alt+↑/↓ moves a row. The empty row at the bottom is always there: typing in it, or picking its Who, adds a measurable.
+   Columns: measurable · who (avatar; a native select lies invisibly on top) · goal · weeks, left to right like Rock Review,
+   this week on the right. Opening the view shows the last SC_WEEKS weeks (5 filled in + this week); "Earlier weeks" adds more.
+   Numbers are Dutch: 40.000 and 1,5. A value is green when it meets the goal, red when it doesn't.
+   Cells are updated in place (no re-render), so the cursor stays put. */
+const SC_WEEKS=6;
+let scShown=SC_WEEKS; // weeks shown; back to SC_WEEKS whenever the Scorecard is opened
+let scJump="right";    // after the next render: "right" = this week in view (opening), "left" = the earliest week (after "Earlier")
+const scOpened=()=>{scShown=SC_WEEKS;scJump="right"};
+const scWeeks=()=>Array.from({length:scShown},(_,i)=>{const x=mondayOf(TODAY);x.setDate(x.getDate()-7*(scShown-1-i));return x}); // oldest first
 let scEdit=null; // the cell being edited inside its text (F2, double-click, typing); otherwise arrows move between cells
 const measurable=id=>S.measurables.find(m=>m.id===id);
 const canEditScorecard=id=>rights.writeAllowed(me(),"measurables",null,{unitId:id}); // the server's rule
-/* a number as people type it: 40000 · 40,000 · 40.000 · 1,5 · 40k · 1.5M · €40k · 85% */
+/* a number as people type it, Dutch style: 40000 · 40.000 · 1,5 · 1.234,5 · 40k · 1,5M · €40k · 85%.
+   Lenient: "1.5" (not three digits after the dot) is 1,5, and 1,234,567 / 1,234.5 are read the English way. */
 function parseNum(text){
   let t=String(text??"").trim().toLowerCase().replace(/[€$£%\s]/g,"").replace("−","-");
   if(!t)return null;
@@ -1794,8 +1806,9 @@ function parseNum(text){
   if(/[km]$/.test(t)){mult=t.endsWith("k")?1e3:1e6;t=t.slice(0,-1)}
   const neg=t.startsWith("-");t=t.replace(/^[-+]/,"");
   if(t.includes(",")&&t.includes(".")){const dec=t.lastIndexOf(",")>t.lastIndexOf(".")?",":".";t=t.split(dec===","?".":",").join("").replace(dec,".")}
-  else if(/^\d{1,3}([.,]\d{3})+$/.test(t))t=t.replace(/[.,]/g,""); // thousands separators
-  else t=t.replace(",",".");
+  else if(/^\d{1,3}(\.\d{3})+$/.test(t))t=t.replace(/\./g,""); // 40.000: thousands
+  else if(/^\d{1,3}(,\d{3}){2,}$/.test(t))t=t.replace(/,/g,""); // 1,234,567
+  else t=t.replace(",","."); // 1,5: decimals
   if(!/^(\d+\.?\d*|\.\d+)$/.test(t))return null;
   return (neg?-1:1)*parseFloat(t)*mult;
 }
@@ -1825,11 +1838,20 @@ function meetsGoal(g,v){
 }
 function fmtNum(v,fmt){
   if(v===null||v===undefined)return "";
-  const n=Math.abs(v).toLocaleString("en-GB",{maximumFractionDigits:2}),sign=v<0?"-":"";
+  const n=Math.abs(v).toLocaleString("nl-NL",{maximumFractionDigits:2}),sign=v<0?"-":"";
   return fmt==="pct"?`${sign}${n}%`:fmt==="eur"?`${sign}€${n}`:fmt==="usd"?`${sign}$${n}`:sign+n;
 }
 const scCellCls=(m,v)=>{if(v===null||v===undefined)return "";const g=parseGoal(m.goal);return g?(meetsGoal(g,v)?"ok":"bad"):""};
-const GOAL_HELP="try 20+, >= 80%, <= 5, €40k+, 30-40 or 0";
+const GOAL_HELP="try 20+, >= 80%, <= 5, €40.000+, 30-40 or 0";
+const GOAL_TIP=`What you can enter as a goal:
+20+  or  >= 20  or  min 20 — at least 20
+<= 5  or  ≤ 5  or  max 5 — at most 5
+> 10  or  < 3 — more / less than
+30-40 — between 30 and 40
+0 — none at all
+A plain number means "at least".
+Add % or € to format the numbers: >= 80%, €40.000+ (or €40k+).
+Numbers are Dutch: 40.000 and 1,5.`;
 function renderScorecard(){
   if(!boardOk(teamFilter))return renderScorecardPick();
   const list=S.measurables.filter(m=>m.unitId===teamFilter),weeks=scWeeks(),cur=localISO(weeks[weeks.length-1]);
@@ -1837,30 +1859,34 @@ function renderScorecard(){
   const members=unitMembers(teamFilter).sort((a,b)=>a.name.localeCompare(b.name));
   const head=`<div class="viewhead">${viewTitle("Scorecard",teamFilter)}<span class="count">${plural(list.length,"measurable")}</span></div>`;
   const cell=(id,k,value,cls="",extra="")=>`<input class="scc ${cls}" data-sc="${id}" data-k="${k}" value="${esc(value)}" spellcheck="false" autocomplete="off"${ro}${extra}>`;
-  const owner=m=>{
-    const opts=[...members];if(m.ownerId&&!opts.some(p=>p.id===m.ownerId)&&person(m.ownerId))opts.push(person(m.ownerId)); // a former member stays visible
-    return `<div class="scwho">${avatarHTML(m.ownerId)}<select data-act="scowner" data-id="${m.id}" aria-label="Who"${edit?"":" disabled"}><option value="">—</option>${opts.map(p=>`<option value="${p.id}" ${p.id===m.ownerId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div>`;
+  const owner=(id,ownerId)=>{ // the avatar; the select on top of it is invisible but opens on click (and works with the keyboard)
+    const opts=[...members];if(ownerId&&!opts.some(p=>p.id===ownerId)&&person(ownerId))opts.push(person(ownerId)); // a former member stays visible
+    const face=person(ownerId)?avatarHTML(ownerId):`<span class="avatar none">${id==="new"?"+":"?"}</span>`;
+    return `<div class="scwho" data-tip="${esc(person(ownerId)?.name||(id==="new"?"Who: start a new measurable":"Who? Pick an owner"))}">${face}
+      <select data-act="scowner" data-id="${id}" aria-label="Who"${edit?"":" disabled"}><option value="">—</option>${opts.map(p=>`<option value="${p.id}" ${p.id===ownerId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div>`;
   };
   const row=m=>{
     const g=parseGoal(m.goal),badGoal=!!m.goal&&!g;
-    return `<tr data-row="${m.id}"><td class="c-who">${owner(m)}</td>
-      <td class="c-title">${cell(m.id,"title",m.title)}${edit?`<button class="scdel" data-act="scdel" data-id="${m.id}" aria-label="Delete ${esc(m.title)}" data-tip="Delete">${ICONS.trash}</button>`:""}</td>
+    return `<tr data-row="${m.id}">
+      <td class="c-title">${cell(m.id,"title",m.title,"",` placeholder="Name this measurable"`)}${edit?`<button class="scdel" data-act="scdel" data-id="${m.id}" aria-label="Delete ${esc(m.title||"measurable")}" data-tip="Delete">${ICONS.trash}</button>`:""}</td>
+      <td class="c-who">${owner(m.id,m.ownerId)}</td>
       <td class="c-goal">${cell(m.id,"goal",m.goal||"",badGoal?"badgoal":"",` placeholder="—"${badGoal?` data-tip="${esc("Not a goal I understand: "+GOAL_HELP)}"`:""}`)}</td>
       ${weeks.map(w=>{const k=localISO(w),v=m.values?.[k];return `<td class="c-wk ${k===cur?"cur":""}">${cell(m.id,k,fmtNum(v,g?.fmt),scCellCls(m,v))}</td>`}).join("")}</tr>`;
   };
-  const newRow=edit?`<tr class="scnew"><td class="c-who"></td><td class="c-title">${cell("new","title","","",` placeholder="+ Add measurable"`)}</td><td class="c-goal">${cell("new","goal","")}</td>
+  const newRow=edit?`<tr class="scnew"><td class="c-title">${cell("new","title","","",` placeholder="+ Add measurable"`)}</td><td class="c-who">${owner("new","")}</td><td class="c-goal">${cell("new","goal","")}</td>
       ${weeks.map(w=>`<td class="c-wk ${localISO(w)===cur?"cur":""}">${cell("new",localISO(w),"")}</td>`).join("")}</tr>`:"";
-  const th=`<tr><th class="c-who">Who</th><th class="c-title">Measurable</th><th class="c-goal">Goal</th>${weeks.map((w,i)=>`<th class="c-wk ${i===weeks.length-1?"cur":""}"><b>Wk ${isoWeek(w)}</b><span>${fmtDate(localISO(w))}</span></th>`).join("")}</tr>`;
-  const empty=!list.length?`<div class="schint"><b>No measurables yet.</b> ${edit?`Add the 5–15 numbers this team looks at every week: type a name in the first row, then its goal (e.g. <code>20+</code>, <code>&gt;= 80%</code>, <code>&lt;= 5</code>, <code>€40k+</code>, <code>30-40</code>, <code>0</code>) and the weekly values. Or paste the rows from Excel.`:""}</div>`:"";
+  const th=`<tr><th class="c-title">Measurable</th><th class="c-who">Who</th><th class="c-goal"><span class="schelp" data-tip="${esc(GOAL_TIP)}">Goal <i>?</i></span></th>
+    ${weeks.map((w,i)=>`<th class="c-wk ${i===weeks.length-1?"cur":""}">${i===0&&scShown<52?`<button class="scmore" data-act="scmore" data-tip="Show ${SC_WEEKS} earlier weeks">‹ Earlier</button>`:""}<b>Wk ${isoWeek(w)}</b><span>${fmtDate(localISO(w))}</span></th>`).join("")}</tr>`;
+  const empty=!list.length?`<div class="schint"><b>No measurables yet.</b> ${edit?`Add the 5–15 numbers this team looks at every week: type a name in the row below (or pick its Who first), then its goal (e.g. <code>20+</code>, <code>&gt;= 80%</code>, <code>&lt;= 5</code>, <code>€40.000+</code>, <code>30-40</code>, <code>0</code>) and the weekly values. Or paste the rows from Excel.`:""}</div>`:"";
   const keys=`<div class="legend sckeys"><span><i class="sw ok"></i> On goal</span><span><i class="sw bad"></i> Off goal</span>
     <span class="muted">${edit?"Type to replace · Enter ↓ · Tab → · F2 edits · Esc undoes · Paste from Excel · Alt+↑↓ moves a row":"View only"}</span></div>`;
   return head+empty+`<div class="board scwrap" data-keepscroll="${teamFilter}-sc"><table class="sc"><thead>${th}</thead><tbody>${list.map(row).join("")}${newRow}</tbody></table></div>`+keys;
 }
 const renderScorecardPick=()=>renderTeamPick("Scorecard","to open its scorecard",
   id=>{const n=S.measurables.filter(m=>m.unitId===id).length;return n?plural(n,"measurable"):""});
-function newMeasurable(title){
-  const m={id:uid(),unitId:teamFilter,rank:nextRank(S.measurables),title:title||"New measurable",
-    ownerId:rights.isMember(me(),teamFilter)?currentUserId():"",goal:"",values:{},history:[]};
+function newMeasurable(title,ownerId){ // owner: the one picked, else you if you're in the team
+  const m={id:uid(),unitId:teamFilter,rank:nextRank(S.measurables),title:title||"",
+    ownerId:ownerId??(rights.isMember(me(),teamFilter)?currentUserId():""),goal:"",values:{},history:[]};
   logHist(m,"Created");S.measurables.push(m);return m;
 }
 /* writes one cell's text into a measurable; false when it isn't a number (the cell then shows the old value) */
@@ -2076,6 +2102,7 @@ function render(){
   orgTabBtn.innerHTML=`Organisation${waiting?` <span class="tabn" title="${peopleCount(waiting)} waiting for a team">${waiting}</span>`:""}`;
   if(ADMIN_VIEWS.includes(view)&&role!=="admin")view="plan";
   const scrolls=$$("[data-keepscroll]").map(el=>[el.dataset.keepscroll,el.scrollTop]); // lists that scroll inside a panel keep their place
+  const scLeft=$(".scwrap")?.scrollLeft??0; // Scorecard: keeps its horizontal place across re-renders
   app.innerHTML=VIEWS[view]();
   scrolls.forEach(([k,top])=>{const el=$(`[data-keepscroll="${k}"]`);if(el)el.scrollTop=top});
   fitL10();
@@ -2085,7 +2112,7 @@ function render(){
   $$(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===view));
   if(view==="l10"&&l10Add)$("#app .kcompose textarea")?.focus();
   if(view==="review"){syncReviewRows();restoreReviewScroll()}
-  if(view==="scorecard"){const w=$(".scwrap");if(w)w.scrollLeft=w.scrollWidth} // this week (on the right) in view
+  if(view==="scorecard"){const w=$(".scwrap");if(w){w.scrollLeft=scJump==="left"?0:scJump==="right"?w.scrollWidth:scLeft;scJump=null}} // on opening: this week (right) in view
   placeUpdPop();placeIdsPop();
   savePrefs();
 }
@@ -2738,6 +2765,7 @@ const APP_ACTIONS={
     const inp=$(`[data-act="mtitle"][data-id="${m.id}"]`);inp?.focus();inp?.select();
   },
   pickteam:(b,id)=>{teamFilter=id;l10Add=null;rrScroll=null;render()},
+  scmore:()=>{scShown=Math.min(52,scShown+SC_WEEKS);scJump="left";render()},
   scdel:async(b,id)=>{
     const m=measurable(id);if(!m)return;
     if(Object.keys(m.values||{}).length&&!await askConfirm(`Delete “${m.title}” and its weekly values?`,"Delete"))return;
@@ -2751,7 +2779,7 @@ const APP_ACTIONS={
   kaddsave:()=>submitComposer(),
   agenda:b=>{
     const to=b.dataset.to;
-    if(to==="review"||to==="scorecard"){view=to;rrScroll=null;render();return}
+    if(to==="review"||to==="scorecard"){view=to;rrScroll=null;scOpened();render();return}
     const col=$(`.kcol[data-col="${to}"]`);if(!col)return;
     col.scrollIntoView({block:"nearest",behavior:"smooth"});col.classList.remove("flash");void col.offsetWidth;col.classList.add("flash"); // restart the flash
   },
@@ -2800,7 +2828,13 @@ const APP_CHANGES={
     if(el.checked)p.admin=true;else delete p.admin;
     save();render();toast(el.checked?`${p.name} is now an admin`:`${p.name} is no longer an admin`);
   },
-  scowner:el=>{const m=measurable(el.dataset.id);if(m.ownerId!==el.value){m.ownerId=el.value;logHist(m,el.value?`Owner set to ${personName(el.value)}`:"Owner removed");save()}render()},
+  scowner:el=>{
+    if(el.dataset.id==="new"){ // the empty row: picking its Who starts a measurable; then type its name
+      if(!el.value)return;
+      const r=scRows().length-1;newMeasurable("",el.value);save();render();scFocus(r,0);return;
+    }
+    const m=measurable(el.dataset.id);if(m.ownerId!==el.value){m.ownerId=el.value;logHist(m,el.value?`Owner set to ${personName(el.value)}`:"Owner removed");save()}render();
+  },
   levelfilter:el=>{el.checked?levelFilter.add(el.value):levelFilter.delete(el.value);render()},
   year:el=>{planYear=Number(el.value);render()},
   quarter:el=>{quarterFilter=el.value;rrScroll=null;render()},
@@ -2844,7 +2878,7 @@ const MODAL_ACTIONS={
   carddel:deleteCard,
 };
 
-document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{view=t.dataset.view;if(view==="review")rrScroll=null;render()}));
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{view=t.dataset.view;if(view==="review")rrScroll=null;if(view==="scorecard")scOpened();render()}));
 $("#app").addEventListener("click",e=>{
   const b=e.target.closest("[data-act]"),fn=b&&APP_ACTIONS[b.dataset.act];if(!fn)return;
   hideTip(); // the clicked element is about to be re-rendered
