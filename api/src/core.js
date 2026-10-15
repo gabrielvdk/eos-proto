@@ -5,7 +5,7 @@
 
    Routes (all under /api; all but config need a signed-in user who passes the allow-list):
      GET    config                      → {app, backend, env, seed, user, access}
-     GET    data                        → members/admins: {meta, people, units, goals, rocks, cards, meId, role, adminEmails}
+     GET    data                        → members/admins: {meta, people, units, goals, rocks, cards, measurables, meId, role, adminEmails}
                                           (records carry _etag); waiting people: {waiting:true, meId, me, role:"pending"}
      PUT    items/{collection}/{id}     body {record, ifMatch}  → {record}   412 when ifMatch is outdated
      DELETE items/{collection}/{id}     → 204
@@ -24,7 +24,7 @@
   else root.EosApiCore=factory();
 })(typeof self!=="undefined"?self:this,function(){
   "use strict";
-  const COLLECTIONS=["meta","people","units","goals","rocks","cards"]; // "meta" holds one record {id:"meta", version}
+  const COLLECTIONS=["meta","people","units","goals","rocks","cards","measurables"]; // "meta" holds one record {id:"meta", version}
   const ORG=["people","units"]; // the org tree and who belongs where
   const ID_RE=/^[A-Za-z0-9_-]{1,80}$/;
   const HASH_RE=/^[a-f0-9]{64}$/;
@@ -62,7 +62,8 @@
    even without any unit, and only admins grant the admin flag. Everyone assigned sees the whole organisation
    and all goals; rocks and Level 10 boards only where they have rights.
    - goals, rocks, cards: change them in units you have rights on. Goals live on any unit; rocks and Level 10 boards only
-     on teams and meetings ("team level"). A meeting's members also fully edit the rocks the meeting shows.
+     on teams and meetings ("team level"), like the Scorecard (measurables). A meeting's members also fully edit the
+     rocks the meeting shows.
    - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
    - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
      its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it.
@@ -93,7 +94,9 @@ function createRights({units,people,adminEmails}){
   const teamLevel=id=>{const u=byId.get(id);return !!u&&(u.kind==="team"||u.kind==="forum")}; // where rocks and boards live
   // goals visible to a private meeting only (goal.visibleTo, e.g. the DT Team's company goals): its members only, admins too
   const canSeeGoal=(p,g)=>!g.visibleTo||isMember(p,g.visibleTo);
-  const canEdit={goals:(p,g)=>canSeeGoal(p,g)&&hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
+  const canEdit={goals:(p,g)=>canSeeGoal(p,g)&&hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId),
+    measurables:(p,m)=>hasRights(p,m.unitId)}; // scorecard rows: like the Level 10 board
+  const TEAM_LEVEL=["rocks","cards","measurables"]; // these live on teams and meetings only
   // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins;
   // a private meeting only by its own members
   const canManageUnit=(p,u)=>u.private===true||isPrivate(u.id)?isMember(p,u.id)
@@ -119,8 +122,8 @@ function createRights({units,people,adminEmails}){
     // may p replace `before` with `after` in a collection (before = null: create, after = null: delete)? Checked on every write.
     writeAllowed(p,collection,before,after){
       if(role(p)==="pending")return false;
-      if((collection==="rocks"||collection==="cards")&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
-      if((collection==="rocks"||collection==="cards")&&[before,after].some(x=>x&&!canSeeContent(p,x.unitId)))return false; // private: admins too
+      if(TEAM_LEVEL.includes(collection)&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
+      if(TEAM_LEVEL.includes(collection)&&[before,after].some(x=>x&&!canSeeContent(p,x.unitId)))return false; // private: admins too
       if(collection==="units"&&before&&before.private===true&&!isMember(p,before.id))return false; // only members change a private meeting, admins too
       if(collection==="goals"&&[before,after].some(g=>g&&!canSeeGoal(p,g)))return false; // a hidden goal: its meeting's members only, admins too
       if(collection==="goals"&&after&&after.visibleTo&&!isPrivate(after.visibleTo))return false; // hidden only behind a private meeting
@@ -226,6 +229,7 @@ function createRights({units,people,adminEmails}){
         out.cards=out.cards.filter(c=>rights.canSeeBoard(me,c.unitId)); // Level 10 boards only where you have rights
         out.rocks=out.rocks.filter(r=>rights.canSeeRock(me,r)); // only the rocks you may change: your teams and below, your meetings
         out.goals=out.goals.filter(g=>rights.canSeeGoal(me,g)); // goals hidden behind a private meeting only to its members
+        out.measurables=out.measurables.filter(m=>rights.canSeeBoard(me,m.unitId)); // scorecards: like the Level 10 board
         return reply(200,{...out,meId:me.id,role,adminEmails});
       },
       async putItem({principal,params,body}){

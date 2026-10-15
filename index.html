@@ -469,6 +469,54 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .lightbox.open{display:flex}
 .lightbox img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:var(--shadow);background:#fff}
 
+/* scorecard (a spreadsheet: every cell is an input; who · measurable · goal stay put while the weeks scroll) */
+.scwrap{overflow-x:auto}
+table.sc{border-collapse:separate;border-spacing:0;width:100%;min-width:max-content;font-variant-numeric:tabular-nums}
+table.sc th,table.sc td{padding:0;border-bottom:1px solid var(--line);border-left:1px solid var(--line);height:auto;background:var(--surface)}
+table.sc th:first-child,table.sc td:first-child{border-left:0}
+table.sc thead th{position:sticky;top:0;z-index:2;padding:8px 10px;text-align:left;font-size:12px;font-weight:700;color:var(--ink-2);background:var(--canvas);vertical-align:bottom}
+table.sc thead th.c-wk{text-align:right;line-height:1.25}
+table.sc thead th.c-wk b{display:block;color:var(--ink);font-size:13px}
+table.sc thead th.c-wk span{font-weight:500;color:var(--ink-3)}
+table.sc thead th.c-wk.cur{background:var(--accent)}
+table.sc thead th.c-wk.cur b,table.sc thead th.c-wk.cur span{color:#fff}
+table.sc td.c-wk.cur{background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
+table.sc .c-who{position:sticky;left:0;z-index:1;width:170px;min-width:170px}
+table.sc .c-title{position:sticky;left:170px;z-index:1;width:320px;min-width:320px}
+table.sc .c-goal{position:sticky;left:490px;z-index:1;width:110px;min-width:110px;border-right:1px solid var(--line-strong)}
+table.sc thead .c-who,table.sc thead .c-title,table.sc thead .c-goal{z-index:3}
+table.sc .c-wk{width:84px;min-width:84px}
+table.sc tbody tr:last-child td{border-bottom:0}
+.scwho{display:flex;align-items:center;gap:6px;padding:0 6px 0 8px}
+.scwho .avatar{width:22px;height:22px;font-size:10px}
+.scwho select{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;padding:8px 0;cursor:pointer;text-overflow:ellipsis}
+.scwho select:focus{outline:2px solid var(--accent);outline-offset:-2px;border-radius:4px}
+.scwho select:disabled{cursor:default;opacity:1;appearance:none}
+.scc{display:block;width:100%;border:0;margin:0;padding:9px 10px;background:transparent;color:var(--ink);font:inherit;font-size:13.5px;outline:none;cursor:cell}
+.c-wk .scc,.c-goal .scc{text-align:right}
+.c-title .scc{font-weight:600;padding-right:34px}
+.scc:focus{box-shadow:inset 0 0 0 2px var(--accent);background:var(--surface);cursor:text;position:relative;z-index:1}
+.scc[readonly]:focus{box-shadow:inset 0 0 0 2px var(--line-strong)}
+.scc.ok{background:var(--green-soft);color:var(--green-deep)}
+.scc.bad{background:var(--red-soft);color:var(--red-deep);font-weight:600}
+.scc.badgoal{color:var(--amber);text-decoration:underline dotted}
+.scc::placeholder{color:var(--ink-3);font-weight:500}
+:root[data-theme="dark"] .scc.ok{color:var(--green)}
+:root[data-theme="dark"] .scc.bad{color:#FF8A98}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .scc.ok{color:var(--green)}:root:not([data-theme="light"]) .scc.bad{color:#FF8A98}}
+.scnew td{background:var(--canvas)}
+.scnew .c-title .scc{font-weight:500}
+.c-title{position:relative}
+.scdel{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--ink-3);padding:3px;border-radius:5px;display:inline-flex;opacity:0;z-index:2}
+.scdel svg{width:15px;height:15px}
+tr:hover .scdel,.scdel:focus{opacity:1}
+.scdel:hover{color:var(--red);background:var(--red-soft)}
+.schint{background:var(--surface);border:1px dashed var(--line-strong);border-radius:12px;padding:12px 14px;margin-bottom:12px;color:var(--ink-2);font-size:13.5px}
+.schint code{background:var(--canvas);border-radius:4px;padding:1px 5px;font-size:12.5px}
+.sckeys{margin-top:10px}
+.sw.ok{background:var(--green-soft);border:1px solid var(--green)}
+.sw.bad{background:var(--red-soft);border:1px solid var(--red)}
+
 /* rock review (weekly milestone grid) */
 .rrwrap{display:flex;align-items:flex-start}
 .rrwrap .rr-scroll{flex:1 1 auto;min-width:0}
@@ -533,6 +581,7 @@ try{const t=localStorage.getItem("eos-theme");if(t==="light"||t==="dark")documen
     <button class="tab" role="tab" data-view="plan" aria-selected="true">One Year Plan</button>
     <button class="tab" role="tab" data-view="rocks" aria-selected="false">Rocks</button>
     <button class="tab" role="tab" data-view="l10" aria-selected="false">Level 10</button>
+    <button class="tab" role="tab" data-view="scorecard" aria-selected="false">Scorecard</button>
     <button class="tab" role="tab" data-view="review" aria-selected="false">Rock Review</button>
     <button class="tab" role="tab" data-view="org" aria-selected="false" hidden>Organisation</button>
   </div>
@@ -569,8 +618,8 @@ const STATUSES=[ // rock statuses: the key is stored, the label is shown
   {key:"cancelled",label:"Cancelled",     cls:"st-can"},
 ];
 const COLS=[{key:"ids",label:"IDS"},{key:"todo",label:"To Do"},{key:"done",label:"Done"}]; // Level 10 board columns
-const AGENDA=[ // Level 10 agenda: [name, minutes, link, sub-items]; link = "review" (the tab) or a board column
-  ["Segue",5],["Scorecard",5],["Rock Review",5,"review"],["Customer / Employee Headlines",5],
+const AGENDA=[ // Level 10 agenda: [name, minutes, link, sub-items]; link = "review" / "scorecard" (the tab) or a board column
+  ["Segue",5],["Scorecard",5,"scorecard"],["Rock Review",5,"review"],["Customer / Employee Headlines",5],
   ["To-Do List",5,"todo"],["IDS",60,"ids"],["Conclude",5,null,["Recap To-Do List","Cascading Messages","Rating (1–10)"]],
 ];
 const UNIT_LEVEL={company:"Company",department:"Department",team:"Team",forum:"Forum"}; // "Forum" only colours dots; goals never belong to a forum
@@ -606,7 +655,7 @@ const currentUserId=()=>session.userId;
 
 /* ---------- data model ----------
    All shared data lives in one object S (one per organisation; later: the database).
-   S = {version, people, units, goals, rocks, cards}
+   S = {version, people, units, goals, rocks, cards, measurables}
    people  [{id, name, color, email, unitIds:[unit id], admin}]   on Azure everyone who signs in is added automatically
            (matched on email), without units. Role (roleOf): admin = admin:true or in the server's ADMIN_EMAILS ·
            member = belongs to at least one unit · pending = neither: sees a "wait to be added to a team" page, nothing else.
@@ -620,10 +669,12 @@ const currentUserId=()=>session.userId;
    rocks   [{id, unitId, quarter:"Q4 2026", rank, title, ownerId, status (STATUSES key), goalId, trackIn:[forum id],
              description, deliverables, milestones:[{id, title, done, deadline:"YYYY-MM-DD", updates}], updates, history}]
    cards   [{id, unitId, column (COLS key), rank, title, description (sanitized HTML), owners:[person id], createdBy, createdAt, updates, history}]
-   rank: display order (S.rocks and S.cards are kept sorted by it); a database keeps no array order.
+   measurables [{id, unitId, rank, title, ownerId, goal:"20+" (text, see parseGoal), values:{"YYYY-MM-DD" (a Monday): number}, history}]
+           the Scorecard: one row per measurable, on teams and meetings (like the Level 10 board)
+   rank: display order (S.rocks, S.cards and S.measurables are kept sorted by it); a database keeps no array order.
    updates and history: [{at, who, text}], newest first; `at` is an ISO timestamp (older entries: a plain date, older updates: no `who`).
    Records refer to each other by id, never by name. */
-const DATA_VERSION=11;
+const DATA_VERSION=12;
 
 /* ---------- sample data (only used when this browser has no saved data) ---------- */
 const DEMO_YEAR=2026; // the sample content is written for this year
@@ -767,7 +818,7 @@ function seed(){
       {at:r.quarter==="Q3 2026"?d(7,1):d(9,29),who:r.ownerId,text:"Created"},
     ];
   });
-  return migrate({version:10,people,units,goals,rocks,cards:seedCards(U)});
+  return migrate({version:12,people,units,goals,rocks,cards:seedCards(U),measurables:seedMeasurables(U)});
 }
 /* Level 10 board cards for every persona's team and meeting; U(name) gives a unit id. Same card type in every column,
    so an IDS item can become a to-do. */
@@ -815,6 +866,43 @@ function seedCards(U){
   ].map((c,i)=>({...c,rank:i}));
 }
 
+/* Scorecard rows for the persona teams: 12 weeks of numbers up to last week (this week is still to be filled in).
+   A fixed random sequence, so the sample looks the same on every load; values are relative to today. */
+function seedMeasurables(U){
+  let n=11;const rnd=()=>(n=n*16807%2147483647)/2147483647;
+  const weeks=Array.from({length:12},(_,i)=>{const x=mondayOf(TODAY);x.setDate(x.getDate()-7*(i+1));return localISO(x)});
+  const M=(unit,title,ownerId,goal,base,spread,step=1)=>({id:uid(),unitId:U(unit),title,ownerId,goal,
+    values:Object.fromEntries(weeks.map(w=>[w,Math.max(0,+(Math.round((base+(rnd()*2-1)*spread)/step)*step).toFixed(2))])),history:[{at:d(9,29),who:ownerId,text:"Created"}]});
+  return [
+    M("DT Team","Revenue booked","p12","€250k+",265000,70000,1000),
+    M("DT Team","Cash position","p1","€1.5M+",1600000,200000,10000),
+    M("DT Team","Open vacancies","p11","<= 6",6,3),
+    M("DT Team","Customer escalations","p1","0",0.6,1.4),
+    M("Business Review","Rocks off track","p3","<= 3",3,2),
+    M("Business Review","Open IDS items older than 4 weeks","p2","<= 5",5,3),
+    M("Sales MT","New pipeline","p2","€300k+",310000,90000,5000),
+    M("Sales MT","Win rate","c11",">= 30%",29,6),
+    M("Sales MT","Forecast accuracy","p2",">= 85%",86,7),
+    M("Direct Sales","Qualified meetings","p4","20+",21,7),
+    M("Direct Sales","Proposals sent","c1","8+",8,3),
+    M("Direct Sales","Calls made","c2","150+",155,35),
+    M("Direct Sales","Deals closed","p4","3+",3,2),
+    M("Project Sales","Project quotes sent","p5","4+",4,2),
+    M("Project Sales","Quote value","c3","€500k+",520000,180000,10000),
+    M("Project Sales","Site visits","c4","3+",3,2),
+    M("LG Service Desk","Tickets opened","c5","<= 120",115,25),
+    M("LG Service Desk","First response within 4 h","p6",">= 90%",90,6),
+    M("LG Service Desk","Tickets older than 2 weeks","c6","<= 10",10,6),
+    M("LG Service Desk","Customer satisfaction","p6","8.5+",8.5,0.5,0.1),
+    M("Product & Technology MT","Releases shipped","p3","2+",2,1),
+    M("Product & Technology MT","Critical bugs open","c12","0",0.5,1.3),
+    M("Product & Technology MT","Uptime","p3",">= 99.9%",99.9,0.12,0.01),
+    M("Data Science","Datasets migrated","c7","2+",2,1.5),
+    M("Data Science","Model accuracy","p7",">= 80%",79,5),
+    M("Research","Test runs on the rig","p8","5+",5,3),
+    M("Research","Lab hours used","c9","30-40",35,9),
+  ].map((m,i)=>({...m,rank:i}));
+}
 /* ---------- migration ----------
    Brings data of any older shape up to DATA_VERSION. It runs on every load in every backend; on Azure the first visit
    after a deploy writes the migrated records back, so a shape change never needs a manual step.
@@ -824,6 +912,7 @@ function migrate(data){
   if(data.version<9)data=migrateV8(data); // → 9
   if(data.version<10)data=migrateV9(data); // → 10
   if(data.version<11)data=migrateV10(data); // → 11
+  if(data.version<12)data=migrateV11(data); // → 12
   return data;
 }
 // v7 and older: units referenced by name, stored goal levels, status labels, a single trackBR flag, no authors on updates
@@ -896,7 +985,16 @@ function migrateV10(data){
 }
 const byRank=(a,b)=>(a.rank??0)-(b.rank??0);
 const nextRank=list=>list.reduce((m,x)=>Math.max(m,x.rank??0),-1)+1;
-function prepareData(data){data.units.sort(byRank);data.rocks.sort(byRank);data.cards.sort(byRank);return data}
+// v11: the Scorecard (measurables) arrives; the sample data (recognisable by its short ids) gets the sample scorecards
+function migrateV11(data){
+  let measurables=data.measurables||[];
+  if(!measurables.length&&data.goals.some(g=>g.id==="g1")){
+    const U=name=>data.units.find(u=>u.name===name)?.id;
+    measurables=seedMeasurables(U).filter(m=>m.unitId);
+  }
+  return {...data,measurables,version:12};
+}
+function prepareData(data){data.units.sort(byRank);data.rocks.sort(byRank);data.cards.sort(byRank);data.measurables.sort(byRank);return data}
 
 /* ---------- backends ----------
    Where the data lives. Every backend fills S and the session on load() and stores changes on save().
@@ -958,7 +1056,7 @@ function moveLegacyData(data){ // returns false when the new copy can't be store
 /* api and mock: the same backend, only the transport differs (HTTP to /api, or the API core inside the browser).
    save() compares every record with the copy last stored and sends only what changed, each with its ETag, so a change
    someone else made in the meantime is detected (412: reload, your change is dropped) instead of silently overwritten. */
-const SYNCED=["people","units","goals","rocks","cards"];
+const SYNCED=["people","units","goals","rocks","cards","measurables"];
 const ORG=["people","units"]; // the organisation: saved before the content that refers to it
 function createRemoteBackend(kind,transport,config){
   const synced=new Map(),etags=new Map(); // "collection/id" → JSON as last stored / its ETag
@@ -973,12 +1071,12 @@ function createRemoteBackend(kind,transport,config){
     const sync=new Map(),tags=new Map();
     const take=(c,rec)=>{tags.set(key(c,rec.id),rec._etag);delete rec._etag;sync.set(key(c,rec.id),JSON.stringify(rec))};
     if(json.meta)take("meta",json.meta);
-    SYNCED.forEach(c=>json[c].forEach(rec=>take(c,rec)));
+    SYNCED.forEach(c=>(json[c]||[]).forEach(rec=>take(c,rec)));
     let data;
     if(!json.meta&&!json.units.length){ // empty database: start with the organisation (plus sample content where SEED=sample)
       data=config.seed==="sample"?seed():{version:DATA_VERSION,people:[],units:seedOrg(),goals:[],rocks:[],cards:[]};
       data.people=[...json.people,...data.people];
-    }else data={version:json.meta?.version??DATA_VERSION,...Object.fromEntries(SYNCED.map(c=>[c,json[c]]))};
+    }else data={version:json.meta?.version??DATA_VERSION,...Object.fromEntries(SYNCED.map(c=>[c,json[c]||[]]))};
     return {data:prepareData(migrate(data)),sync,tags,meId:json.meId,adminEmails:json.adminEmails||[]}; // migrated records differ from `sync`, so save() stores them
   }
   function adopt(snap){
@@ -1130,7 +1228,7 @@ function savePrefs(){
 }
 
 /* ---------- ui state (per viewer; teamFilter, quarter and year are remembered in prefs) ---------- */
-let view="plan";            // plan | rocks | review | l10
+let view="plan";            // plan | rocks | review | l10 | scorecard | org
 let planMode="list";        // One Year Plan: list | tree
 let planYear;               // One Year Plan year
 let quarterFilter;          // Rocks and Rock Review quarter
@@ -1194,7 +1292,8 @@ const defaultUnitId=kind=>{
    even without any unit, and only admins grant the admin flag. Everyone assigned sees the whole organisation
    and all goals; rocks and Level 10 boards only where they have rights.
    - goals, rocks, cards: change them in units you have rights on. Goals live on any unit; rocks and Level 10 boards only
-     on teams and meetings ("team level"). A meeting's members also fully edit the rocks the meeting shows.
+     on teams and meetings ("team level"), like the Scorecard (measurables). A meeting's members also fully edit the
+     rocks the meeting shows.
    - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
    - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
      its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it.
@@ -1225,7 +1324,9 @@ function createRights({units,people,adminEmails}){
   const teamLevel=id=>{const u=byId.get(id);return !!u&&(u.kind==="team"||u.kind==="forum")}; // where rocks and boards live
   // goals visible to a private meeting only (goal.visibleTo, e.g. the DT Team's company goals): its members only, admins too
   const canSeeGoal=(p,g)=>!g.visibleTo||isMember(p,g.visibleTo);
-  const canEdit={goals:(p,g)=>canSeeGoal(p,g)&&hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
+  const canEdit={goals:(p,g)=>canSeeGoal(p,g)&&hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId),
+    measurables:(p,m)=>hasRights(p,m.unitId)}; // scorecard rows: like the Level 10 board
+  const TEAM_LEVEL=["rocks","cards","measurables"]; // these live on teams and meetings only
   // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins;
   // a private meeting only by its own members
   const canManageUnit=(p,u)=>u.private===true||isPrivate(u.id)?isMember(p,u.id)
@@ -1251,8 +1352,8 @@ function createRights({units,people,adminEmails}){
     // may p replace `before` with `after` in a collection (before = null: create, after = null: delete)? Checked on every write.
     writeAllowed(p,collection,before,after){
       if(role(p)==="pending")return false;
-      if((collection==="rocks"||collection==="cards")&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
-      if((collection==="rocks"||collection==="cards")&&[before,after].some(x=>x&&!canSeeContent(p,x.unitId)))return false; // private: admins too
+      if(TEAM_LEVEL.includes(collection)&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
+      if(TEAM_LEVEL.includes(collection)&&[before,after].some(x=>x&&!canSeeContent(p,x.unitId)))return false; // private: admins too
       if(collection==="units"&&before&&before.private===true&&!isMember(p,before.id))return false; // only members change a private meeting, admins too
       if(collection==="goals"&&[before,after].some(g=>g&&!canSeeGoal(p,g)))return false; // a hidden goal: its meeting's members only, admins too
       if(collection==="goals"&&after&&after.visibleTo&&!isPrivate(after.visibleTo))return false; // hidden only behind a private meeting
@@ -1598,7 +1699,7 @@ function renderL10(){
   const head=`<div class="viewhead">${viewTitle("Level 10",teamFilter)}<span class="count">${plural(open,"open item")}</span></div>`;
   const agendaItem=([name,min,to,subs])=>{
     const inner=`<span class="an">${esc(name)}</span><span class="am ${min>=30?"big":""}">${min} min</span>`;
-    const title=to==="review"?"Open Rock Review":`Show the ${colLabel(to)} column`;
+    const title=to==="review"?"Open Rock Review":to==="scorecard"?"Open the Scorecard":`Show the ${colLabel(to)} column`;
     return `<li>${to?`<button class="ai lnk" data-act="agenda" data-to="${to}" title="${title}">${inner}</button>`:`<div class="ai">${inner}</div>`}
       ${subs?`<ul>${subs.map(s=>`<li>${esc(s)}</li>`).join("")}</ul>`:""}</li>`;
   };
@@ -1673,12 +1774,181 @@ function submitComposer(){ // Enter adds the card and keeps the composer open fo
   const list=$(`.kcol[data-col="${l10Add}"] .klist`);if(list)list.scrollTop=list.scrollHeight; // show the new card at the bottom
 }
 
+/* ---------- Scorecard (weekly numbers, per team or meeting) ----------
+   Works like a spreadsheet: every cell is an input. Click or arrow to a cell and type to replace it; Enter / ↓ moves down,
+   Shift+Enter / ↑ up, Tab / → right, Shift+Tab / ← left; F2 or a double-click edits inside the text; Esc undoes; Delete
+   clears. Pasting a block copied from Excel fills the cells from the one you're in (adding rows when it runs past the
+   last one). Alt+↑/↓ moves a row. The empty row at the bottom adds a measurable as soon as you type in it.
+   Columns: who · measurable · goal · the last SC_WEEKS weeks, left to right like Rock Review (this week on the right). A value is green
+   when it meets the goal, red when it doesn't. Cells are updated in place (no re-render), so the cursor stays put. */
+const SC_WEEKS=13;
+const scWeeks=()=>Array.from({length:SC_WEEKS},(_,i)=>{const x=mondayOf(TODAY);x.setDate(x.getDate()-7*(SC_WEEKS-1-i));return x}); // oldest first
+let scEdit=null; // the cell being edited inside its text (F2, double-click, typing); otherwise arrows move between cells
+const measurable=id=>S.measurables.find(m=>m.id===id);
+const canEditScorecard=id=>rights.writeAllowed(me(),"measurables",null,{unitId:id}); // the server's rule
+/* a number as people type it: 40000 · 40,000 · 40.000 · 1,5 · 40k · 1.5M · €40k · 85% */
+function parseNum(text){
+  let t=String(text??"").trim().toLowerCase().replace(/[€$£%\s]/g,"").replace("−","-");
+  if(!t)return null;
+  let mult=1;
+  if(/[km]$/.test(t)){mult=t.endsWith("k")?1e3:1e6;t=t.slice(0,-1)}
+  const neg=t.startsWith("-");t=t.replace(/^[-+]/,"");
+  if(t.includes(",")&&t.includes(".")){const dec=t.lastIndexOf(",")>t.lastIndexOf(".")?",":".";t=t.split(dec===","?".":",").join("").replace(dec,".")}
+  else if(/^\d{1,3}([.,]\d{3})+$/.test(t))t=t.replace(/[.,]/g,""); // thousands separators
+  else t=t.replace(",",".");
+  if(!/^(\d+\.?\d*|\.\d+)$/.test(t))return null;
+  return (neg?-1:1)*parseFloat(t)*mult;
+}
+/* a goal as people write it: "20+" · ">= 80%" · "≤ 5" · "< 3" · "€40k+" · "30-40" (a range) · "0" (none at all).
+   A plain number means "at least", except 0 ("none"). Returns {op, a, b, fmt} or null. */
+function parseGoal(text){
+  const s=String(text||"").trim();if(!s)return null;
+  const fmt=s.includes("%")?"pct":s.includes("€")?"eur":s.includes("$")?"usd":"num";
+  let m=/^(>=|=>|≥|<=|=<|≤|>|<|=|min\.?|max\.?|at least|at most)\s*(.+)$/i.exec(s),op,a,b;
+  if(m){
+    op={"=>":">=","≥":">=","=<":"<=","≤":"<="}[m[1]]??m[1].toLowerCase();
+    if(/^(min|at least)/.test(op))op=">=";if(/^(max|at most)/.test(op))op="<=";
+    a=parseNum(m[2]);
+  }
+  else if((m=/^(.+?)\s*(\+|or more)$/i.exec(s))){op=">=";a=parseNum(m[1])}
+  else if((m=/^(.+?)\s*(-|or less)$/i.exec(s))&&parseNum(m[1])!==null){op="<=";a=parseNum(m[1])}
+  else if((m=/^([^-–]+?)\s*(?:–|-|to)\s*([^-–]+)$/i.exec(s))&&parseNum(m[1])!==null&&parseNum(m[2])!==null){op="range";a=parseNum(m[1]);b=parseNum(m[2])}
+  else{a=parseNum(s);op=a===0?"<=":">="}
+  return a===null||a===undefined||Number.isNaN(a)?null:{op,a,b,fmt};
+}
+function meetsGoal(g,v){
+  switch(g.op){
+    case ">=":return v>=g.a; case ">":return v>g.a; case "<=":return v<=g.a; case "<":return v<g.a; case "=":return v===g.a;
+    case "range":return v>=Math.min(g.a,g.b)&&v<=Math.max(g.a,g.b);
+  }
+  return true;
+}
+function fmtNum(v,fmt){
+  if(v===null||v===undefined)return "";
+  const n=Math.abs(v).toLocaleString("en-GB",{maximumFractionDigits:2}),sign=v<0?"-":"";
+  return fmt==="pct"?`${sign}${n}%`:fmt==="eur"?`${sign}€${n}`:fmt==="usd"?`${sign}$${n}`:sign+n;
+}
+const scCellCls=(m,v)=>{if(v===null||v===undefined)return "";const g=parseGoal(m.goal);return g?(meetsGoal(g,v)?"ok":"bad"):""};
+const GOAL_HELP="try 20+, >= 80%, <= 5, €40k+, 30-40 or 0";
+function renderScorecard(){
+  if(!boardOk(teamFilter))return renderScorecardPick();
+  const list=S.measurables.filter(m=>m.unitId===teamFilter),weeks=scWeeks(),cur=localISO(weeks[weeks.length-1]);
+  const edit=canEditScorecard(teamFilter),ro=edit?"":" readonly";
+  const members=unitMembers(teamFilter).sort((a,b)=>a.name.localeCompare(b.name));
+  const head=`<div class="viewhead">${viewTitle("Scorecard",teamFilter)}<span class="count">${plural(list.length,"measurable")}</span></div>`;
+  const cell=(id,k,value,cls="",extra="")=>`<input class="scc ${cls}" data-sc="${id}" data-k="${k}" value="${esc(value)}" spellcheck="false" autocomplete="off"${ro}${extra}>`;
+  const owner=m=>{
+    const opts=[...members];if(m.ownerId&&!opts.some(p=>p.id===m.ownerId)&&person(m.ownerId))opts.push(person(m.ownerId)); // a former member stays visible
+    return `<div class="scwho">${avatarHTML(m.ownerId)}<select data-act="scowner" data-id="${m.id}" aria-label="Who"${edit?"":" disabled"}><option value="">—</option>${opts.map(p=>`<option value="${p.id}" ${p.id===m.ownerId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div>`;
+  };
+  const row=m=>{
+    const g=parseGoal(m.goal),badGoal=!!m.goal&&!g;
+    return `<tr data-row="${m.id}"><td class="c-who">${owner(m)}</td>
+      <td class="c-title">${cell(m.id,"title",m.title)}${edit?`<button class="scdel" data-act="scdel" data-id="${m.id}" aria-label="Delete ${esc(m.title)}" data-tip="Delete">${ICONS.trash}</button>`:""}</td>
+      <td class="c-goal">${cell(m.id,"goal",m.goal||"",badGoal?"badgoal":"",` placeholder="—"${badGoal?` data-tip="${esc("Not a goal I understand: "+GOAL_HELP)}"`:""}`)}</td>
+      ${weeks.map(w=>{const k=localISO(w),v=m.values?.[k];return `<td class="c-wk ${k===cur?"cur":""}">${cell(m.id,k,fmtNum(v,g?.fmt),scCellCls(m,v))}</td>`}).join("")}</tr>`;
+  };
+  const newRow=edit?`<tr class="scnew"><td class="c-who"></td><td class="c-title">${cell("new","title","","",` placeholder="+ Add measurable"`)}</td><td class="c-goal">${cell("new","goal","")}</td>
+      ${weeks.map(w=>`<td class="c-wk ${localISO(w)===cur?"cur":""}">${cell("new",localISO(w),"")}</td>`).join("")}</tr>`:"";
+  const th=`<tr><th class="c-who">Who</th><th class="c-title">Measurable</th><th class="c-goal">Goal</th>${weeks.map((w,i)=>`<th class="c-wk ${i===weeks.length-1?"cur":""}"><b>Wk ${isoWeek(w)}</b><span>${fmtDate(localISO(w))}</span></th>`).join("")}</tr>`;
+  const empty=!list.length?`<div class="schint"><b>No measurables yet.</b> ${edit?`Add the 5–15 numbers this team looks at every week: type a name in the first row, then its goal (e.g. <code>20+</code>, <code>&gt;= 80%</code>, <code>&lt;= 5</code>, <code>€40k+</code>, <code>30-40</code>, <code>0</code>) and the weekly values. Or paste the rows from Excel.`:""}</div>`:"";
+  const keys=`<div class="legend sckeys"><span><i class="sw ok"></i> On goal</span><span><i class="sw bad"></i> Off goal</span>
+    <span class="muted">${edit?"Type to replace · Enter ↓ · Tab → · F2 edits · Esc undoes · Paste from Excel · Alt+↑↓ moves a row":"View only"}</span></div>`;
+  return head+empty+`<div class="board scwrap" data-keepscroll="${teamFilter}-sc"><table class="sc"><thead>${th}</thead><tbody>${list.map(row).join("")}${newRow}</tbody></table></div>`+keys;
+}
+const renderScorecardPick=()=>renderTeamPick("Scorecard","to open its scorecard",
+  id=>{const n=S.measurables.filter(m=>m.unitId===id).length;return n?plural(n,"measurable"):""});
+function newMeasurable(title){
+  const m={id:uid(),unitId:teamFilter,rank:nextRank(S.measurables),title:title||"New measurable",
+    ownerId:rights.isMember(me(),teamFilter)?currentUserId():"",goal:"",values:{},history:[]};
+  logHist(m,"Created");S.measurables.push(m);return m;
+}
+/* writes one cell's text into a measurable; false when it isn't a number (the cell then shows the old value) */
+function setScField(m,k,text){
+  const t=String(text??"").trim();
+  if(k==="title"){if(t&&t!==m.title){logHist(m,`Renamed from “${m.title}”`);m.title=t}return true}
+  if(k==="goal"){if(t!==(m.goal||"")){logHist(m,t?`Goal set to ${t}`:"Goal removed");m.goal=t}return true}
+  m.values||={};
+  if(!t){delete m.values[k];return true}
+  const v=parseNum(t);if(v===null)return false;
+  m.values[k]=v;return true;
+}
+// the cell grid: row and column of a cell, and focusing a cell by position (clamped to the grid)
+const scRows=()=>$$("#app table.sc tbody tr");
+const scPos=el=>{const tr=el.closest("tr");return [scRows().indexOf(tr),$$(".scc",tr).indexOf(el)]};
+function scFocus(r,c){
+  const rows=scRows();if(!rows.length)return;
+  const tr=rows[Math.max(0,Math.min(r,rows.length-1))],cells=$$(".scc",tr);
+  cells[Math.max(0,Math.min(c,cells.length-1))]?.focus();
+}
+/* stores what was typed in a cell (when it changed); the cell and its row are updated in place, except when a row is added */
+function scCommit(el){
+  if(!el.isConnected||el.readOnly)return;
+  const id=el.dataset.sc,k=el.dataset.k;
+  if(id==="new"){
+    if(!el.value.trim())return;
+    const m=newMeasurable(k==="title"?el.value.trim():"");
+    if(k!=="title"&&!setScField(m,k,el.value))toast(`“${el.value.trim()}” isn't a number`,3000);
+    scEdit=null;save();render();return;
+  }
+  const m=measurable(id);if(!m)return;
+  const g=parseGoal(m.goal),shown=k==="title"?m.title:k==="goal"?(m.goal||""):fmtNum(m.values?.[k],g?.fmt);
+  if(el.value===shown)return;
+  if(!setScField(m,k,el.value)){toast(`“${el.value.trim()}” isn't a number`,3000);el.value=shown;return}
+  save();
+  if(k==="goal"){ // the colours (and number format) of the whole row follow the goal
+    const tr=el.closest("tr"),ng=parseGoal(m.goal);
+    $$(".c-wk .scc",tr).forEach(c=>{const v=m.values?.[c.dataset.k];c.value=fmtNum(v,ng?.fmt);c.className=`scc ${scCellCls(m,v)}`});
+    el.value=m.goal;el.classList.toggle("badgoal",!!m.goal&&!ng);
+    if(m.goal&&!ng)toast(`Not a goal I understand: ${GOAL_HELP}`,4000);
+  }else if(k==="title")el.value=m.title;
+  else{const v=m.values[k];el.value=fmtNum(v,g?.fmt);el.className=`scc ${scCellCls(m,v)}`}
+  el.dataset.orig=el.value;
+}
+function scGo(el,dr,dc){const [r,c]=scPos(el);scCommit(el);scFocus(r+dr,c+dc)}
+function scMoveRow(el,dir){
+  const m=measurable(el.dataset.sc);if(!m||el.readOnly)return;
+  const [r,c]=scPos(el),list=S.measurables.filter(x=>x.unitId===m.unitId),other=list[list.indexOf(m)+dir];if(!other)return;
+  scCommit(el);[m.rank,other.rank]=[other.rank,m.rank];S.measurables.sort(byRank);save();render();scFocus(r+dir,c);
+}
+function scKey(e){
+  const el=e.target,k=e.key,editing=scEdit===el;
+  if(e.altKey&&(k==="ArrowUp"||k==="ArrowDown")){e.preventDefault();return scMoveRow(el,k==="ArrowUp"?-1:1)}
+  if(k==="Enter"){e.preventDefault();return scGo(el,e.shiftKey?-1:1,0)}
+  if(k==="Tab"){e.preventDefault();return scGo(el,0,e.shiftKey?-1:1)}
+  if(k==="Escape"){e.preventDefault();el.value=el.dataset.orig??el.value;scEdit=null;el.select();return}
+  if(k==="F2"){e.preventDefault();if(el.readOnly)return viewOnly();scEdit=el;el.setSelectionRange(el.value.length,el.value.length);return}
+  const arrow={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[k];
+  if(arrow&&(!editing||arrow[0])){e.preventDefault();return scGo(el,...arrow)} // while editing, ← and → move inside the text
+  const typing=(k.length===1&&!e.ctrlKey&&!e.metaKey&&!e.altKey)||k==="Backspace"||k==="Delete";
+  if(typing&&el.readOnly){e.preventDefault();return viewOnly()}
+  if(typing&&!editing)scEdit=el; // the whole cell is selected, so typing replaces it
+}
+/* a block copied from Excel (tabs between cells, a line per row) fills the grid from this cell on */
+function scPaste(e){
+  const el=e.target,text=(e.clipboardData||window.clipboardData).getData("text/plain").replace(/\r/g,"").replace(/\n+$/,"");
+  if(!text.includes("\t")&&!text.includes("\n"))return; // one value: the input takes it as typed text
+  e.preventDefault();
+  if(el.readOnly)return viewOnly();
+  const [r0,c0]=scPos(el),rows=scRows(),keys=$$(".scc",rows[rows.length-1]).map(x=>x.dataset.k); // the "new" row has every column
+  const ids=rows.map(tr=>$(".scc",tr).dataset.sc).filter(id=>id!=="new");
+  let bad=0,cells=0;
+  text.split("\n").forEach((line,i)=>{
+    const vals=line.split("\t");
+    let m=measurable(ids[r0+i]);
+    if(!m){if(!vals.some(v=>v.trim()))return;m=newMeasurable(c0===0?vals[0].trim():"")}
+    vals.forEach((v,j)=>{const k=keys[c0+j];if(!k)return;cells++;if(!setScField(m,k,v))bad++});
+  });
+  scEdit=null;save();render();scFocus(r0,c0);
+  toast(bad?`Pasted ${plural(cells,"cell")}; ${plural(bad,"value")} weren't numbers and were skipped`:`Pasted ${plural(cells,"cell")}`,bad?4000:1600);
+}
+
 /* ---------- Organisation (admins only): one page with two tabs, the org tree and the people ----------
    Changes go through save() like everything else; the server only accepts them from admins. */
 let orgTab="structure"; // structure | people
 const unitUsage=id=>{
   const n=list=>list.filter(x=>x.unitId===id).length;
-  return {teams:teamsOf(id).length,goals:n(S.goals),rocks:n(S.rocks),cards:n(S.cards),people:S.people.filter(p=>(p.unitIds||[]).includes(id)).length};
+  return {teams:teamsOf(id).length,goals:n(S.goals),rocks:n(S.rocks),cards:n(S.cards),measurables:n(S.measurables),people:S.people.filter(p=>(p.unitIds||[]).includes(id)).length};
 };
 function renderOrgPage(){
   const waiting=S.people.filter(p=>roleOf(p)==="pending").length;
@@ -1788,7 +2058,7 @@ const waitingHTML=(name,email,hint)=>`<div class="board gate"><h1>Welcome, ${esc
   <p class="muted">${esc(hint)}</p></div>`;
 
 /* ---------- render ---------- */
-const VIEWS={plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10,org:renderOrgPage};
+const VIEWS={plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10,scorecard:renderScorecard,org:renderOrgPage};
 const ADMIN_VIEWS=[]; // none any more: the organisation manages itself (everyone sees it, edits follow rights)
 function render(){
   if(!S)return; // still loading, or stopped at a "no access" / error screen
@@ -1815,6 +2085,7 @@ function render(){
   $$(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===view));
   if(view==="l10"&&l10Add)$("#app .kcompose textarea")?.focus();
   if(view==="review"){syncReviewRows();restoreReviewScroll()}
+  if(view==="scorecard"){const w=$(".scwrap");if(w)w.scrollLeft=w.scrollWidth} // this week (on the right) in view
   placeUpdPop();placeIdsPop();
   savePrefs();
 }
@@ -2467,6 +2738,11 @@ const APP_ACTIONS={
     const inp=$(`[data-act="mtitle"][data-id="${m.id}"]`);inp?.focus();inp?.select();
   },
   pickteam:(b,id)=>{teamFilter=id;l10Add=null;rrScroll=null;render()},
+  scdel:async(b,id)=>{
+    const m=measurable(id);if(!m)return;
+    if(Object.keys(m.values||{}).length&&!await askConfirm(`Delete “${m.title}” and its weekly values?`,"Delete"))return;
+    S.measurables=S.measurables.filter(x=>x.id!==id);save();render();toast("Measurable deleted");
+  },
   idsopen:(b,id)=>{idsOpen=idsOpen?.rockId===id?null:{rockId:id,draft:`Rock to Discuss: ${rock(id).title}`};updOpen=null;render()},
   idscancel:()=>closeIdsPop(),
   idsadd:()=>addIdsFromPop(),
@@ -2475,7 +2751,7 @@ const APP_ACTIONS={
   kaddsave:()=>submitComposer(),
   agenda:b=>{
     const to=b.dataset.to;
-    if(to==="review"){view="review";rrScroll=null;render();return}
+    if(to==="review"||to==="scorecard"){view=to;rrScroll=null;render();return}
     const col=$(`.kcol[data-col="${to}"]`);if(!col)return;
     col.scrollIntoView({block:"nearest",behavior:"smooth"});col.classList.remove("flash");void col.offsetWidth;col.classList.add("flash"); // restart the flash
   },
@@ -2486,7 +2762,7 @@ const APP_ACTIONS={
   addteam:(b,id)=>canEditUnit(id)?addUnit("team",id):viewOnly(),
   unitdel:async(b,id)=>{
     const u=unit(id),x=unitUsage(id);if(!canManageUnit(u))return viewOnly();
-    const blockers=[[x.teams,"team"],[x.people,"member"],[x.goals,"goal"],[x.rocks,"rock"],[x.cards,"Level 10 card"]].filter(([n])=>n).map(([n,w])=>plural(n,w));
+    const blockers=[[x.teams,"team"],[x.people,"member"],[x.goals,"goal"],[x.rocks,"rock"],[x.cards,"Level 10 card"],[x.measurables,"scorecard measurable"]].filter(([n])=>n).map(([n,w])=>plural(n,w));
     if(blockers.length){toast(`Can't delete ${u.name}: it still has ${blockers.join(", ")}. Move or remove those first.`,6000);return}
     if(!await askConfirm(`Delete “${u.name}”?`,"Delete"))return;
     S.units=S.units.filter(v=>v.id!==id);
@@ -2524,6 +2800,7 @@ const APP_CHANGES={
     if(el.checked)p.admin=true;else delete p.admin;
     save();render();toast(el.checked?`${p.name} is now an admin`:`${p.name} is no longer an admin`);
   },
+  scowner:el=>{const m=measurable(el.dataset.id);if(m.ownerId!==el.value){m.ownerId=el.value;logHist(m,el.value?`Owner set to ${personName(el.value)}`:"Owner removed");save()}render()},
   levelfilter:el=>{el.checked?levelFilter.add(el.value):levelFilter.delete(el.value);render()},
   year:el=>{planYear=Number(el.value);render()},
   quarter:el=>{quarterFilter=el.value;rrScroll=null;render()},
@@ -2591,7 +2868,17 @@ $("#app").addEventListener("keydown",e=>{
   }
   else if(t.matches(".kcard")&&(e.key==="Enter"||e.key===" ")){e.preventDefault();cardModal(card(t.dataset.card))}
   else if(t.matches("input.inline")&&e.key==="Enter")t.blur(); // commits via "change"
+  else if(t.matches(".scc"))scKey(e);
 });
+/* Scorecard: cells act like spreadsheet cells (see "Scorecard") */
+$("#app").addEventListener("mousedown",e=>{ // a click selects the whole cell (typing replaces it); a click in the focused cell edits
+  const el=e.target.closest?.(".scc");if(!el||el===document.activeElement)return;
+  e.preventDefault();el.focus();
+});
+$("#app").addEventListener("dblclick",e=>{const el=e.target.closest?.(".scc");if(el&&!el.readOnly)scEdit=el});
+$("#app").addEventListener("focusin",e=>{const el=e.target;if(!el.matches?.(".scc"))return;scEdit=null;el.dataset.orig=el.value;el.select()});
+$("#app").addEventListener("focusout",e=>{if(e.target.matches?.(".scc")){scCommit(e.target);if(scEdit===e.target)scEdit=null}});
+$("#app").addEventListener("paste",e=>{if(e.target.matches?.(".scc"))scPaste(e)});
 /* Level 10: drag cards between and within columns; a thin line shows where the card will land */
 let dragId=null;
 const dropMarker=document.createElement("div");dropMarker.className="kph";

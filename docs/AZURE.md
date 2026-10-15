@@ -28,7 +28,7 @@ Cosmos DB has three levels:
 
 | Container | Holds | Partition key |
 |---|---|---|
-| `items` | every record as its own JSON document: one per person, unit (company, department, team, forum), goal, rock (milestones included) and card, plus one `meta` document with the data version | `/type` (`people`, `units`, `goals`, `rocks`, `cards`, `meta`) |
+| `items` | every record as its own JSON document: one per person, unit (company, department, team, forum), goal, rock (milestones included), card and scorecard measurable, plus one `meta` document with the data version | `/type` (`people`, `units`, `goals`, `rocks`, `cards`, `measurables`, `meta`) |
 | `attachments` | pasted images, one document per image (named after its SHA-256 hash, so the same image is stored once) | `/id` |
 
 **How the API can create them.** The API connects with the account's **connection string** (app setting `COSMOS_CONNECTION_STRING`). That string contains the account's primary key, which gives full control over that one Cosmos DB account. That's enough to create the database and containers on first use (`createIfNotExists`); no Azure role or extra permission is involved. Two consequences:
@@ -83,11 +83,12 @@ Getting in has two steps. First the **allow-list** decides who may sign in at al
 - **The Team filter** (top right) shows your branch: the company, your own units, the departments above them and the teams below them.
 - **New people add themselves** by signing in. They appear at the top of *Organisation → People*, marked as waiting, and the Organisation menu item shows how many are waiting. Anyone in a unit (or above it) can add them there with *+ Add to…*. That's the self-service onboarding.
 - **Removing someone from every unit** puts them back to waiting. That's how you offboard someone while keeping their history. Removing yourself asks for confirmation first.
-- **Deleting a unit** is only possible once it has no teams, members, goals, rocks or cards.
+- **Deleting a unit** is only possible once it has no teams, members, goals, rocks, cards or scorecard measurables.
 - **Enforced by the server, not just hidden in the page:**
   - a waiting person gets no data at all;
   - every save is checked against these rights (`createRights` in `api/src/core.js`; the page uses the identical block), including every membership added or removed and every structure change;
   - Level 10 cards of boards you can't see are never sent to your browser.
+  - The same goes for scorecards: they follow the Level 10 board (who sees it, who changes it).
 
 ### Saving and multiple users
 

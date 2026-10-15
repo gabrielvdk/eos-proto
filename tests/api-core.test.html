@@ -263,9 +263,9 @@ test("server: Level 10 cards are only sent where you have rights",async()=>{
   eq((await api.data({principal:bob})).json.cards.map(c=>c.id).sort(),["c1","c2"],"department member: its teams' boards too");
   eq((await api.data({principal:ana})).json.cards.length,3,"admin: all");
 });
-test("rocks and Level 10 cards live on teams and meetings only, for everyone",async()=>{
+test("rocks, Level 10 cards and scorecards live on teams and meetings only, for everyone",async()=>{
   const {api}=setup();await tree(api);
-  for(const c of ["rocks","cards"]){
+  for(const c of ["rocks","cards","measurables"]){
     eq((await asAna(api,c,{id:"x1",unitId:"D"})).status,403,`${c}: not on a department, even for an admin`);
     eq((await asAna(api,c,{id:"x2",unitId:"C"})).status,403,`${c}: not on the company`);
     eq((await asAna(api,c,{id:"x3",unitId:"T1"})).status,200,`${c}: on a team`);
@@ -274,6 +274,22 @@ test("rocks and Level 10 cards live on teams and meetings only, for everyone",as
   eq((await asAna(api,"goals",{id:"g1",unitId:"D"})).status,200,"goals: any level");
   const R=createRights({units:UNITS,people:[],adminEmails:[]});
   eq(UNITS.map(u=>R.canSeeBoard({unitIds:["C"]},u.id)),[false,false,true,true,false,true,true],"boards exist on teams and meetings only");
+});
+test("server: scorecards (measurables) like the Level 10 board: your teams, members edit, private meetings members only",async()=>{
+  const {api}=setup();await tree(api);await asAna(api,"units",DT);
+  const dir=user("dir@letsgrow.com"),dave=user("dave@letsgrow.com");
+  await assign(api,bob,["P"]);await assign(api,dir,["C"]);await assign(api,dave,["T1"]);
+  const put=(p,rec)=>api.putItem({principal:p,params:{collection:"measurables",id:rec.id},body:{record:rec}}).then(r=>r.status);
+  eq(await put(dave,{id:"m1",unitId:"T1",title:"Calls",goal:"20+",values:{"2026-10-12":21}}),200,"a member adds one to their team");
+  eq(await put(dave,{id:"m2",unitId:"T2",title:"X"}),403,"… not to another team");
+  eq(await put(dir,{id:"m2",unitId:"T2",title:"X"}),200,"a director: to every team");
+  eq(await put(dir,{id:"m3",unitId:"P",title:"Y"}),403,"… but not to the private DT Team");
+  eq(await put(bob,{id:"m3",unitId:"P",title:"Y"}),200,"its member can");
+  const ids=async p=>(await api.data({principal:p})).json.measurables.map(m=>m.id).sort();
+  eq(await ids(dave),["m1"],"team member: own scorecard");
+  eq(await ids(dir),["m1","m2"],"director: every team, not the DT Team");
+  eq(await ids(ana),["m1","m2"],"admin: not the DT Team either");
+  eq(await ids(bob),["m3"],"DT member: the DT scorecard");
 });
 test("the rights block is identical in index.html and api/src/core.js",async()=>{
   const block=s=>{const a=s.indexOf("/* rights:start"),b=s.indexOf("/* rights:end */");assert(a>=0&&b>a,"markers missing");return s.slice(a,b)};
