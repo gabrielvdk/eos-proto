@@ -196,9 +196,15 @@ td.title{font-weight:400}
 .lvl-Department{background:color-mix(in srgb,var(--department) 14%,transparent);color:var(--department)}
 .lvl-Team{background:color-mix(in srgb,var(--team) 16%,transparent);color:var(--team)}
 .pill.lvl-hidden{background:color-mix(in srgb,var(--red) 14%,transparent);color:var(--red)} /* a goal hidden behind a private meeting (DT Team only) */
-.pill .ico-lock,.visseg .ico-lock{width:12px;height:12px;flex:none}
-.visseg button{display:inline-flex;align-items:center;gap:6px}
-.visseg button[aria-pressed="true"]:has(.ico-lock){background:color-mix(in srgb,var(--red) 14%,transparent);color:var(--red)}
+.pill .ico-lock,.visrow .ico-lock{width:12px;height:12px;flex:none}
+/* the goal "Visibility" switch: on = hidden behind a private meeting (red), off = everyone */
+.visrow{display:inline-flex;align-items:center;gap:10px;padding:4px 0;font-size:13.5px;color:var(--ink-2)}
+.visrow.on{color:var(--red);font-weight:600}
+.visrow .vislabel{display:inline-flex;align-items:center;gap:6px}
+.switch{position:relative;width:36px;height:20px;border-radius:999px;border:0;padding:0;background:var(--line-strong);flex:none;transition:background .15s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.switch[aria-checked="true"]{background:var(--red)}
+.switch[aria-checked="true"]::after{left:18px}
 .brtag{font-size:10.5px;font-weight:700;letter-spacing:.03em;color:var(--forum);background:color-mix(in srgb,var(--forum) 14%,transparent);border-radius:5px;padding:1px 5px;margin-left:4px;white-space:nowrap}
 .chkrow{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2);cursor:pointer;justify-self:start}
 .chkrow input{accent-color:var(--forum);width:14px;height:14px;margin:0}
@@ -650,7 +656,9 @@ function seed(){
   const P=(id,name,color,teams,admin)=>({id,name,color,unitIds:teams.map(U),...(admin?{admin:true}:{})});
   const people=[
     // personas
-    P("p1","Director","#5B4BDB",["Hoogendoorn","DT Team"]), // the only DT Team member: nobody else sees its rocks and board
+    P("p1","Director - CEO","#5B4BDB",["Hoogendoorn","DT Team"]), // the directors: the only DT Team members, nobody else sees its rocks and board
+    P("p11","Director - CPTO","#0E7A5A",["Hoogendoorn","DT Team"]),
+    P("p12","Director - Sales","#1F8FD1",["Hoogendoorn","DT Team"]),
     P("p2","Head of Sales","#1F8FD1",["Sales","Sales MT","Business Review"]),
     P("p3","Head of Product & Technology","#0E7A5A",["Product & Technology","Product & Technology MT","Business Review"]),
     P("p4","Direct Sales member","#19A974",["Direct Sales"]),
@@ -700,7 +708,7 @@ function seed(){
     // DT Team (private: the Director only)
     R("r1","DT Team",Q,"Annual plan 2027","p1","on_track","g1","Agree the 2027 one-year plan and budget with all departments.","Plan • Budget • Department goals",
       [M("Draft company goals",true,d(10,2)),M("Department goals in",false,d(10,30)),M("Budget agreed",false,d(11,27)),M("Plan published",false,d(12,11))],[W(10,9,"Company goals drafted, departments are working on theirs.")]),
-    R("r2","DT Team",Q,"Engagement survey and offsite","p1","on_track","g3","Run the survey and the autumn offsite, publish the follow-ups.","Survey results • 3 actions agreed",
+    R("r2","DT Team",Q,"Engagement survey and offsite","p11","on_track","g3","Run the survey and the autumn offsite, publish the follow-ups.","Survey results • 3 actions agreed",
       [M("Send survey",true,d(10,10)),M("Offsite",false,d(10,24)),M("Share results and actions",false,d(11,7))]),
     // Sales MT
     R("r3","Sales MT","Q3 2026","Packages and pricing","p2","done","g4","Three standard packages with price bands per market.","Package sheet • Price bands",
@@ -767,9 +775,9 @@ function seedCards(U){
     updates:updates.map(([dd,text])=>({at:d(10,dd),who:owners[0]||by,text})),history:[{at:d(10,day),who:by,text:"Created"}]});
   return [
     C("DT Team","ids","Office move: one floor or two?","The landlord offers a second floor from March.",[],8,"p1"),
-    C("DT Team","ids","Rock to Discuss: Annual plan 2027 – budget envelope per department","",[],12,"p1"),
+    C("DT Team","ids","Rock to Discuss: Annual plan 2027 – budget envelope per department","",[],12,"p12"),
     C("DT Team","todo","Share the 2027 planning calendar","",["p1"],6,"p1"),
-    C("DT Team","done","Confirm offsite venue","",["p1"],2,"p1"),
+    C("DT Team","done","Confirm offsite venue","",["p11"],2,"p11"),
     C("Business Review","ids","Rock to Discuss: Sign DACH partner – exclusivity for Austria?","The preferred partner wants exclusivity; without it we may lose them.",[],8,"p2"),
     C("Business Review","ids","Rock to Discuss: Customer journey map – who owns the friction list?","",[],9,"p6"),
     C("Business Review","todo","Decide on DACH exclusivity","",["p2"],9,"p2",[[12,"Options paper drafted."]]),
@@ -1918,11 +1926,15 @@ const defaultVisibility=unitId=>levelOf(unitId)==="Company"?(myPrivateMeetings()
 // the level pill; a hidden goal shows a lock and the "hidden" colour
 const levelPillHTML=(g,suffix="")=>{const level=levelOf(g.unitId);
   return `<span class="pill lvl-${level}${g.visibleTo?" lvl-hidden":""}" ${g.visibleTo?`data-tip="Visible to ${esc(unitName(g.visibleTo))} only"`:""}>${level}${suffix}${g.visibleTo?ICONS.lock:""}</span>`};
+// "Visibility": a switch (on = hidden behind your private meeting, e.g. "only the DT Team"); with several private meetings a picker
 function visibilityFieldHTML(g){
   const options=myPrivateMeetings();
   if(levelOf(g.unitId)!=="Company"||(!options.length&&!g.visibleTo))return "";
-  const btn=(id,label)=>`<button type="button" data-m="visibility" data-id="${id}" aria-pressed="${(g.visibleTo||"")===id}">${label}</button>`;
-  return field("Visible to",`<div class="seg visseg" role="group" aria-label="Visible to">${options.map(f=>btn(f.id,`${ICONS.lock} ${esc(f.name)} only`)).join("")}${btn("","Everyone")}</div>`);
+  const on=!!g.visibleTo;
+  const which=on&&options.length>1?`<select class="ctl sm" data-m-change="vismeeting" aria-label="Which meeting">${options.map(f=>`<option value="${f.id}" ${f.id===g.visibleTo?"selected":""}>${esc(f.name)}</option>`).join("")}</select>`:"";
+  return field("Visibility",`<div class="visrow ${on?"on":""}">
+    <button type="button" class="switch" role="switch" aria-checked="${on}" data-m="visibility" aria-label="Hide from everyone outside ${esc(unitName(g.visibleTo||options[0]?.id))}"></button>
+    <span class="vislabel">${on?`${ICONS.lock} Only the ${esc(unitName(g.visibleTo))} can see this goal`:"Visible to everyone"}</span>${which}</div>`);
 }
 // view only: the text of a field instead of its control
 const roField=(label,text,empty="—")=>field(label,`<div class="rotext">${text?esc(text):`<span class="muted">${empty}</span>`}</div>`);
@@ -2526,7 +2538,7 @@ const MODAL_ACTIONS={
   updadd:()=>{const t=$("#f-newupd").value.trim();if(!t)return;syncModal();addUpdate(modalState.obj,t);drawModal()},
   // goal
   savegoal:saveGoal,
-  visibility:b=>{modalState.obj.visibleTo=b.dataset.id||null;drawGoalVisibility()},
+  visibility:()=>{const g=modalState.obj;g.visibleTo=g.visibleTo?null:(myPrivateMeetings()[0]?.id||null);drawGoalVisibility()}, // the switch
   delgoal:deleteGoal,
   // rock
   ltab:b=>{syncRockFields();modalState.left=b.dataset.tab;drawRockModal();if(modalState.left==="milestones")$("#modal .msr input.mt")?.focus()},
@@ -2624,6 +2636,9 @@ $("#app").addEventListener("dragend",()=>{if(orgDrag)endOrgDrag()});
 
 $("#modal").addEventListener("click",e=>{
   const b=e.target.closest("[data-m]"),fn=b&&MODAL_ACTIONS[b.dataset.m];if(fn)fn(b,b.dataset.id);
+});
+$("#modal").addEventListener("change",e=>{ // goal visibility: which private meeting (only shown when you're in several)
+  if(e.target.dataset.mChange==="vismeeting"&&modalState?.kind==="goal"){modalState.obj.visibleTo=e.target.value;drawGoalVisibility()}
 });
 $("#modal").addEventListener("input",e=>{ // milestone fields in the rock modal
   const f=e.target.dataset.mf;if(!f||modalState?.kind!=="rock")return;
