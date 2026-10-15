@@ -63,7 +63,7 @@
    and all goals; rocks and Level 10 boards only where they have rights.
    - goals, rocks, cards: change them in units you have rights on. Goals live on any unit; rocks and Level 10 boards only
      on teams and meetings ("team level"), like the Scorecard (measurables). A meeting's members also fully edit the
-     rocks the meeting shows.
+     rocks the meeting shows (and the measurables tracked in it).
    - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
    - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
      its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it.
@@ -95,7 +95,7 @@ function createRights({units,people,adminEmails}){
   // goals visible to a private meeting only (goal.visibleTo, e.g. the DT Team's company goals): its members only, admins too
   const canSeeGoal=(p,g)=>!g.visibleTo||isMember(p,g.visibleTo);
   const canEdit={goals:(p,g)=>canSeeGoal(p,g)&&hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId),
-    measurables:(p,m)=>hasRights(p,m.unitId)}; // scorecard rows: like the Level 10 board
+    measurables:canEditRock}; // scorecard rows: like rocks (a meeting shows its own plus the ones tracked in it)
   const TEAM_LEVEL=["rocks","cards","measurables"]; // these live on teams and meetings only
   // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins;
   // a private meeting only by its own members
@@ -107,6 +107,7 @@ function createRights({units,people,adminEmails}){
   return {
     isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,canManageMembers,isMember,isPrivate,canSeeContent,inForum,canSeeGoal,
     canSeeRock:canEditRock, // rocks: you see exactly the ones you can change (your teams and below, plus what your meetings show)
+    canSeeMeasurable:canEditRock, // scorecard rows: the same rule (trackIn: a few measurables shown in Business Review)
     canEditGoal:canEdit.goals,
     canEditCard:canEdit.cards,
     canSeeBoard:(p,unitId)=>teamLevel(unitId)&&hasRights(p,unitId), // Level 10: the team and meeting boards of your units and below
@@ -229,7 +230,7 @@ function createRights({units,people,adminEmails}){
         out.cards=out.cards.filter(c=>rights.canSeeBoard(me,c.unitId)); // Level 10 boards only where you have rights
         out.rocks=out.rocks.filter(r=>rights.canSeeRock(me,r)); // only the rocks you may change: your teams and below, your meetings
         out.goals=out.goals.filter(g=>rights.canSeeGoal(me,g)); // goals hidden behind a private meeting only to its members
-        out.measurables=out.measurables.filter(m=>rights.canSeeBoard(me,m.unitId)); // scorecards: like the Level 10 board
+        out.measurables=out.measurables.filter(m=>rights.canSeeMeasurable(me,m)); // scorecards: like rocks (own teams, plus what your meetings track)
         return reply(200,{...out,meId:me.id,role,adminEmails});
       },
       async putItem({principal,params,body}){

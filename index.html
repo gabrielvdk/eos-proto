@@ -469,24 +469,31 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .lightbox.open{display:flex}
 .lightbox img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:var(--shadow);background:#fff}
 
-/* scorecard (a spreadsheet: every cell is an input; measurable · who · goal stay put while the weeks scroll) */
-.scwrap{overflow-x:auto}
+/* scorecard (a spreadsheet: every cell is an input). Like Rock Review: two tables side by side, measurable · who · goal
+   stay put (.sc-left) and only the weeks scroll (.sc-right inside .sc-scroll); rows are synced in fitScorecard */
+.scwrap{display:flex;align-items:flex-start}
+.scwrap .sc-scroll{flex:1 1 auto;min-width:0}
 table.sc{border-collapse:separate;border-spacing:0;width:max-content;font-variant-numeric:tabular-nums}
+table.sc.sc-left{flex:none;border-right:1px solid var(--line-strong)}
 table.sc th,table.sc td{padding:0;border-bottom:1px solid var(--line);border-left:1px solid var(--line);height:auto;background:var(--surface)}
 table.sc th:first-child,table.sc td:first-child{border-left:0}
-table.sc thead th{position:sticky;top:0;z-index:2;padding:8px 10px;text-align:left;font-size:12px;font-weight:700;color:var(--ink-2);background:var(--canvas);vertical-align:bottom}
+table.sc thead th{height:52px;padding:8px 10px;text-align:left;font-size:12px;font-weight:700;color:var(--ink-2);background:var(--canvas);vertical-align:bottom}
 table.sc thead th.c-wk{text-align:right;line-height:1.25}
 table.sc thead th.c-wk b{display:block;color:var(--ink);font-size:13px}
 table.sc thead th.c-wk span{font-weight:500;color:var(--ink-3)}
 table.sc thead th.c-wk.cur{background:var(--accent)}
 table.sc thead th.c-wk.cur b,table.sc thead th.c-wk.cur span{color:#fff}
+table.sc thead th.c-wk.fut b{color:var(--ink-3)}
 table.sc td.c-wk.cur{background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
-table.sc .c-title{position:sticky;left:0;z-index:1;width:340px;min-width:340px}
-table.sc .c-who{position:sticky;left:340px;z-index:1;width:52px;min-width:52px;text-align:center}
-table.sc .c-goal{position:sticky;left:392px;z-index:1;width:120px;min-width:120px;border-right:1px solid var(--line-strong)}
-table.sc thead .c-who,table.sc thead .c-title,table.sc thead .c-goal{z-index:3}
+table.sc td.c-wk.fut{background:color-mix(in srgb,var(--canvas) 60%,var(--surface))}
+table.sc .c-title{width:400px;min-width:400px;max-width:400px}
+table.sc .c-who{width:52px;min-width:52px;text-align:center}
+table.sc .c-goal{width:120px;min-width:120px;max-width:120px}
 table.sc .c-wk{width:var(--scw,104px);min-width:var(--scw,104px);max-width:var(--scw,104px)}
 table.sc tbody tr:last-child td{border-bottom:0}
+.sct{display:flex;align-items:center;gap:4px;padding-right:6px}
+.sct .scc{flex:1;min-width:0}
+.sct .teamtag,.sct .brtag{flex:none}
 .scwho{position:relative;display:flex;align-items:center;justify-content:center;height:36px}
 .scwho .avatar{width:26px;height:26px;font-size:10.5px}
 .scwho .avatar.none{background:none;border:1.5px dashed var(--line-strong);color:var(--ink-3);font-size:13px;font-weight:600}
@@ -496,9 +503,9 @@ table.sc tbody tr:last-child td{border-bottom:0}
 .scwho:hover .avatar.none{border-color:var(--accent);color:var(--accent)}
 .schelp{display:inline-flex;align-items:center;gap:5px;cursor:help}
 .schelp i{font-style:normal;width:15px;height:15px;border-radius:50%;background:var(--line);color:var(--ink-2);font-size:10.5px;display:inline-flex;align-items:center;justify-content:center}
-.scc{display:block;width:100%;border:0;margin:0;padding:9px 10px;background:transparent;color:var(--ink);font:inherit;font-size:13.5px;outline:none;cursor:cell}
+.scc{display:block;width:100%;border:0;margin:0;padding:9px 10px;background:transparent;color:var(--ink);font:inherit;font-size:13.5px;outline:none;cursor:cell;text-overflow:ellipsis}
 .c-wk .scc,.c-goal .scc{text-align:right}
-.c-title .scc{font-weight:600;padding-right:34px}
+.c-title .scc{font-weight:600;padding-left:4px}
 .scc:focus{box-shadow:inset 0 0 0 2px var(--accent);background:var(--surface);cursor:text;position:relative;z-index:1}
 .scc[readonly]:focus{box-shadow:inset 0 0 0 2px var(--line-strong)}
 .scc.ok{background:var(--green-soft);color:var(--green-deep)}
@@ -508,20 +515,28 @@ table.sc tbody tr:last-child td{border-bottom:0}
 :root[data-theme="dark"] .scc.ok{color:var(--green)}
 :root[data-theme="dark"] .scc.bad{color:#FF8A98}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .scc.ok{color:var(--green)}:root:not([data-theme="light"]) .scc.bad{color:#FF8A98}}
-.scnew td{background:var(--canvas)}
+.scnew td{background:var(--canvas)!important}
 .scnew .c-title .scc{font-weight:500}
-.c-title{position:relative}
-.c-title .scc{padding-left:28px}
-.scgrip{position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:2;display:inline-flex;color:var(--ink-3);opacity:.35;cursor:grab;padding:2px;border-radius:4px}
+.scgrip{flex:none;display:inline-flex;width:20px;justify-content:center;color:var(--ink-3);opacity:.35;cursor:grab;padding:2px 0;margin-left:4px;border-radius:4px}
 .scgrip svg{width:14px;height:14px}
-tr:hover .scgrip{opacity:1}
-.scgrip:hover{background:var(--canvas);color:var(--ink)}
+.scgrip.off{cursor:default}
+tr:hover .scgrip:not(.off){opacity:1}
+.scgrip:not(.off):hover{background:var(--canvas);color:var(--ink)}
+.sct .idsbtn,.scdots{flex:none;border:0;background:none;color:var(--line-strong);padding:3px;border-radius:5px;display:inline-flex}
+.sct .idsbtn svg{width:16px;height:16px}
+.scdots{color:var(--ink-3);opacity:0}
+.scdots svg{width:16px;height:16px}
+tr:hover .scdots,.scdots:focus-visible,.scdots.on{opacity:1}
+.sct .idsbtn:hover,.sct .idsbtn.on,.scdots:hover,.scdots.on{color:var(--accent);background:var(--accent-soft)}
+.scmenu{width:auto;min-width:220px;padding:6px;gap:0}
+.scmenu .it{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;padding:7px 10px;border-radius:7px;text-align:left;font:inherit;font-size:13.5px;color:var(--ink)}
+.scmenu .it:hover{background:var(--canvas)}
+.scmenu .it .ck{width:16px;display:inline-flex;justify-content:center;color:var(--accent);font-weight:700}
+.scmenu .it .ck svg{width:14px;height:14px}
+.scmenu .it.danger,.scmenu .it.danger .ck{color:var(--red)}
+.scmenu .sep{height:1px;background:var(--line);margin:4px 2px}
 table.sc tr.dragging td{opacity:.45}
 table.sc tr.scdrop td{box-shadow:inset 0 2px 0 var(--accent)}
-.scdel{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--ink-3);padding:3px;border-radius:5px;display:inline-flex;opacity:0;z-index:2}
-.scdel svg{width:15px;height:15px}
-tr:hover .scdel,.scdel:focus{opacity:1}
-.scdel:hover{color:var(--red);background:var(--red-soft)}
 .schint{background:var(--surface);border:1px dashed var(--line-strong);border-radius:12px;padding:12px 14px;margin-bottom:12px;color:var(--ink-2);font-size:13.5px}
 .schint code{background:var(--canvas);border-radius:4px;padding:1px 5px;font-size:12.5px}
 .sckeys{margin-top:10px}
@@ -892,7 +907,7 @@ function seedMeasurables(U){
     M("Business Review","Rocks off track","p3","<= 3",3,2),
     M("Business Review","Open IDS items older than 4 weeks","p2","<= 5",5,3),
     M("Sales MT","New pipeline","p2","€300k+",310000,90000,5000),
-    M("Sales MT","Win rate","c11",">= 30%",29,6),
+    {...M("Sales MT","Win rate","c11",">= 30%",29,6),trackIn:[U("Business Review")]}, // also shown in Business Review
     M("Sales MT","Forecast accuracy","p2",">= 85%",86,7),
     M("Direct Sales","Qualified meetings","p4","20+",21,7),
     M("Direct Sales","Proposals sent","c1","8+",8,3),
@@ -1237,6 +1252,22 @@ function savePrefs(){
   const fakeUserId=backend?.kind==="local"?session.userId:loadPrefs().fakeUserId;
   try{localStorage.setItem(PREFS_KEY,JSON.stringify({teamFilter,quarter:quarterFilter,planYear,fakeUserId}))}catch(e){}
 }
+/* the address bar: #<tab>/<team id>, e.g. #scorecard/3f2c… — so a tab and team can be bookmarked or shared. Ids rather than
+   names, so a renamed team keeps its links. Written on every render (replaceState: no history entry per click); read at
+   start-up and when the hash is changed by hand. The query string (?backend=mock) is left alone. */
+function readRoute(){
+  const [v,team]=decodeURIComponent(location.hash.replace(/^#\/?/,"")).split("/");
+  return {view:VIEWS[v]?v:null,team:team&&unit(team)?team:null};
+}
+function applyRoute(){
+  const r=readRoute();
+  if(r.view&&r.view!==view){view=r.view;rrScroll=null;scOpened()}
+  if(r.team&&r.team!==teamFilter){teamFilter=r.team;rrScroll=null;scJump=true}
+}
+function writeRoute(){
+  const hash=`#${view}${teamFilter?"/"+teamFilter:""}`;
+  if(location.hash!==hash)history.replaceState(null,"",location.pathname+location.search+hash);
+}
 
 /* ---------- ui state (per viewer; teamFilter, quarter and year are remembered in prefs) ---------- */
 let view="plan";            // plan | rocks | review | l10 | scorecard | org
@@ -1250,7 +1281,7 @@ const collapsed=new Set();  // tree view: goal ids whose children are hidden
 const expanded=new Set();   // Rocks: rock ids whose milestones are shown
 let updOpen=null;           // quick-update popover: {kind:"rock"|"ms:<rock id>", id, draft}
 let l10Add=null;            // Level 10: column key whose "add card" composer is open
-let idsOpen=null;           // Rock Review → IDS popover: {rockId, draft}
+let idsOpen=null;           // Rock Review / Scorecard → IDS popover: {kind:"rock"|"measurable", id, draft}
 let rrScroll=null;          // Rock Review horizontal scroll; null = jump to the current week on next render
 let tfPicker=null;          // top-bar team picker (refreshed on render so its label follows teamFilter)
 
@@ -1304,7 +1335,7 @@ const defaultUnitId=kind=>{
    and all goals; rocks and Level 10 boards only where they have rights.
    - goals, rocks, cards: change them in units you have rights on. Goals live on any unit; rocks and Level 10 boards only
      on teams and meetings ("team level"), like the Scorecard (measurables). A meeting's members also fully edit the
-     rocks the meeting shows.
+     rocks the meeting shows (and the measurables tracked in it).
    - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
    - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
      its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it.
@@ -1336,7 +1367,7 @@ function createRights({units,people,adminEmails}){
   // goals visible to a private meeting only (goal.visibleTo, e.g. the DT Team's company goals): its members only, admins too
   const canSeeGoal=(p,g)=>!g.visibleTo||isMember(p,g.visibleTo);
   const canEdit={goals:(p,g)=>canSeeGoal(p,g)&&hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId),
-    measurables:(p,m)=>hasRights(p,m.unitId)}; // scorecard rows: like the Level 10 board
+    measurables:canEditRock}; // scorecard rows: like rocks (a meeting shows its own plus the ones tracked in it)
   const TEAM_LEVEL=["rocks","cards","measurables"]; // these live on teams and meetings only
   // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins;
   // a private meeting only by its own members
@@ -1348,6 +1379,7 @@ function createRights({units,people,adminEmails}){
   return {
     isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,canManageMembers,isMember,isPrivate,canSeeContent,inForum,canSeeGoal,
     canSeeRock:canEditRock, // rocks: you see exactly the ones you can change (your teams and below, plus what your meetings show)
+    canSeeMeasurable:canEditRock, // scorecard rows: the same rule (trackIn: a few measurables shown in Business Review)
     canEditGoal:canEdit.goals,
     canEditCard:canEdit.cards,
     canSeeBoard:(p,unitId)=>teamLevel(unitId)&&hasRights(p,unitId), // Level 10: the team and meeting boards of your units and below
@@ -1454,6 +1486,7 @@ const ICONS={
   lock:'<svg class="ico-lock" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-label="hidden"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>',
   check:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg>',
   image:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="6" cy="6.5" r="1.2"/><path d="M14 11l-3.5-3.5L4 13"/></svg>',
+  dots:'<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="12.5" cy="8" r="1.4"/></svg>',
   grip:'<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.2"/><circle cx="10" cy="4" r="1.2"/><circle cx="6" cy="8" r="1.2"/><circle cx="10" cy="8" r="1.2"/><circle cx="6" cy="12" r="1.2"/><circle cx="10" cy="12" r="1.2"/></svg>',
   ids:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h7M2.5 8h5M2.5 12h4"/><path d="M12 8.5v5M9.5 11h5"/></svg>',
   sun:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2M16.2 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/></svg>',
@@ -1658,13 +1691,15 @@ function renderReview(){
   }).join("");
   if(!rocks.length){left=`<tr><td class="rk">${noRocksHTML("Add rocks in the Rocks tab.")}</td></tr>`;right=`<tr><td colspan="${weeks.length}"></td></tr>`}
   // the update popover lives outside the tables so it is never covered by the next row
-  const openRock=updOpen?.kind==="rock"?rocks.find(r=>r.id===updOpen.id):null,idsRock=idsOpen?rocks.find(r=>r.id===idsOpen.rockId):null;
+  const openRock=updOpen?.kind==="rock"?rocks.find(r=>r.id===updOpen.id):null,idsRock=idsOpen?.kind==="rock"?rocks.find(r=>r.id===idsOpen.id):null;
   const legend=legendHTML([["green","done"],["red","overdue"],["amber","due within 7 days"],["grey-fill","to do"]],"<span>· Click a milestone to mark it done</span>");
   return head+`<div class="board rrwrap"><table class="rr rr-left"><thead><tr><th class="rk">Rock</th></tr></thead><tbody>${left}</tbody></table>`
     +`<div class="scroll rr-scroll"><table class="rr rr-right">${cols}<tbody>${right}</tbody></table></div></div>`+legend+(openRock?updPopHTML(openRock,"rock"):"")+(idsRock?idsPopHTML(idsRock):"");
 }
-function syncReviewRows(){
-  const L=$$(".rr-left tr"),R=$$(".rr-right tr");
+function syncReviewRows(){syncRows(".rr-left tr",".rr-right tr")}
+// two tables side by side (Rock Review, Scorecard): give each pair of rows the same height
+function syncRows(leftSel,rightSel){
+  const L=$$(leftSel),R=$$(rightSel);L.concat(R).forEach(tr=>tr.style.height="");
   // ceil the fractional heights so both sides get the same whole-pixel height (rounding errors would add up down the list)
   const h=L.map((tr,i)=>Math.ceil(Math.max(tr.getBoundingClientRect().height,R[i]?R[i].getBoundingClientRect().height:0)));
   L.forEach((tr,i)=>{tr.style.height=h[i]+"px";if(R[i])R[i].style.height=h[i]+"px"});
@@ -1674,12 +1709,12 @@ function restoreReviewScroll(){
   if(rrScroll===null){const now=$("th.wk.now",sc);rrScroll=now?Math.max(0,now.offsetLeft-now.offsetWidth):0} // show one past week before the current one
   sc.scrollLeft=rrScroll;rrScroll=sc.scrollLeft;
 }
-/* Rock Review → IDS shortcut: the board being viewed, else the rock's own board; none if neither has one */
+/* Rock Review / Scorecard → IDS shortcut: the board being viewed, else the rock's (measurable's) own board; none if neither has one */
 const boardOk=id=>hasBoard(id)&&canSeeBoard(id); // a board that exists and that you may use
 const idsTarget=r=>boardOk(teamFilter)?teamFilter:boardOk(r.unitId)?r.unitId:null;
-function idsBtnHTML(r){
+function idsBtnHTML(r,kind="rock"){
   const t=idsTarget(r);if(!t)return "";
-  return `<button class="idsbtn ${idsOpen?.rockId===r.id?"on":""}" data-act="idsopen" data-id="${r.id}" aria-label="Add to IDS" data-tip="${esc(`Add to the IDS list of ${unitName(t)}`)}">${ICONS.ids}</button>`;
+  return `<button class="idsbtn ${idsOpen?.id===r.id?"on":""}" data-act="idsopen" data-kind="${kind}" data-id="${r.id}" aria-label="Add to IDS" data-tip="${esc(`Add to the IDS list of ${unitName(t)}`)}">${ICONS.ids}</button>`;
 }
 // the IDS popover: a text box prefilled with the rock, so you can add your question or point before adding it
 function idsPopHTML(r){
@@ -1697,7 +1732,7 @@ function placeIdsPop(){
 }
 function closeIdsPop(){if(idsOpen){idsOpen=null;render()}}
 function addIdsFromPop(){
-  const ta=$("[data-ids-text]"),r=idsOpen&&rock(idsOpen.rockId);if(!ta||!r)return;
+  const ta=$("[data-ids-text]"),r=idsOpen&&(idsOpen.kind==="rock"?rock(idsOpen.id):measurable(idsOpen.id));if(!ta||!r)return;
   const title=ta.value.trim(),unitId=idsTarget(r);if(!title){ta.focus();return}
   if(S.cards.some(c=>c.unitId===unitId&&c.column==="ids"&&c.title===title)){toast(`Already on the IDS list of ${unitName(unitId)}`);return}
   idsOpen=null;addCard("ids",title,unitId);render();toast(`Added to IDS · ${unitName(unitId)}`);
@@ -1798,25 +1833,35 @@ function submitComposer(){ // Enter adds the card and keeps the composer open fo
    Cells are updated in place (no re-render), so the cursor stays put. */
 const SC_VISIBLE=6;  // weeks in view: 5 filled in + this week; earlier ones are a scroll away
 const SC_HISTORY=26; // weeks to scroll back through at least (more when older values exist; at most 104)
+const SC_FUTURE=10;  // weeks ahead of this week
 let scJump=true;     // after the next render: scroll to this week (set when the view is opened)
+let scMenu=null;     // the ⋯ menu of a row: measurable id
 const scOpened=()=>{scJump=true};
-function scWeeks(list){ // oldest first
+function scWeeks(list){ // oldest first, up to SC_FUTURE weeks ahead
   const cur=mondayOf(TODAY),first=new Date(cur);first.setDate(first.getDate()-7*(SC_HISTORY-1));
   const oldest=list.flatMap(m=>Object.keys(m.values||{})).sort()[0];
   if(oldest&&parseD(oldest)<first)first.setTime(mondayOf(parseD(oldest)).getTime());
-  const n=Math.min(104,Math.round((cur-first)/(7*864e5))+1);
-  return Array.from({length:n},(_,i)=>{const x=new Date(cur);x.setDate(x.getDate()-7*(n-1-i));return x});
+  const n=Math.min(104,Math.round((cur-first)/(7*864e5))+1)+SC_FUTURE;
+  return Array.from({length:n},(_,i)=>{const x=new Date(first);x.setDate(x.getDate()+7*i);return x});
 }
-// sizes the week columns so SC_VISIBLE of them fill the visible width; jumps to this week on opening, else keeps `left`
+/* like Rock Review: the left table stays put and only the weeks scroll. The week columns are sized so SC_VISIBLE of them
+   fill the visible width; opening the view shows this week as the last one in view, else the scroll position `left` is kept */
 function fitScorecard(left){
-  const w=$(".scwrap"),fixed=$("table.sc thead .c-goal");if(!w||!fixed)return;
-  const used=fixed.getBoundingClientRect().right-w.getBoundingClientRect().left;
-  w.style.setProperty("--scw",Math.max(96,Math.floor((w.clientWidth-used)/SC_VISIBLE))+"px");
-  if(scJump){w.scrollLeft=w.scrollWidth;scJump=false}else if(left!==undefined)w.scrollLeft=left;
+  const sc=$(".sc-scroll");if(!sc)return;
+  sc.style.setProperty("--scw",Math.max(96,Math.floor(sc.clientWidth/SC_VISIBLE))+"px");
+  syncRows(".sc-left tr",".sc-right tr");
+  const now=$("th.c-wk.cur",sc);
+  if(scJump&&now){sc.scrollLeft=now.offsetLeft+now.offsetWidth-sc.clientWidth;scJump=false}else if(left!==undefined)sc.scrollLeft=left;
 }
 let scEdit=null; // the cell being edited inside its text (F2, double-click, typing); otherwise arrows move between cells
 const measurable=id=>S.measurables.find(m=>m.id===id);
 const canEditScorecard=id=>rights.writeAllowed(me(),"measurables",null,{unitId:id}); // the server's rule
+const canEditMeasurable=m=>rights.writeAllowed(me(),"measurables",m,m);
+// the rows of a scorecard: the team's own, and for a meeting also the measurables tracked in it (rights.inForum)
+const scMatches=(m,id)=>isForum(id)?rights.inForum(unit(id),m):m.unitId===id;
+const scList=()=>S.measurables.filter(m=>rights.canSeeMeasurable(me(),m)&&scMatches(m,teamFilter));
+// the meetings a measurable can be shown in: public meetings that show tracked items, not its own unit
+const scTrackForums=m=>forums().filter(f=>f.includeTracked&&!f.private&&f.id!==m.unitId&&!rights.isPrivate(m.unitId));
 /* a number as people type it, Dutch style: 40000 · 40.000 · 1,5 · 1.234,5 · 40k · 1,5M · €40k · 85%.
    Lenient: "1.5" (not three digits after the dot) is 1,5, and 1,234,567 / 1,234.5 are read the English way. */
 function parseNum(text){
@@ -1874,33 +1919,57 @@ Add % or € to format the numbers: >= 80%, €40.000+ (or €40k+).
 Numbers are Dutch: 40.000 and 1,5.`;
 function renderScorecard(){
   if(!boardOk(teamFilter))return renderScorecardPick();
-  const list=S.measurables.filter(m=>m.unitId===teamFilter),weeks=scWeeks(list),cur=localISO(weeks[weeks.length-1]);
-  const edit=canEditScorecard(teamFilter),ro=edit?"":" readonly";
-  const members=unitMembers(teamFilter).sort((a,b)=>a.name.localeCompare(b.name));
-  const head=`<div class="viewhead">${viewTitle("Scorecard",teamFilter)}<span class="count">${plural(list.length,"measurable")}</span></div>`;
-  const cell=(id,k,value,cls="",extra="")=>`<input class="scc ${cls}" data-sc="${id}" data-k="${k}" value="${esc(value)}" spellcheck="false" autocomplete="off"${ro}${extra}>`;
-  const owner=(id,ownerId)=>{ // the avatar; the select on top of it is invisible but opens on click (and works with the keyboard)
-    const opts=[...members];if(ownerId&&!opts.some(p=>p.id===ownerId)&&person(ownerId))opts.push(person(ownerId)); // a former member stays visible
+  const list=scList(),weeks=scWeeks(list),cur=localISO(mondayOf(TODAY));
+  const edit=canEditScorecard(teamFilter);
+  const head=`<div class="viewhead">${viewTitle("Scorecard",teamFilter)}<span class="count">${plural(list.length,"measurable")} · week ${isoWeek(TODAY)}</span></div>`;
+  const cell=(id,k,value,can,cls="",extra="")=>`<input class="scc ${cls}" data-sc="${id}" data-k="${k}" value="${esc(value)}" spellcheck="false" autocomplete="off"${can?"":" readonly"}${extra}>`;
+  const owner=(id,unitId,ownerId,can)=>{ // the avatar; the select on top of it is invisible but opens on click (and works with the keyboard)
+    const opts=unitMembers(unitId).sort((a,b)=>a.name.localeCompare(b.name));
+    if(ownerId&&!opts.some(p=>p.id===ownerId)&&person(ownerId))opts.push(person(ownerId)); // a former member stays visible
     const face=person(ownerId)?avatarHTML(ownerId):`<span class="avatar none">${id==="new"?"+":"?"}</span>`;
     return `<div class="scwho" data-tip="${esc(person(ownerId)?.name||(id==="new"?"Who: start a new measurable":"Who? Pick an owner"))}">${face}
-      <select data-act="scowner" data-id="${id}" aria-label="Who"${edit?"":" disabled"}><option value="">—</option>${opts.map(p=>`<option value="${p.id}" ${p.id===ownerId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div>`;
+      <select data-act="scowner" data-id="${id}" aria-label="Who"${can?"":" disabled"}><option value="">—</option>${opts.map(p=>`<option value="${p.id}" ${p.id===ownerId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div>`;
   };
-  const row=m=>{
-    const g=parseGoal(m.goal),badGoal=!!m.goal&&!g;
-    return `<tr data-row="${m.id}">
-      <td class="c-title">${edit?`<span class="scgrip" data-tip="Drag to reorder" aria-hidden="true">${ICONS.grip}</span>`:""}${cell(m.id,"title",m.title,"",` placeholder="Name this measurable"`)}${edit?`<button class="scdel" data-act="scdel" data-id="${m.id}" aria-label="Delete ${esc(m.title||"measurable")}" data-tip="Delete">${ICONS.trash}</button>`:""}</td>
-      <td class="c-who">${owner(m.id,m.ownerId)}</td>
-      <td class="c-goal">${cell(m.id,"goal",m.goal||"",badGoal?"badgoal":"",` placeholder="—"${badGoal?` data-tip="${esc("Not a goal I understand: "+GOAL_HELP)}"`:""}`)}</td>
-      ${weeks.map(w=>{const k=localISO(w),v=m.values?.[k];return `<td class="c-wk ${k===cur?"cur":""}">${cell(m.id,k,fmtNum(v,g?.fmt),scCellCls(m,v))}</td>`}).join("")}</tr>`;
+  const wkCls=k=>k===cur?"cur":k>cur?"fut":"";
+  const left=m=>{
+    const g=parseGoal(m.goal),badGoal=!!m.goal&&!g,can=canEditMeasurable(m);
+    const menu=can?`<button class="scdots ${scMenu===m.id?"on":""}" data-act="scmenu" data-id="${m.id}" aria-label="More" data-tip="More">${ICONS.dots}</button>`:"";
+    return `<tr data-row="${m.id}"><td class="c-title"><div class="sct">
+        ${can?`<span class="scgrip" data-tip="Drag to reorder" aria-hidden="true">${ICONS.grip}</span>`:`<span class="scgrip off"></span>`}
+        ${cell(m.id,"title",m.title,can,"",` placeholder="Name this measurable"`)}${teamTagHTML(m.unitId)}${trackTagsHTML(m)}${idsBtnHTML(m,"measurable")}${menu}</div></td>
+      <td class="c-who">${owner(m.id,m.unitId,m.ownerId,can)}</td>
+      <td class="c-goal">${cell(m.id,"goal",m.goal||"",can,badGoal?"badgoal":"",` placeholder="—"${badGoal?` data-tip="${esc("Not a goal I understand: "+GOAL_HELP)}"`:""}`)}</td></tr>`;
   };
-  const newRow=edit?`<tr class="scnew"><td class="c-title">${cell("new","title","","",` placeholder="+ Add measurable"`)}</td><td class="c-who">${owner("new","")}</td><td class="c-goal">${cell("new","goal","")}</td>
-      ${weeks.map(w=>`<td class="c-wk ${localISO(w)===cur?"cur":""}">${cell("new",localISO(w),"")}</td>`).join("")}</tr>`:"";
-  const th=`<tr><th class="c-title">Measurable</th><th class="c-who">Who</th><th class="c-goal"><span class="schelp" data-tip="${esc(GOAL_TIP)}">Goal <i>?</i></span></th>
-    ${weeks.map((w,i)=>`<th class="c-wk ${i===weeks.length-1?"cur":""}"><b>Wk ${isoWeek(w)}</b><span>${fmtDate(localISO(w))}</span></th>`).join("")}</tr>`;
+  const right=m=>{const g=parseGoal(m.goal),can=canEditMeasurable(m);
+    return `<tr data-row="${m.id}">${weeks.map(w=>{const k=localISO(w),v=m.values?.[k];return `<td class="c-wk ${wkCls(k)}">${cell(m.id,k,fmtNum(v,g?.fmt),can,scCellCls(m,v))}</td>`}).join("")}</tr>`};
+  const newLeft=edit?`<tr class="scnew" data-row="new"><td class="c-title"><div class="sct"><span class="scgrip off"></span>${cell("new","title","",true,"",` placeholder="+ Add measurable"`)}</div></td><td class="c-who">${owner("new",teamFilter,"",true)}</td><td class="c-goal">${cell("new","goal","",true)}</td></tr>`:"";
+  const newRight=edit?`<tr class="scnew" data-row="new">${weeks.map(w=>`<td class="c-wk ${wkCls(localISO(w))}">${cell("new",localISO(w),"",true)}</td>`).join("")}</tr>`:"";
+  const thL=`<tr><th class="c-title">Measurable</th><th class="c-who">Who</th><th class="c-goal"><span class="schelp" data-tip="${esc(GOAL_TIP)}">Goal <i>?</i></span></th></tr>`;
+  const thR=`<tr>${weeks.map(w=>{const k=localISO(w);return `<th class="c-wk ${wkCls(k)}" ${k===cur?'aria-current="date"':""}><b>Wk ${isoWeek(w)}</b><span>${fmtDate(k)}</span></th>`}).join("")}</tr>`;
   const empty=!list.length?`<div class="schint"><b>No measurables yet.</b> ${edit?`Add the 5–15 numbers this team looks at every week: type a name in the row below (or pick its Who first), then its goal (e.g. <code>20+</code>, <code>&gt;= 80%</code>, <code>&lt;= 5</code>, <code>€40.000+</code>, <code>30-40</code>, <code>0</code>) and the weekly values. Or paste the rows from Excel.`:""}</div>`:"";
   const keys=`<div class="legend sckeys"><span><i class="sw ok"></i> On goal</span><span><i class="sw bad"></i> Off goal</span>
-    <span class="muted">${edit?"Type to replace · Enter ↓ · Tab → · F2 edits · Esc undoes · Paste from Excel · Alt+↑↓ moves a row":"View only"}</span></div>`;
-  return head+empty+`<div class="board scwrap" data-keepscroll="${teamFilter}-sc"><table class="sc"><thead>${th}</thead><tbody>${list.map(row).join("")}${newRow}</tbody></table></div>`+keys;
+    <span class="muted">${edit?"Type to replace · Enter ↓ · Tab → · F2 edits · Esc undoes · Paste from Excel · Drag ⋮⋮ or Alt+↑↓ moves a row":"View only"}</span></div>`;
+  const menuM=scMenu&&list.find(m=>m.id===scMenu),idsM=idsOpen?.kind==="measurable"&&list.find(m=>m.id===idsOpen.id);
+  return head+empty+`<div class="board rrwrap scwrap" data-keepscroll="${teamFilter}-sc"><table class="sc sc-left"><thead>${thL}</thead><tbody>${list.map(left).join("")}${newLeft}</tbody></table>`
+    +`<div class="scroll sc-scroll"><table class="sc sc-right"><thead>${thR}</thead><tbody>${list.map(right).join("")}${newRight}</tbody></table></div></div>`
+    +keys+(menuM?scMenuHTML(menuM):"")+(idsM?idsPopHTML(idsM):"");
+}
+// the ⋯ menu of a row: show it in a meeting (Business Review: rarely needed, so tucked away here) and delete
+function scMenuHTML(m){
+  const track=scTrackForums(m).map(f=>{const on=(m.trackIn||[]).includes(f.id);
+    return `<button class="it" data-act="sctrack" data-id="${m.id}" data-f="${f.id}" role="menuitemcheckbox" aria-checked="${on}"><span class="ck">${on?"✓":""}</span>Show in ${esc(f.name)}</button>`}).join("");
+  return `<div class="pop scmenu" data-scmenu role="menu">${track}${track?`<div class="sep"></div>`:""}<button class="it danger" data-act="scdel" data-id="${m.id}" role="menuitem"><span class="ck">${ICONS.trash}</span>Delete</button></div>`;
+}
+function placeScMenu(){
+  const pop=$("[data-scmenu]"),btn=$(".scdots.on");if(!pop||!btn)return;
+  const r=btn.getBoundingClientRect();pop.style.top=(r.bottom+4)+"px";pop.style.left=Math.max(8,Math.min(r.left,innerWidth-pop.offsetWidth-8))+"px";
+}
+function closeScMenu(){if(scMenu){scMenu=null;render()}}
+// the IDS text for a measurable: its name with the latest value against the goal, e.g. "Win rate (24% · goal >= 30%)"
+function measurableToDiscuss(m){
+  const g=parseGoal(m.goal),last=Object.keys(m.values||{}).filter(k=>k<=localISO(TODAY)).sort().pop();
+  const facts=[last!==undefined?`${fmtNum(m.values[last],g?.fmt)} in wk ${isoWeek(parseD(last))}`:"",m.goal?`goal ${m.goal}`:""].filter(Boolean).join(" · ");
+  return `Measurable to Discuss: ${m.title||"Untitled"}${facts?` (${facts})`:""}`;
 }
 const renderScorecardPick=()=>renderTeamPick("Scorecard","to open its scorecard",
   id=>{const n=S.measurables.filter(m=>m.unitId===id).length;return n?plural(n,"measurable"):""});
@@ -1919,12 +1988,14 @@ function setScField(m,k,text){
   const v=parseNum(t);if(v===null)return false;
   m.values[k]=v;return true;
 }
-// the cell grid: row and column of a cell, and focusing a cell by position (clamped to the grid)
-const scRows=()=>$$("#app table.sc tbody tr");
-const scPos=el=>{const tr=el.closest("tr");return [scRows().indexOf(tr),$$(".scc",tr).indexOf(el)]};
+// the cell grid spans both tables: a row is its measurable id (data-row), its cells are the inputs with that data-sc in
+// page order (title, goal, then the weeks); focusing a cell by position is clamped to the grid
+const scRowIds=()=>$$("#app .sc-left tbody tr").map(tr=>tr.dataset.row);
+const scCells=id=>$$(`#app .scc[data-sc="${id}"]`);
+const scPos=el=>[scRowIds().indexOf(el.dataset.sc),scCells(el.dataset.sc).indexOf(el)];
 function scFocus(r,c){
-  const rows=scRows();if(!rows.length)return;
-  const tr=rows[Math.max(0,Math.min(r,rows.length-1))],cells=$$(".scc",tr);
+  const ids=scRowIds();if(!ids.length)return;
+  const cells=scCells(ids[Math.max(0,Math.min(r,ids.length-1))]);
   cells[Math.max(0,Math.min(c,cells.length-1))]?.focus();
 }
 /* stores what was typed in a cell (when it changed); the cell and its row are updated in place, except when a row is added */
@@ -1943,19 +2014,27 @@ function scCommit(el){
   if(!setScField(m,k,el.value)){toast(`“${el.value.trim()}” isn't a number`,3000);el.value=shown;return}
   save();
   if(k==="goal"){ // the colours (and number format) of the whole row follow the goal
-    const tr=el.closest("tr"),ng=parseGoal(m.goal);
-    $$(".c-wk .scc",tr).forEach(c=>{const v=m.values?.[c.dataset.k];c.value=fmtNum(v,ng?.fmt);c.className=`scc ${scCellCls(m,v)}`});
+    const ng=parseGoal(m.goal);
+    scCells(m.id).filter(c=>c.closest(".c-wk")).forEach(c=>{const v=m.values?.[c.dataset.k];c.value=fmtNum(v,ng?.fmt);c.className=`scc ${scCellCls(m,v)}`});
     el.value=m.goal;el.classList.toggle("badgoal",!!m.goal&&!ng);
     if(m.goal&&!ng)toast(`Not a goal I understand: ${GOAL_HELP}`,4000);
   }else if(k==="title")el.value=m.title;
   else{const v=m.values[k];el.value=fmtNum(v,g?.fmt);el.className=`scc ${scCellCls(m,v)}`}
   el.dataset.orig=el.value;
 }
-function scGo(el,dr,dc){const [r,c]=scPos(el);scCommit(el);scFocus(r+dr,c+dc)}
-// move a measurable before another one (or to the end); its rank goes between its new neighbours
+function scGo(el,dr,dc){
+  let [r,c]=scPos(el);scCommit(el);
+  if(dc>0&&el.dataset.k==="goal"){ // from Goal into the weeks: the first week in view, not the oldest one far to the left
+    const sc=$(".sc-scroll"),left=sc?.getBoundingClientRect().left??0;
+    const i=$$(".sc-right thead th.c-wk").findIndex(th=>th.getBoundingClientRect().left>=left-1);
+    if(i>0){scFocus(r+dr,2+i);return}
+  }
+  scFocus(r+dr,c+dc);
+}
+// move a measurable before another row of this scorecard (or to the end); its rank goes between its new neighbours
 function moveMeasurable(id,beforeId){
   const m=measurable(id);if(!m||beforeId===id)return;
-  const peers=S.measurables.filter(x=>x!==m&&x.unitId===m.unitId); // in scorecard order
+  const peers=scList().filter(x=>x!==m); // in scorecard order
   const at=beforeId?peers.findIndex(x=>x.id===beforeId):-1,pos=at<0?peers.length:at;
   const prev=peers[pos-1]?.rank,next=peers[pos]?.rank;
   if(prev===undefined&&next===undefined)return;
@@ -1964,7 +2043,7 @@ function moveMeasurable(id,beforeId){
 }
 function scMoveRow(el,dir){
   const m=measurable(el.dataset.sc);if(!m||el.readOnly)return;
-  const [r,c]=scPos(el),list=S.measurables.filter(x=>x.unitId===m.unitId),other=list[list.indexOf(m)+dir];if(!other)return;
+  const [r,c]=scPos(el),list=scList(),other=list[list.indexOf(m)+dir];if(!other)return;
   scCommit(el);[m.rank,other.rank]=[other.rank,m.rank];S.measurables.sort(byRank);save();render();scFocus(r+dir,c);
 }
 function scKey(e){
@@ -1986,8 +2065,8 @@ function scPaste(e){
   if(!text.includes("\t")&&!text.includes("\n"))return; // one value: the input takes it as typed text
   e.preventDefault();
   if(el.readOnly)return viewOnly();
-  const [r0,c0]=scPos(el),rows=scRows(),keys=$$(".scc",rows[rows.length-1]).map(x=>x.dataset.k); // the "new" row has every column
-  const ids=rows.map(tr=>$(".scc",tr).dataset.sc).filter(id=>id!=="new");
+  const [r0,c0]=scPos(el),keys=scCells("new").map(x=>x.dataset.k); // the "new" row has every column
+  const ids=scRowIds().filter(id=>id!=="new");
   let bad=0,cells=0;
   text.split("\n").forEach((line,i)=>{
     const vals=line.split("\t");
@@ -2132,7 +2211,7 @@ function render(){
   orgTabBtn.innerHTML=`Organisation${waiting?` <span class="tabn" title="${peopleCount(waiting)} waiting for a team">${waiting}</span>`:""}`;
   if(ADMIN_VIEWS.includes(view)&&role!=="admin")view="plan";
   const scrolls=$$("[data-keepscroll]").map(el=>[el.dataset.keepscroll,el.scrollTop]); // lists that scroll inside a panel keep their place
-  const scLeft=$(".scwrap")?.scrollLeft??0; // Scorecard: keeps its horizontal place across re-renders
+  const scLeft=$(".sc-scroll")?.scrollLeft??0; // Scorecard: keeps its horizontal place across re-renders
   app.innerHTML=VIEWS[view]();
   scrolls.forEach(([k,top])=>{const el=$(`[data-keepscroll="${k}"]`);if(el)el.scrollTop=top});
   fitL10();
@@ -2143,8 +2222,8 @@ function render(){
   if(view==="l10"&&l10Add)$("#app .kcompose textarea")?.focus();
   if(view==="review"){syncReviewRows();restoreReviewScroll()}
   if(view==="scorecard")fitScorecard(scLeft);
-  placeUpdPop();placeIdsPop();
-  savePrefs();
+  placeUpdPop();placeIdsPop();placeScMenu();
+  savePrefs();writeRoute();
 }
 
 /* ---------- quick-update popover (rocks and milestones) ---------- */
@@ -2795,12 +2874,25 @@ const APP_ACTIONS={
     const inp=$(`[data-act="mtitle"][data-id="${m.id}"]`);inp?.focus();inp?.select();
   },
   pickteam:(b,id)=>{teamFilter=id;l10Add=null;rrScroll=null;scJump=true;render()},
+  scmenu:(b,id)=>{scMenu=scMenu===id?null:id;idsOpen=null;render()},
+  sctrack:b=>{ // show a measurable in a meeting (Business Review), or stop showing it
+    const m=measurable(b.dataset.id),f=unit(b.dataset.f);if(!m||!f)return;
+    const on=(m.trackIn||[]).includes(f.id);
+    m.trackIn=on?m.trackIn.filter(x=>x!==f.id):[...(m.trackIn||[]),f.id];
+    logHist(m,on?`No longer shown in ${f.name}`:`Shown in ${f.name}`);
+    scMenu=null;save();render();toast(on?`No longer shown in ${f.name}`:`Shown in ${f.name}`);
+  },
   scdel:async(b,id)=>{
+    scMenu=null;render();
     const m=measurable(id);if(!m)return;
-    if(Object.keys(m.values||{}).length&&!await askConfirm(`Delete “${m.title}” and its weekly values?`,"Delete"))return;
+    if(Object.keys(m.values||{}).length&&!await askConfirm(`Delete “${m.title||"this measurable"}” and its weekly values?`,"Delete"))return;
     S.measurables=S.measurables.filter(x=>x.id!==id);save();render();toast("Measurable deleted");
   },
-  idsopen:(b,id)=>{idsOpen=idsOpen?.rockId===id?null:{rockId:id,draft:`Rock to Discuss: ${rock(id).title}`};updOpen=null;render()},
+  idsopen:(b,id)=>{
+    const kind=b.dataset.kind||"rock";
+    idsOpen=idsOpen?.id===id?null:{kind,id,draft:kind==="rock"?`Rock to Discuss: ${rock(id).title}`:measurableToDiscuss(measurable(id))};
+    updOpen=null;scMenu=null;render();
+  },
   idscancel:()=>closeIdsPop(),
   idsadd:()=>addIdsFromPop(),
   kadd:b=>{l10Add=b.dataset.col;render()},
@@ -2860,7 +2952,7 @@ const APP_CHANGES={
   scowner:el=>{
     if(el.dataset.id==="new"){ // the empty row: picking its Who starts a measurable; then type its name
       if(!el.value)return;
-      const r=scRows().length-1;newMeasurable("",el.value);save();render();scFocus(r,0);return;
+      const r=scRowIds().length-1;newMeasurable("",el.value);save();render();scFocus(r,0);return;
     }
     const m=measurable(el.dataset.id);if(m.ownerId!==el.value){m.ownerId=el.value;logHist(m,el.value?`Owner set to ${personName(el.value)}`:"Owner removed");save()}render();
   },
@@ -2950,15 +3042,18 @@ document.addEventListener("mouseup",()=>{if(!scDrag)$$("table.sc tr[draggable]")
 $("#app").addEventListener("dragstart",e=>{
   const tr=e.target.closest?.("table.sc tr[draggable]");if(!tr)return;
   scDrag=tr.dataset.row;hideTip();
-  e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",scDrag);setTimeout(()=>tr.classList.add("dragging"));
+  e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",scDrag);
+  setTimeout(()=>$$(`table.sc tr[data-row="${scDrag}"]`).forEach(x=>x.classList.add("dragging"))); // both halves of the row
 });
 $("#app").addEventListener("dragover",e=>{
   if(!scDrag)return;
   const tr=e.target.closest?.("table.sc tbody tr");if(!tr)return;
   e.preventDefault();e.dataTransfer.dropEffect="move";
-  const r=tr.getBoundingClientRect(),target=tr.classList.contains("scnew")||e.clientY<r.top+r.height/2?tr:tr.nextElementSibling;
-  $$("table.sc tr.scdrop").forEach(x=>x.classList.remove("scdrop"));target?.classList.add("scdrop");
-  scDropBefore=target&&!target.classList.contains("scnew")?target.dataset.row:null; // null: at the end
+  const r=tr.getBoundingClientRect(),id=tr.dataset.row,ids=scRowIds();
+  const before=id==="new"||e.clientY<r.top+r.height/2?id:ids[ids.indexOf(id)+1];
+  $$("table.sc tr.scdrop").forEach(x=>x.classList.remove("scdrop"));
+  if(before)$$(`table.sc tr[data-row="${before}"]`).forEach(x=>x.classList.add("scdrop"));
+  scDropBefore=before&&before!=="new"?before:null; // null: at the end
 });
 $("#app").addEventListener("drop",e=>{
   if(!scDrag)return;e.preventDefault();
@@ -3050,6 +3145,7 @@ document.addEventListener("mousedown",e=>{ // clicking outside closes the status
   if(stMenu.btn&&!e.target.closest("#stmenu")&&e.target.closest("[data-m='status'],[data-act='statusmenu']")!==stMenu.btn)closeStatusMenu();
   if(updOpen&&!e.target.closest("[data-pop]")&&!e.target.closest('[data-act="addupd"]'))closeUpdPop();
   if(idsOpen&&!e.target.closest("[data-idspop]")&&!e.target.closest('[data-act="idsopen"]'))closeIdsPop();
+  if(scMenu&&!e.target.closest("[data-scmenu]")&&!e.target.closest(".scdots"))closeScMenu();
 });
 document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el!==tipEl)el?showTip(el):hideTip()});
 document.addEventListener("scroll",e=>{ // capture: also scrolls inside elements
@@ -3070,6 +3166,7 @@ document.addEventListener("visibilitychange",()=>{ // back to this tab: pick up 
   const before=todayISO();refreshToday();if(todayISO()!==before)render();
   refreshFromServer();
 });
+window.addEventListener("hashchange",()=>{if(!S)return;applyRoute();render()}); // a link or bookmark to another tab or team
 window.addEventListener("beforeunload",e=>{if(backend?.pending()){e.preventDefault();e.returnValue=""}}); // changes still being sent
 $("#themeBtn").addEventListener("click",()=>{
   const next=isDark()?"light":"dark";document.documentElement.dataset.theme=next;
@@ -3111,7 +3208,7 @@ function showWaiting(){
   setInterval(async()=>{if(!document.hidden&&!await backend.stillWaiting().catch(()=>true))location.reload()},30000);
 }
 /* other people's changes: picked up when you come back to the tab and every minute, but only while you aren't editing */
-const isIdle=()=>!!S&&backend.kind!=="local"&&!document.hidden&&!modalState&&!updOpen&&!idsOpen&&!l10Add&&!stMenu.btn&&!dragId&&!orgDrag
+const isIdle=()=>!!S&&backend.kind!=="local"&&!document.hidden&&!modalState&&!updOpen&&!idsOpen&&!scMenu&&!l10Add&&!stMenu.btn&&!dragId&&!orgDrag
   &&!$("#cbackdrop").classList.contains("open")&&!$("#lightbox").classList.contains("open")
   &&!document.activeElement?.matches("input,textarea,select,[contenteditable]")&&!backend.pending();
 async function refreshFromServer(){
@@ -3135,6 +3232,7 @@ async function init(){
     :unit(p.teamFilter)?p.teamFilter:"";
   quarterFilter=quarterParts(p.quarter)?p.quarter:quarterOf(TODAY);
   planYear=Number.isInteger(p.planYear)?p.planYear:TODAY.getFullYear();
+  applyRoute(); // a bookmarked tab and team win over the remembered ones
   drawTopBar();
   // team filter in the top bar (all views): same picker as the Team field, plus "All teams"
   $("#teamFilterWrap").innerHTML=`<label for="tf-in">Team</label>`+pickerHTML("tf",{dot:true});

@@ -291,6 +291,20 @@ test("server: scorecards (measurables) like the Level 10 board: your teams, memb
   eq(await ids(ana),["m1","m2"],"admin: not the DT Team either");
   eq(await ids(bob),["m3"],"DT member: the DT scorecard");
 });
+test("server: a measurable tracked in a meeting is shown to (and edited by) its members, like rocks",async()=>{
+  const {api}=setup();await tree(api);await asAna(api,"units",DT);
+  const dave=user("dave@letsgrow.com"),erin=user("erin@letsgrow.com");
+  await assign(api,dave,["T1"]);await assign(api,erin,["F"]);await assign(api,bob,["P"]);
+  const put=(p,rec)=>api.putItem({principal:p,params:{collection:"measurables",id:rec.id},body:{record:rec}}).then(r=>r.status);
+  eq(await put(dave,{id:"m1",unitId:"T1",title:"Calls",trackIn:["F"]}),200,"tracked in the meeting");
+  eq(await put(dave,{id:"m2",unitId:"T1",title:"Visits"}),200,"not tracked");
+  eq(await put(bob,{id:"m3",unitId:"P",title:"Secret",trackIn:["F"]}),200,"a private meeting's own");
+  const ids=async p=>(await api.data({principal:p})).json.measurables.map(m=>m.id).sort();
+  eq(await ids(erin),["m1"],"meeting member: only the tracked one, never a private meeting's");
+  const got=(await api.data({principal:erin})).json.measurables[0];
+  eq((await api.putItem({principal:erin,params:{collection:"measurables",id:"m1"},body:{record:{...got,_etag:undefined,values:{"2026-10-12":5}},ifMatch:got._etag}})).status,200,"… and may fill it in");
+  eq(await put(erin,{id:"m4",unitId:"T1",title:"X"}),403,"but not add one to the team");
+});
 test("the rights block is identical in index.html and api/src/core.js",async()=>{
   const block=s=>{const a=s.indexOf("/* rights:start"),b=s.indexOf("/* rights:end */");assert(a>=0&&b>a,"markers missing");return s.slice(a,b)};
   const [page,core]=await Promise.all(["../index.html","../api/src/core.js"].map(u=>fetch(u,{cache:"no-store"}).then(r=>r.text())));

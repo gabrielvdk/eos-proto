@@ -88,7 +88,7 @@ Getting in has two steps. First the **allow-list** decides who may sign in at al
   - a waiting person gets no data at all;
   - every save is checked against these rights (`createRights` in `api/src/core.js`; the page uses the identical block), including every membership added or removed and every structure change;
   - Level 10 cards of boards you can't see are never sent to your browser.
-  - The same goes for scorecards: they follow the Level 10 board (who sees it, who changes it).
+  - The same goes for scorecards: they follow the rocks rule (your teams and below; a meeting also shows, and its members fill in, the measurables tracked in it).
 
 ### Saving and multiple users
 
