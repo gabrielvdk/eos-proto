@@ -104,7 +104,7 @@ If an *older* page meets *newer* data (for example after rolling back Prod), it 
 | Data | sample data in the browser (local), or `?backend=mock` to exercise the API code | Cosmos DB, starts with **sample data** (`SEED=sample`) | Cosmos DB, starts with the **organisation only** (`SEED=org`) |
 | Sign-in | simulated | Microsoft (built-in) + allow-list | Microsoft, locked to your tenant once the app registration exists (built-in until then) |
 | Static Web Apps plan | – | **Free** | **Standard** |
-| Updated by | saving the file | `git push` (branch `main`) | `git push origin main:production` |
+| Updated by | saving the file | `git push` (branch `main`), or `./infra/deploy-app.ps1 -Env test` | `git push origin main:production`, or `./infra/deploy-app.ps1 -Env prod` |
 
 Day to day:
 
@@ -116,6 +116,43 @@ Day to day:
 To roll back Prod, revert the commit on `main` and promote again. Or push an older commit: `git push --force origin <commit>:production`. Code from *before* a data-version change refuses to load the newer data (see above), so roll forward with a fix in that case.
 
 GitHub Pages keeps publishing `main` as a local-mode demo. Each visitor gets their own browser data, and nothing is shared. Once Azure is live you can switch it off under the repo's *Settings → Pages*.
+
+### Deploying from your own machine (no GitHub)
+
+The GitHub workflow is one way to deploy; `infra/deploy-app.ps1` is another. It uploads the page and the API from your machine to an existing Static Web App, using Microsoft's **Static Web Apps CLI**. That works with any Git server (or none), and the two ways can be used side by side.
+
+**Install once:**
+
+| Tool | Why | Install |
+|---|---|---|
+| Node.js 20 LTS | runs the SWA CLI and installs the API's packages | `winget install OpenJS.NodeJS.LTS`, then open a new terminal |
+| Static Web Apps CLI | does the upload (downloads a small Microsoft upload tool on first use) | `npm install -g @azure/static-web-apps-cli` |
+| Azure CLI (optional) | looks up the deployment token for you; also needed for `infra/deploy.ps1` | `winget install Microsoft.AzureCLI`, then `az login` |
+
+If company policy blocks `winget`, use the installers from nodejs.org and learn.microsoft.com/cli/azure.
+
+**Deploy:**
+
+```powershell
+./infra/deploy-app.ps1 -Env test                                     # Test
+./infra/deploy-app.ps1 -Env prod                                     # Prod (built-in sign-in)
+./infra/deploy-app.ps1 -Env prod -AuthMode entra -EntraTenantId <id> # Prod, tenant-locked sign-in (§6)
+./infra/deploy-app.ps1 -Env test -DeploymentToken <token>            # without the Azure CLI
+```
+
+The script does what the workflow does:
+1. It builds `dist/`: `index.html` plus `staticwebapp.config.json`, with the tenant-locked sign-in added when `-AuthMode entra`.
+2. It installs the API's packages (`npm install` in `api/`).
+3. It runs `swa deploy` with the environment's deployment token.
+
+Without the Azure CLI, copy the token from the portal: *Static Web App → Overview → Manage deployment token*. It assumes the default names (`eostracker-test` in `rg-eostracker-test`); use `-Name` / `-ResourceGroup` otherwise.
+
+Data migrations still happen automatically on the first visit, as with the workflow.
+
+**Moving the code to another Git server:**
+- Copy the repository as is. `.github/` is only used by GitHub, and can stay or go.
+- Deploy with `deploy-app.ps1`, or set up that server's pipeline to do the same three steps. In Azure DevOps that's the `AzureStaticWebApp@0` task, with `app_location: dist`, `api_location: api` and the deployment token as a secret variable.
+- GitHub Pages (the public demo) stops with the move. That's fine: Azure Test takes its place.
 
 ---
 
