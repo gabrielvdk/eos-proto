@@ -326,7 +326,7 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 /* modal */
 .backdrop{position:fixed;inset:0;background:rgba(14,18,26,.45);display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:20;overflow:auto}
 .backdrop.open{display:flex}
-.modal{background:var(--surface);border-radius:16px;width:100%;max-width:720px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.modal{background:var(--surface);border-radius:16px;width:100%;max-width:880px;box-shadow:var(--shadow);border:1px solid var(--line)}
 .modal header{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
 .modal header h2{margin:0;font-family:var(--font-title);font-size:20px;font-weight:700;flex:1}
 .modal .body{padding:18px 20px;display:grid;gap:14px}
@@ -339,7 +339,7 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 @media (max-width:640px){.grid2,.grid3{grid-template-columns:1fr}}
-.modal.wide{max-width:1040px}
+.modal.wide{max-width:1320px} /* Full HD: room for the form and the updates side by side */
 .twocol{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0}
 .twocol>.main{border-right:1px solid var(--line);min-width:0}
 .twocol>.main>.body{min-height:440px;align-content:start}
@@ -369,7 +369,7 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .msr .x svg{width:15px;height:15px}
 .twocol>.side{display:flex;flex-direction:column;min-height:0}
 .side .mtabs{padding:0 20px}
-.side .pane{padding:16px 20px;display:grid;gap:10px;align-content:start;max-height:560px;overflow:auto}
+.side .pane{padding:16px 20px;display:grid;gap:10px;align-content:start;max-height:calc(100vh - 300px);overflow:auto}
 @media (max-width:860px){.twocol{grid-template-columns:1fr}.twocol>.main{border-right:0;border-bottom:1px solid var(--line)}.twocol>.main>.body{min-height:0}}
 .updates{display:grid;gap:8px;max-height:220px;overflow:auto}
 .upd{display:grid;gap:2px;padding:8px 10px;border-radius:9px;background:var(--canvas)}
@@ -385,11 +385,13 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
 
 /* level 10: agenda + kanban board */
-.l10{display:grid;grid-template-columns:250px minmax(0,1fr);gap:16px;align-items:start}
+.l10{display:grid;grid-template-columns:250px minmax(0,1fr);gap:16px;align-items:stretch;height:calc(100vh - var(--l10top,160px) - 72px);min-height:560px} /* fills the screen; lists scroll inside (--l10top: set in render) */
 @media (max-width:980px){.l10{grid-template-columns:1fr}}
 .agenda{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 10px 8px}
-.l10side{display:grid;gap:12px;align-content:start;position:sticky;top:76px}
-.boardpeople .plist{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:2px}
+.l10side{display:flex;flex-direction:column;gap:12px;min-height:0}
+.l10side .agenda{flex:none}
+.boardpeople{flex:1 1 auto;min-height:150px;display:flex;flex-direction:column}
+.boardpeople .plist{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-height:0;overflow-y:auto}
 .boardpeople .plist li{display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:13px}
 .boardpeople .plist .avatar{width:22px;height:22px;font-size:10px}
 .boardpeople .who{margin:6px 6px 4px;font-size:12px;color:var(--ink-3)}
@@ -405,14 +407,14 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .agenda ul{margin:0 0 4px;padding:0 0 0 22px;font-size:12.5px;color:var(--ink-2)}
 .agenda ul li{padding:1px 0}
 .agenda ul li::marker{color:var(--amber)}
-.kboard{display:grid;grid-template-columns:repeat(3,minmax(250px,1fr));gap:12px;overflow-x:auto;align-items:start}
-.kcol{background:color-mix(in srgb,var(--line) 45%,var(--canvas));border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:240px;border-top:3px solid var(--grey-fill);transition:box-shadow .3s}
+.kboard{display:grid;grid-template-columns:repeat(3,minmax(250px,1fr));gap:12px;overflow-x:auto;align-items:stretch;min-height:0}
+.kcol{background:color-mix(in srgb,var(--line) 45%,var(--canvas));border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:0;border-top:3px solid var(--grey-fill);transition:box-shadow .3s}
 .kcol.k-ids{border-top-color:var(--amber)} .kcol.k-todo{border-top-color:var(--accent)} .kcol.k-done{border-top-color:var(--green)}
 .kcol.flash{box-shadow:0 0 0 3px var(--accent-soft),0 0 0 5px var(--accent)}
 .kcol header{display:flex;align-items:center;gap:8px;padding:0 4px}
 .kcol h2{margin:0;font-size:13.5px;font-weight:700}
 .kcol header .n{font-size:12px;color:var(--ink-3);font-weight:600;background:var(--surface);border-radius:999px;padding:0 7px}
-.klist{display:flex;flex-direction:column;gap:8px;min-height:30px}
+.klist{display:flex;flex-direction:column;gap:8px;min-height:30px;flex:1 1 auto;overflow-y:auto;margin:0 -4px;padding:2px 4px} /* scrolls inside the column */
 .kcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;cursor:pointer;box-shadow:0 1px 2px rgba(28,36,48,.07);display:grid;gap:6px}
 .kcard:hover{border-color:var(--line-strong);box-shadow:0 2px 8px rgba(28,36,48,.1)}
 .kcard:active{cursor:grabbing}
@@ -448,7 +450,7 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .ochip .avatar{width:20px;height:20px;font-size:9.5px}
 .ochip button{border:0;background:none;color:var(--ink-3);width:18px;height:18px;border-radius:50%;padding:0;line-height:1}
 .ochip button:hover{background:var(--red-soft);color:var(--red)}
-.rte{min-height:120px;max-height:360px;overflow:auto;border:1px solid var(--line-strong);border-radius:9px;padding:8px 10px;background:var(--surface);overflow-wrap:anywhere;white-space:pre-wrap}
+.rte{min-height:120px;max-height:45vh;overflow:auto;border:1px solid var(--line-strong);border-radius:9px;padding:8px 10px;background:var(--surface);overflow-wrap:anywhere;white-space:pre-wrap}
 .rte:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
 .rte:empty::before{content:attr(data-placeholder);color:var(--ink-3)}
 .rte img{display:block;max-width:100%;max-height:260px;border-radius:6px;border:1px solid var(--line);margin:6px 0;cursor:zoom-in}
@@ -1589,23 +1591,16 @@ function renderL10(){
     const add=key==="done"?"":l10Add===key
       ?`<div class="kcompose"><textarea placeholder="${key==="ids"?"Issue to discuss…":"What needs to be done?"}" aria-label="New card title"></textarea><div class="row"><button class="btn sm primary" data-act="kaddsave">Add card</button><button class="btn sm ghost" data-act="kaddcancel">Cancel</button></div></div>`
       :`<button class="kadd" data-act="kadd" data-col="${key}">+ Add ${key==="ids"?"issue":"to-do"}</button>`;
-    return `<section class="kcol k-${key}" data-col="${key}"><header><h2>${label}</h2><span class="n">${cs.length}</span></header><div class="klist">${cs.map(cardHTML).join("")}</div>${add}</section>`;
+    return `<section class="kcol k-${key}" data-col="${key}"><header><h2>${label}</h2><span class="n">${cs.length}</span></header><div class="klist" data-keepscroll="${teamFilter}-${key}">${cs.map(cardHTML).join("")}</div>${add}</section>`;
   };
   return head+`<div class="l10"><div class="l10side">${agenda}${boardPeopleHTML(teamFilter)}</div><div class="kboard">${COLS.map(column).join("")}</div></div>`;
 }
-/* below the agenda: who is in this team (or meeting), and who else can see its board and rocks — everyone with rights on it:
-   people in the units above it (department, directors) and admins; for a private meeting nobody else */
+/* below the agenda: who is in this team (or meeting); the list scrolls inside the card. A private meeting says so. */
 function boardPeopleHTML(unitId){
   const members=unitMembers(unitId).sort((a,b)=>a.name.localeCompare(b.name));
-  const others=S.people.filter(p=>!rights.isMember(p,unitId)&&roleOf(p)!=="pending"&&rights.canSeeBoard(p,unitId));
-  const above=others.filter(p=>!rights.isAdmin(p)||(p.unitIds||[]).length),admins=others.filter(p=>!above.includes(p));
-  const names=list=>list.map(p=>esc(p.name)).join(", ");
-  const who=rights.isPrivate(unitId)?`<b>Private:</b> only these members see this board and its rocks.`
-    :!others.length?"Nobody else sees this board and its rocks."
-    :`Also visible to ${above.length?`${names(above)} (above this ${isForum(unitId)?"meeting":"team"})`:""}${above.length&&admins.length?" and ":""}${admins.length?`admins: ${names(admins)}`:""}.`;
-  return `<aside class="agenda boardpeople" aria-label="Who sees this board"><div class="agh"><h2>Members</h2><span class="muted">${members.length}</span></div>
-    <ul class="plist">${members.map(p=>`<li>${avatarHTML(p.id)}<span>${esc(p.name)}</span></li>`).join("")||`<li class="muted">No members yet</li>`}</ul>
-    <p class="who">${who}</p></aside>`;
+  return `<aside class="agenda boardpeople" aria-label="Members"><div class="agh"><h2>Members</h2><span class="muted">${members.length}</span></div>
+    <ul class="plist" data-keepscroll="${unitId}-members">${members.map(p=>`<li>${avatarHTML(p.id)}<span>${esc(p.name)}</span></li>`).join("")||`<li class="muted">No members yet</li>`}</ul>
+    ${rights.isPrivate(unitId)?`<p class="who"><b>Private:</b> only these members see this board and its rocks.</p>`:""}</aside>`;
 }
 /* the team picker of Level 10 and Rock Review (both are held per team or meeting), shown while no team is chosen:
    your teams and meetings, grouped Meetings · per department; with a department selected, only its teams.
@@ -1651,6 +1646,7 @@ function submitComposer(){ // Enter adds the card and keeps the composer open fo
   const ta=$("#app .kcompose textarea");if(!ta||!l10Add)return;
   const t=ta.value.trim();if(!t){ta.focus();return}
   addCard(l10Add,t);render();
+  const list=$(`.kcol[data-col="${l10Add}"] .klist`);if(list)list.scrollTop=list.scrollHeight; // show the new card at the bottom
 }
 
 /* ---------- Organisation (admins only): one page with two tabs, the org tree and the people ----------
@@ -1785,7 +1781,10 @@ function render(){
   orgTabBtn.hidden=false; // everyone assigned sees the organisation
   orgTabBtn.innerHTML=`Organisation${waiting?` <span class="tabn" title="${peopleCount(waiting)} waiting for a team">${waiting}</span>`:""}`;
   if(ADMIN_VIEWS.includes(view)&&role!=="admin")view="plan";
+  const scrolls=$$("[data-keepscroll]").map(el=>[el.dataset.keepscroll,el.scrollTop]); // lists that scroll inside a panel keep their place
   app.innerHTML=VIEWS[view]();
+  scrolls.forEach(([k,top])=>{const el=$(`[data-keepscroll="${k}"]`);if(el)el.scrollTop=top});
+  fitL10();
   app.classList.toggle("wide",view!=="plan");
   tfPicker?.refresh(); // views can change teamFilter (e.g. the Level 10 team picker)
   $("#tf").classList.toggle("active",!!teamFilter);
@@ -2618,7 +2617,9 @@ document.addEventListener("scroll",e=>{ // capture: also scrolls inside elements
   }
   else if(el===document){closeUpdPop();closeIdsPop()}
 },true);
-window.addEventListener("resize",()=>closeStatusMenu());
+window.addEventListener("resize",()=>{closeStatusMenu();fitL10()});
+// Level 10 fills the screen below its header: lists scroll inside their column instead of the page
+function fitL10(){const el=$(".l10");if(el)el.style.setProperty("--l10top",(el.getBoundingClientRect().top+scrollY)+"px")}
 document.addEventListener("visibilitychange",()=>{ // back to this tab: pick up other people's changes; redraw when the date has changed
   if(document.hidden)return;
   const before=todayISO();refreshToday();if(todayISO()!==before)render();
