@@ -1855,7 +1855,8 @@ function scWeeks(list){ // oldest first, up to SC_FUTURE weeks ahead
    real font (so a web font that loads later is handled too, see init): Measurable as wide as its longest name plus its tags
    and icons (SC_TITLE_MIN–SC_TITLE_MAX; a longer name ends in … and shows in full on hover), Goal as wide as its longest
    goal, and a week as wide as SC_WEEK_TEXT. As many whole weeks as fit fill the width (at least 6: 5 filled in + this week).
-   Opening the view shows this week as the last one in view, else the scroll position `left` is kept. */
+   Opening the view shows SC_PAST_IN_VIEW past weeks, then this week and the weeks ahead; else the scroll position `left` is kept. */
+const SC_PAST_IN_VIEW=4; // on opening: this many past weeks to the left of this week, the future weeks to the right
 const SC_TITLE_MIN=180,SC_TITLE_MAX=420;
 const SC_WEEK_TEXT="€10.000.000"; // the widest value a week column needs to show
 const scCanvas=document.createElement("canvas").getContext("2d");
@@ -1875,7 +1876,7 @@ function fitScorecard(left){
   const n=Math.max(6,Math.floor(sc.clientWidth/wk));sc.style.setProperty("--scw",Math.floor(sc.clientWidth/n)+"px");
   syncRows(".sc-left tr",".sc-right tr");
   const now=$("th.c-wk.cur",sc);
-  if(scJump&&now){sc.scrollLeft=now.offsetLeft+now.offsetWidth-sc.clientWidth;scJump=false}else if(left!==undefined)sc.scrollLeft=left;
+  if(scJump&&now){sc.scrollLeft=Math.max(0,now.offsetLeft-SC_PAST_IN_VIEW*now.offsetWidth);scJump=false} // SC_PAST_IN_VIEW weeks, this week, then the futureelse if(left!==undefined)sc.scrollLeft=left;
 }
 let scEdit=null; // the cell being edited inside its text (F2, double-click, typing); otherwise arrows move between cells
 const measurable=id=>S.measurables.find(m=>m.id===id);
@@ -3265,7 +3266,7 @@ async function init(){
   render();
   if(backend.kind!=="local")save(); // stores migrations and the first-time setup of an empty database; nothing when up to date
   if(storageProblem)toast(storageProblem,6000);
-  document.fonts?.ready.then(()=>{if(view==="scorecard")fitScorecard()}); // Figtree may arrive after the first render: measure again
+  document.fonts?.ready.then(()=>{if(view==="scorecard"){scJump=true;fitScorecard()}}); // Figtree may arrive after the first render: measure (and place this week) again
 }
 init();
 </script>
