@@ -2230,7 +2230,8 @@ function initPicker(id,{get,set,groups,emptyText,display,dotOf,dotColor,noun="it
     const v=get();
     inp.value=v?display(v):noneText;
     inp.placeholder=v||noneText?"":placeholder||(allowNone?"None — type to search":"Type to search");
-    if(dotOf||dotColor)$(".cur-dot",box).style.background=!v?"transparent":dotColor?dotColor(v)||"transparent":`var(--${dotOf(v).toLowerCase()})`;
+    const dot=$(".cur-dot",box); // only pickers made with {dot:true} have one
+    if(dot&&(dotOf||dotColor))dot.style.background=!v?"transparent":dotColor?dotColor(v)||"transparent":`var(--${dotOf(v).toLowerCase()})`;
   };
   const draw=()=>{
     const q=typed?inp.value.trim().toLowerCase():"";
