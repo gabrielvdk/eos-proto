@@ -486,7 +486,7 @@ table.sc thead th.c-wk.cur b,table.sc thead th.c-wk.cur span{color:#fff}
 table.sc thead th.c-wk.fut b{color:var(--ink-3)}
 table.sc td.c-wk.cur{background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
 table.sc td.c-wk.fut{background:color-mix(in srgb,var(--canvas) 60%,var(--surface))}
-table.sc .c-title{width:var(--sct,200px);min-width:var(--sct,200px);max-width:var(--sct,200px)} /* --sct, --scg: set per scorecard from its longest name / goal (scColWidths) */
+table.sc .c-title{width:var(--sct,200px);min-width:var(--sct,200px);max-width:var(--sct,200px)} /* --sct, --scg: measured after each render (fitScorecard) */
 table.sc .c-who{width:44px;min-width:44px;text-align:center}
 table.sc .c-goal{width:var(--scg,80px);min-width:var(--scg,80px);max-width:var(--scg,80px)}
 table.sc .c-wk{width:var(--scw,104px);min-width:var(--scw,104px);max-width:var(--scw,104px)}
@@ -515,7 +515,6 @@ table.sc tbody tr:last-child td{border-bottom:0}
 :root[data-theme="dark"] .scc.ok{color:var(--green)}
 :root[data-theme="dark"] .scc.bad{color:#FF8A98}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .scc.ok{color:var(--green)}:root:not([data-theme="light"]) .scc.bad{color:#FF8A98}}
-.scnew td{background:var(--canvas)!important}
 .scnew .c-title .scc{font-weight:500}
 .scgrip{flex:none;display:inline-flex;width:20px;justify-content:center;color:var(--ink-3);opacity:.35;cursor:grab;padding:2px 0;margin-left:4px;border-radius:4px}
 .scgrip svg{width:14px;height:14px}
@@ -1827,11 +1826,10 @@ function submitComposer(){ // Enter adds the card and keeps the composer open fo
    last one). Alt+↑/↓ or the drag handle (grip, left of the name) moves a row. The empty row at the bottom is always there:
    typing in it, or picking its Who, adds a measurable.
    Columns: measurable · who (avatar; a native select lies invisibly on top) · goal · weeks, left to right like Rock Review,
-   this week on the right. Like Rock Review the weeks scroll while the left columns stay put: weeks of about SC_WEEK_PX fill the
+   this week on the right. Like Rock Review the weeks scroll while the left columns stay put: as many weeks as fit fill the
    visible width (fitScorecard), opening the view jumps to this week, re-renders keep the scroll position.
    Numbers are Dutch: 40.000 and 1,5. A value is green when it meets the goal, red when it doesn't.
    Cells are updated in place (no re-render), so the cursor stays put. */
-const SC_WEEK_PX=150; // target week width: as many weeks as fit (at least 6: 5 filled in + this week); earlier ones are a scroll away
 const SC_HISTORY=26; // weeks to scroll back through at least (more when older values exist; at most 104)
 const SC_FUTURE=10;  // weeks ahead of this week
 let scJump=true;     // after the next render: scroll to this week (set when the view is opened)
@@ -1844,11 +1842,28 @@ function scWeeks(list){ // oldest first, up to SC_FUTURE weeks ahead
   const n=Math.min(104,Math.round((cur-first)/(7*864e5))+1)+SC_FUTURE;
   return Array.from({length:n},(_,i)=>{const x=new Date(first);x.setDate(x.getDate()+7*i);return x});
 }
-/* like Rock Review: the left table stays put and only the weeks scroll. The week columns are sized so a whole number of them (about SC_WEEK_PX wide, at least 6)
-   fill the visible width; opening the view shows this week as the last one in view, else the scroll position `left` is kept */
+/* like Rock Review: the left table stays put and only the weeks scroll. After each render the columns are measured in the
+   real font (so a web font that loads later is handled too, see init): Measurable as wide as its longest name plus its tags
+   and icons (SC_TITLE_MIN–SC_TITLE_MAX; a longer name ends in … and shows in full on hover), Goal as wide as its longest
+   goal, and a week as wide as SC_WEEK_TEXT. As many whole weeks as fit fill the width (at least 6: 5 filled in + this week).
+   Opening the view shows this week as the last one in view, else the scroll position `left` is kept. */
+const SC_TITLE_MIN=180,SC_TITLE_MAX=420;
+const SC_WEEK_TEXT="€10.000.000"; // the widest value a week column needs to show
+const scCanvas=document.createElement("canvas").getContext("2d");
+const textPx=(text,el)=>{const cs=getComputedStyle(el);scCanvas.font=`${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;return scCanvas.measureText(text||"").width};
 function fitScorecard(left){
-  const sc=$(".sc-scroll");if(!sc)return;
-  const n=Math.max(6,Math.floor(sc.clientWidth/SC_WEEK_PX));sc.style.setProperty("--scw",Math.max(96,Math.floor(sc.clientWidth/n))+"px");
+  const sc=$(".sc-scroll"),table=$(".sc-left");if(!sc||!table)return;
+  const need=(sel,min,max)=>{ // the widest cell: text + everything else in its cell (padding, grip, tags, icons)
+    let w=0;
+    $$(sel,table).forEach(inp=>{const td=inp.closest("td"),pad=parseFloat(getComputedStyle(inp).paddingLeft)+parseFloat(getComputedStyle(inp).paddingRight);
+      w=Math.max(w,Math.ceil(textPx(inp.value||inp.placeholder,inp)+pad+(td.clientWidth-inp.clientWidth)+2))});
+    return Math.min(max,Math.max(min,w));
+  };
+  table.style.setProperty("--sct",need('.scc[data-k="title"]',SC_TITLE_MIN,SC_TITLE_MAX)+"px");
+  table.style.setProperty("--scg",need('.scc[data-k="goal"]',64,140)+"px");
+  $$('.scc[data-k="title"]',table).forEach(inp=>{if(inp.scrollWidth>inp.clientWidth+1)inp.dataset.tip=inp.value;else delete inp.dataset.tip});
+  const cell=$(".sc-right .scc",sc),wk=cell?Math.ceil(textPx(SC_WEEK_TEXT,cell)*1.05+22):110; // bold-ish red values are a bit wider
+  const n=Math.max(6,Math.floor(sc.clientWidth/wk));sc.style.setProperty("--scw",Math.floor(sc.clientWidth/n)+"px");
   syncRows(".sc-left tr",".sc-right tr");
   const now=$("th.c-wk.cur",sc);
   if(scJump&&now){sc.scrollLeft=now.offsetLeft+now.offsetWidth-sc.clientWidth;scJump=false}else if(left!==undefined)sc.scrollLeft=left;
@@ -1917,16 +1932,6 @@ const GOAL_TIP=`What you can enter as a goal:
 A plain number means "at least".
 Add % or € to format the numbers: >= 80%, €40.000+ (or €40k+).
 Numbers are Dutch: 40.000 and 1,5.`;
-/* the Measurable and Goal columns: as narrow as the longest name / goal allows (measured in the real font), within a
-   minimum and maximum; room for the grip, tags and icons is included. Longer names are cut off with … (full name on hover). */
-const scCanvas=document.createElement("canvas").getContext("2d");
-const textPx=(text,font)=>{scCanvas.font=`${font} ${getComputedStyle(document.body).fontFamily}`;return scCanvas.measureText(text||"").width};
-function scColWidths(list){
-  const tagPx=m=>(m.unitId!==teamFilter?textPx(unitName(m.unitId),"500 11.5px")+22:0)+(m.trackIn||[]).length*30;
-  const title=list.reduce((w,m)=>Math.max(w,textPx(m.title,"600 13.5px")+tagPx(m)),0)+100; // grip, padding, IDS and ⋯
-  const goal=list.reduce((w,m)=>Math.max(w,textPx(m.goal,"13.5px")),0)+24;
-  return `--sct:${Math.round(Math.min(320,Math.max(200,title)))}px;--scg:${Math.round(Math.min(110,Math.max(72,goal)))}px`;
-}
 function renderScorecard(){
   if(!boardOk(teamFilter))return renderScorecardPick();
   const list=scList(),weeks=scWeeks(list),cur=localISO(mondayOf(TODAY));
@@ -1946,7 +1951,7 @@ function renderScorecard(){
     const menu=can?`<button class="scdots ${scMenu===m.id?"on":""}" data-act="scmenu" data-id="${m.id}" aria-label="More" data-tip="More">${ICONS.dots}</button>`:"";
     return `<tr data-row="${m.id}"><td class="c-title"><div class="sct">
         ${can?`<span class="scgrip" data-tip="Drag to reorder" aria-hidden="true">${ICONS.grip}</span>`:`<span class="scgrip off"></span>`}
-        ${cell(m.id,"title",m.title,can,"",` placeholder="Name this measurable"${textPx(m.title,"600 13.5px")>200?` data-tip="${esc(m.title)}"`:""}`)}${teamTagHTML(m.unitId)}${trackTagsHTML(m)}${idsBtnHTML(m,"measurable")}${menu}</div></td>
+        ${cell(m.id,"title",m.title,can,"",` placeholder="Name this measurable"`)}${teamTagHTML(m.unitId)}${trackTagsHTML(m)}${idsBtnHTML(m,"measurable")}${menu}</div></td>
       <td class="c-who">${owner(m.id,m.unitId,m.ownerId,can)}</td>
       <td class="c-goal">${cell(m.id,"goal",m.goal||"",can,badGoal?"badgoal":"",` placeholder="—"${badGoal?` data-tip="${esc("Not a goal I understand: "+GOAL_HELP)}"`:""}`)}</td></tr>`;
   };
@@ -1960,7 +1965,7 @@ function renderScorecard(){
   const keys=`<div class="legend sckeys"><span><i class="sw ok"></i> On goal</span><span><i class="sw bad"></i> Off goal</span>
     <span class="muted">${edit?"Type to replace · Enter ↓ · Tab → · F2 edits · Esc undoes · Paste from Excel · Drag ⋮⋮ or Alt+↑↓ moves a row":"View only"}</span></div>`;
   const menuM=scMenu&&list.find(m=>m.id===scMenu),idsM=idsOpen?.kind==="measurable"&&list.find(m=>m.id===idsOpen.id);
-  return head+empty+`<div class="board rrwrap scwrap" data-keepscroll="${teamFilter}-sc"><table class="sc sc-left" style="${scColWidths(list)}"><thead>${thL}</thead><tbody>${list.map(left).join("")}${newLeft}</tbody></table>`
+  return head+empty+`<div class="board rrwrap scwrap" data-keepscroll="${teamFilter}-sc"><table class="sc sc-left"><thead>${thL}</thead><tbody>${list.map(left).join("")}${newLeft}</tbody></table>`
     +`<div class="scroll sc-scroll"><table class="sc sc-right"><thead>${thR}</thead><tbody>${list.map(right).join("")}${newRight}</tbody></table></div></div>`
     +keys+(menuM?scMenuHTML(menuM):"")+(idsM?idsPopHTML(idsM):"");
 }
@@ -2029,6 +2034,7 @@ function scCommit(el){
     el.value=m.goal;el.classList.toggle("badgoal",!!m.goal&&!ng);
     if(m.goal&&!ng)toast(`Not a goal I understand: ${GOAL_HELP}`,4000);
   }else if(k==="title")el.value=m.title;
+  if(k==="title"||k==="goal")fitScorecard($(".sc-scroll")?.scrollLeft); // the column grows (or shrinks) with the longest one
   else{const v=m.values[k];el.value=fmtNum(v,g?.fmt);el.className=`scc ${scCellCls(m,v)}`}
   el.dataset.orig=el.value;
 }
@@ -3250,6 +3256,7 @@ async function init(){
   render();
   if(backend.kind!=="local")save(); // stores migrations and the first-time setup of an empty database; nothing when up to date
   if(storageProblem)toast(storageProblem,6000);
+  document.fonts?.ready.then(()=>{if(view==="scorecard")fitScorecard()}); // Figtree may arrive after the first render: measure again
 }
 init();
 </script>
