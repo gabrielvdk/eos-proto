@@ -49,35 +49,40 @@ The same `index.html` runs everywhere. At start-up it asks `/api/config`:
 
 `?backend=local` forces local mode, even on Azure. A small tag next to the app name shows which mode you're in: **Local**, **Mock API** or **test**. Prod shows no tag. In local mode the browser logs one harmless 404 for `/api/config`.
 
-### Roles: admins, members and people waiting for a team
+### Roles: the organisation manages itself
 
 Getting in has two steps. First the **allow-list** decides who may sign in at all (`ALLOWED_EMAIL_DOMAINS`, `ALLOWED_EMAILS`, §4). Then each person's **role** decides what they see:
 
 | Role | Who | Sees and does |
 |---|---|---|
-| **Admin** | everyone in `ADMIN_EMAILS` (always, automatically), plus anyone an admin ticks "Admin" for | everything, plus the **Organisation** menu item. Its *Organisation* tab is for adding, renaming, deleting and dragging departments, teams and meetings into order; its *People* tab is for assigning people to units and making others admin |
-| **Member** | anyone assigned to at least one unit (team, department, meeting or the company) | see below |
+| **Member** | anyone assigned to at least one unit (team, department, meeting or the company) | see below; nobody needs an admin for day-to-day changes |
+| **Admin** | everyone in `ADMIN_EMAILS` (always, automatically: the break-glass entry), plus anyone an admin ticks "Admin" for | can always do everything, even when in no unit at all, so they can always put themselves or anyone else back in; the only ones who make others admin |
 | **Waiting** | signed in for the first time, not assigned yet | only "Welcome, you haven't been added to a team yet". The page checks every 30 seconds and opens the app once they're assigned |
 
-**What a member may do: rights flow down the tree, never up.** Belonging to a unit gives rights on that unit and on everything below it:
+**Rights flow down the tree, never up.** Belonging to a unit gives rights on that unit and on everything below it. Two rules follow from it:
 
-| Member of | May change goals, rocks and Level 10 cards of | Sees the Level 10 boards of |
-|---|---|---|
-| **Hoogendoorn** (the company: directors) | everything | every team and meeting |
-| a **department** | that department and all its teams | its teams |
-| a **team** | that team only (not the department above it) | that team |
-| a **meeting** (Business Review) | the meeting's own rocks, plus every rock it shows (tracked or escalated). They can change those fully, but can't move them to another team | that meeting |
+1. **Content and membership:** you change the goals, rocks and Level 10 cards of your units and everything below them, and you add and remove people there.
+2. **Structure:** you create, rename, reorder, move and delete units *below* your own units, never your own unit or anything above it.
 
-- **Goals live on any level; rocks and Level 10 boards only on teams and meetings.** That keeps them separated per team and makes rights simple. For department- or company-level rocks and meetings, add a management team (e.g. "Sales MT") under that department. This is enforced by the server for everyone, admins too.
+| Member of | Changes goals, rocks, Level 10 cards of | Adds and removes people in | Manages the structure of | Sees the Level 10 boards of |
+|---|---|---|---|---|
+| **Hoogendoorn** (the company: directors) | everything | every unit | departments, teams and meetings | every team and meeting |
+| a **department** | the department and all its teams | the department and its teams | its teams (add, rename, reorder, delete when empty) | its teams |
+| a **team** | that team only (not the department above it) | that team | nothing | that team |
+| a **meeting** (Business Review, Leadership Team) | the meeting's own rocks, plus every rock it shows (tracked or escalated); fully, but they can't move them to another team | that meeting | nothing (directors manage meetings and their rules) | that meeting |
+
+- **Everyone assigned sees the whole Organisation and People**, but only gets edit controls where these rules allow.
+- **Goals live on any level; rocks and Level 10 boards only on teams and meetings.** That keeps them separated per team and makes rights simple. For department-level rocks and meetings, add a management team (e.g. "Sales MT") under that department. For the company level, add a meeting such as the Leadership Team. This is enforced by the server for everyone, admins too.
 - **Everyone assigned sees the full One Year Plan**, and can open every goal. **Rocks are limited to your branch**: the rocks of your own teams and the teams below your units, plus the rocks shown by meetings you're in. Items you can't change open as view-only.
 - **Rock Review and Level 10** are held per team or meeting. Without one chosen, both show the same picker of your teams.
-- **New goals and rocks** can only be put in units you have rights on (the Team field only offers those). A rock's owner must be someone with rights on its team. Moving an item to another unit needs rights on that unit too.
+- **New goals and rocks** can only be put in units you have rights on (the Team field only offers those). A rock's owner must be someone with rights on its team. Moving an item, or a team to another department, needs rights on both sides.
 - **The Team filter** (top right) shows your branch: the company, your own units, the departments above them and the teams below them.
-- **New people add themselves** by signing in. They appear at the top of *Organisation → People*, marked as waiting, and the Organisation menu item shows how many are waiting. Assign them with *+ Add to…*.
-- **Removing someone from every unit** puts them back to waiting. That's how you offboard someone while keeping their history.
+- **New people add themselves** by signing in. They appear at the top of *Organisation → People*, marked as waiting, and the Organisation menu item shows how many are waiting. Anyone in a unit (or above it) can add them there with *+ Add to…*. That's the self-service onboarding.
+- **Removing someone from every unit** puts them back to waiting. That's how you offboard someone while keeping their history. Removing yourself asks for confirmation first.
+- **Deleting a unit** is only possible once it has no teams, members, goals, rocks or cards.
 - **Enforced by the server, not just hidden in the page:**
   - a waiting person gets no data at all;
-  - every save is checked against these rights (`createRights` in `api/src/core.js`; the page uses the identical block);
+  - every save is checked against these rights (`createRights` in `api/src/core.js`; the page uses the identical block), including every membership added or removed and every structure change;
   - Level 10 cards of boards you can't see are never sent to your browser.
 
 ### Saving and multiple users
@@ -354,7 +359,7 @@ That's the intended path: run Prod on `builtin` (with the allow-list) until IT h
 | "Can't reach the server" | the API isn't running: check the run's API build step and the app settings (a missing `COSMOS_CONNECTION_STRING` breaks every call) |
 | "No access" | your address isn't covered by `ALLOWED_EMAIL_DOMAINS` / `ALLOWED_EMAILS` / `ADMIN_EMAILS` |
 | "Welcome, you haven't been added to a team yet" | expected for new people: an admin assigns them under *Organisation → People* |
-| No Organisation menu item although you should be admin | your sign-in address differs from the one in `ADMIN_EMAILS` (check the name/tooltip top right) |
+| No Admin tickboxes on the People tab although you should be admin | your sign-in address differs from the one in `ADMIN_EMAILS` (check the name/tooltip top right) |
 | "View only" on a goal or rock | it belongs to a unit you're not in (or below); add the person to that unit, or to the department/company above it |
 | Sign-in loops or errors after switching to `entra` | redirect URI, ID tokens setting, client ID/secret, or an expired secret |
 | "…was changed by someone else at the same time" | two people edited the same item; the latest version is shown, so redo your change |
@@ -365,6 +370,6 @@ That's the intended path: run Prod on `builtin` (with the allow-list) until IT h
 ## 8. Security notes
 
 - The repository is public. It contains no secrets: the deployment token is a GitHub secret, and the database connection string and Entra secret are Static Web App app settings.
-- Every page and API call requires sign-in (`staticwebapp.config.json`). The API also checks the allow-list, the caller's role and their rights on every call. People who are waiting get no data; only admins can change the organisation and people; members only change their own branch and receive only their own Level 10 boards.
+- Every page and API call requires sign-in (`staticwebapp.config.json`). The API also checks the allow-list, the caller's role and their rights on every call. People who are waiting get no data; members only change their own branch (content, memberships, and the structure below their units) and receive only their own Level 10 boards; only admins grant admin.
 - Pasted images are stored as attachments and served only to signed-in users.
 - All data is in West Europe.

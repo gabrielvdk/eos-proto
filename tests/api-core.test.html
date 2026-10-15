@@ -140,6 +140,56 @@ test("rights: meeting members fully edit the rocks the meeting shows",async()=>{
   eq(R.writeAllowed(f,"rocks",null,{id:"new",unitId:"F"}),true,"the meeting's own rocks: yes");
   eq(R.writeAllowed(f,"goals",null,{id:"g",unitId:"T3"}),false,"goals of other teams: no");
 });
+test("organisation: structure is managed from the unit above, never by the unit itself",async()=>{
+  const R=createRights({units:UNITS,people:[],adminEmails:[]}),u=id=>UNITS.find(x=>x.id===id);
+  const manages=units=>UNITS.map(x=>R.canManageUnit({unitIds:units},x));
+  eq(manages(["C"]),[false,true,true,true,true,true,true],"director: everything below the company");
+  eq(manages(["D"]),[false,false,true,true,false,false,false],"department: its teams, not itself");
+  eq(manages(["T1"]),[false,false,false,false,false,false,false],"team: nothing");
+  eq(manages(["F"]),[false,false,false,false,false,false,false],"meeting: nothing (not even its own rules)");
+  const dep={unitIds:["D"]},dir={unitIds:["C"]},w=(p,b,a)=>R.writeAllowed(p,"units",b,a);
+  eq(w(dep,null,{id:"T9",kind:"team",name:"New",parentId:"D"}),true,"department adds a team to itself");
+  eq(w(dep,null,{id:"T9",kind:"team",name:"New",parentId:"E"}),false,"… not to another department");
+  eq(w(dep,u("T1"),{...u("T1"),name:"Renamed"}),true,"department renames its team");
+  eq(w(dep,u("D"),{...u("D"),name:"Renamed"}),false,"… not itself");
+  eq(w(dep,null,{id:"D9",kind:"department",name:"New"}),false,"… nor adds departments");
+  eq(w(dep,u("T1"),{...u("T1"),parentId:"E"}),false,"moving a team needs rights on both departments");
+  eq(w(dir,u("T1"),{...u("T1"),parentId:"E"}),true,"… which a director has");
+  eq(w(dir,null,{id:"D9",kind:"department",name:"New"}),true,"director adds departments");
+  eq(w(dir,u("F"),{...u("F"),includeTracked:false}),true,"… and sets meeting rules");
+  eq(w(dir,null,{id:"C2",kind:"company",name:"Other"}),false,"no second company (admins only)");
+  eq(w(dir,u("T1"),{...u("T1"),kind:"department"}),false,"no changing a unit's kind");
+  eq(w(dep,u("T2"),null),true,"department deletes its team");eq(w(dep,u("D"),null),false,"… not itself");
+});
+test("organisation: membership is managed in your own units and below",async()=>{
+  const R=createRights({units:UNITS,people:[],adminEmails:[]});
+  const x={id:"x",name:"X",email:"x@a.com",color:"#000",unitIds:["T1"]},with_=ids=>({...x,unitIds:ids});
+  const w=(units,after,before=x)=>R.writeAllowed({unitIds:units},"people",before,after);
+  eq(w(["T1"],x),true,"nothing changed");
+  eq(w(["T1"],with_([])),true,"team member removes a colleague from the team");
+  eq(w(["T2"],with_(["T1","T2"])),true,"… and adds people to their own team");
+  eq(w(["T1"],with_(["T1","T2"])),false,"… not to another team");
+  eq(w(["T1"],with_(["T1","D"])),false,"… nor to the department above");
+  eq(w(["D"],with_(["T1","D","T2"])),true,"department member: the department and its teams");
+  eq(w(["D"],with_(["T1","T3"])),false,"… not other departments' teams");
+  eq(w(["F"],with_(["T1","F"])),true,"meeting members add members, like a team");
+  eq(w(["C"],with_(["T3","E","F"])),true,"director: everyone everywhere");
+  eq(w(["C"],{...x,name:"Renamed"}),false,"names, e-mail, colour: not by members");
+  eq(w(["C"],{...x,admin:true}),false,"only admins grant admin");
+  eq(R.writeAllowed({email:"a@x.com",admin:true},"people",x,{...x,admin:true}),true,"… like this");
+  eq(w(["C"],x,null),false,"people are created at sign-in, not by members");
+  eq(w(["C"],null,x),false,"… nor deleted by them");
+});
+test("server: a team member onboards a newcomer, into their own team only",async()=>{
+  const {api}=setup();await tree(api);await assign(api,bob,["T1"]);
+  const carol=user("carol@letsgrow.com");eq((await api.data({principal:carol})).json.waiting,true,"carol waits");
+  const people=(await api.data({principal:bob})).json.people,c=people.find(p=>p.email==="carol@letsgrow.com");
+  const put=units=>api.putItem({principal:bob,params:{collection:"people",id:c.id},body:{record:{...c,unitIds:units}}}).then(r=>r.status);
+  eq(await put(["T2"]),403,"not into another team");
+  eq(await put(["T1"]),200,"into bob's team");
+  eq((await api.data({principal:carol})).json.role,"member","carol is in");
+  eq((await api.putItem({principal:bob,params:{collection:"units",id:"T9"},body:{record:{id:"T9",kind:"team",name:"X",parentId:"D"}}})).status,403,"a team member doesn't create teams");
+});
 test("server: members only change their own branch; moving needs rights on both sides",async()=>{
   const {api}=setup();await tree(api);await assign(api,bob,["T1"]);
   const put=(c,rec)=>api.putItem({principal:bob,params:{collection:c,id:rec.id},body:{record:rec}}).then(r=>r.status);

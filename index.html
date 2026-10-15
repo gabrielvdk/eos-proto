@@ -75,6 +75,8 @@ a.btn.primary{color:#fff}
 .mtabs.vtabs{padding:0;margin:-4px 0 14px;max-width:920px}
 .orow .grip{display:inline-flex;color:var(--ink-3);cursor:grab;opacity:.45;flex:none;width:16px}
 .orow .grip.off{cursor:default;opacity:0}
+.orow .oname.ro{padding:4px 6px;flex:1 1 auto;min-width:80px}
+.adminpill{background:var(--accent-soft);color:var(--accent)}
 .orow:hover .grip:not(.off){opacity:1}
 .orow .grip svg,.grip.inline svg{width:14px;height:14px}
 .grip.inline{display:inline-flex;vertical-align:-2px;color:var(--ink-3)}
@@ -621,16 +623,39 @@ function seedOrg(){
   add("forum","Business Review",null,{includeTracked:true,includeEscalated:true}); // every 4 weeks, team leaders
   return units;
 }
+/* The sample: the real organisation plus two management teams and a Leadership Team meeting, and test personas.
+   Pick a persona under "You" (top right, local mode) to see what that role can see and do; every persona's teams have goals,
+   rocks and a filled Level 10 board. The colleagues own rocks and to-dos. */
 function seed(){
   const units=seedOrg(),U=name=>units.find(u=>u.name===name).id;
+  const add=(kind,name,parentId,extra={})=>{ // management teams go first in their department
+    const sib=units.filter(u=>u.kind===kind&&u.parentId===parentId);
+    units.push({id:uid(),kind,name,parentId,rank:sib.length?Math.min(...sib.map(u=>u.rank))-1:units.length,...extra});
+  };
+  add("team","Sales MT",U("Sales"));
+  add("team","Product & Technology MT",U("Product & Technology"));
+  add("forum","Leadership Team",null,{includeTracked:false,includeEscalated:false}); // the directors' weekly meeting
   const P=(id,name,color,teams,admin)=>({id,name,color,unitIds:teams.map(U),...(admin?{admin:true}:{})});
   const people=[
-    P("p1","Mara Visser","#5B4BDB",["Hoogendoorn","Business Review"],true),P("p2","Tom Bakker","#1F8FD1",["Sales","Direct Sales","Business Review"]),
-    P("p3","Lena Groen","#19A974",["Operations","LG Service Desk","Business Review"]),P("p4","Daan de Wit","#E29A1C",["Product & Technology","IIVO Dev"]),
-    P("p5","Sofie Jansen","#D93B4F",["Project Sales"]),P("p6","Ravi Patel","#0E7A5A",["LG Dev","Data Science"]),
-    P("p7","Jonas Müller","#7C4DFF",["Project Sales"]),P("p8","Eva Smit","#00897B",["Direct Sales"]),
-    P("p9","Noor Haddad","#C2185B",["IIVO Helpdesk"]),P("p10","Pieter van Dijk","#5D4037",["IIVO Dev"]),
-    P("p11","Nina Bos","#1F8FD1",[]), // just joined: waiting for an admin to add her to a team
+    // personas
+    P("p1","Director","#5B4BDB",["Hoogendoorn","Leadership Team"]),
+    P("p2","Head of Sales","#1F8FD1",["Sales","Leadership Team","Business Review"]),
+    P("p3","Head of Product & Technology","#0E7A5A",["Product & Technology","Leadership Team","Business Review"]),
+    P("p4","Direct Sales member","#19A974",["Direct Sales"]),
+    P("p5","Project Sales member","#E29A1C",["Project Sales"]),
+    P("p6","Ops team lead","#D93B4F",["LG Service Desk","Business Review"]),
+    P("p7","Data Science member","#7C4DFF",["Data Science"]),
+    P("p8","Research member","#00897B",["Research"]),
+    P("p9","New joiner","#8A95A6",[]),
+    P("p10","Admin (no team)","#5D4037",[],true),
+    // colleagues
+    P("c1","Eva Smit","#00897B",["Direct Sales"]),P("c2","Tom Bakker","#1F8FD1",["Direct Sales"]),
+    P("c3","Sofie Jansen","#D93B4F",["Project Sales"]),P("c4","Jonas Müller","#7C4DFF",["Project Sales"]),
+    P("c5","Lena Groen","#19A974",["LG Service Desk"]),P("c6","Noor Haddad","#C2185B",["LG Service Desk"]),
+    P("c7","Ravi Patel","#0E7A5A",["Data Science"]),P("c8","Mila de Boer","#E29A1C",["Data Science"]),
+    P("c9","Daan de Wit","#E29A1C",["Research"]),P("c10","Iris Kok","#5B4BDB",["Research"]),
+    P("c11","Mara Visser","#C2185B",["Sales MT"]),P("c12","Pieter van Dijk","#5D4037",["Product & Technology MT"]),
+    P("c13","Femke Bos","#1F8FD1",["Leadership Team"]),
   ];
   const G=(id,unit,title,parentId,description,deliverables)=>({id,unitId:U(unit),year:DEMO_YEAR,title,parentId,description,deliverables,
     history:[{at:d(1,19),who:"p2",text:"Deliverables updated"},{at:d(1,12),who:"p1",text:"Created"}]});
@@ -640,104 +665,130 @@ function seed(){
     G("g3","Hoogendoorn","A place people want to work",null,"Attract and keep the people we need for the next phase.","eNPS ≥30 • Voluntary attrition <10% • Hiring plan filled"),
     G("g4","Sales","Standardised, repeatable sales motion","g1","One way of selling across all markets, from first call to signed contract.","Sales playbook v2 • Standard packages & pricing • Win-rate 28%"),
     G("g5","Sales","Open the DACH market","g1","First 15 paying customers in Germany, Austria and Switzerland.","15 customers • Local partner signed • German collateral"),
-    G("g6","Operations","Onboard in under 30 days","g2","Every new customer live and getting value within a month.","Median onboarding 28 days • Onboarding checklist • Success criteria per segment"),
-    G("g7","Product & Technology","Self-serve where it matters","g2","Customers can do the top 10 everyday tasks without asking us.","10 tasks self-serve • Support tickets −30% • In-app guidance"),
-    G("g8","Product & Technology","A platform we can build on","g1","Reduce time to ship and cost per feature.","Deploy weekly • Monolith split for billing & reporting • Error budget met"),
-    G("g9","Direct Sales","Win the mid-market in the Netherlands","g4","Focus the NL team on 50–250 employee companies.","20 new mid-market logos • Average deal size €18k"),
+    G("g6","Operations","Onboard in under 30 days","g2","Every new customer live and getting value within a month.","Median onboarding 28 days • Onboarding checklist"),
+    G("g7","Product & Technology","Self-serve where it matters","g2","Customers can do the top 10 everyday tasks without asking us.","10 tasks self-serve • Support tickets −30%"),
+    G("g8","Product & Technology","A platform we can build on","g1","Reduce time to ship and cost per feature.","Deploy weekly • Monolith split for billing & reporting"),
+    G("g9","Direct Sales","Win the mid-market in the Netherlands","g4","Focus on 50–250 employee companies.","20 new mid-market logos • Average deal size €18k"),
     G("g10","Project Sales","First German reference customers","g5","Land three reference customers willing to speak publicly.","3 references • 2 case studies published"),
     G("g11","LG Service Desk","Answer within the hour","g6","First response on every ticket within 60 minutes during business hours.","Median first response 45 min • CSAT ≥4.6"),
-    G("g12","LG Dev","Weekly releases without drama","g8","Release every week with zero rollback-worthy incidents.","52 releases • ≤2 rollbacks • Automated smoke tests"),
-    G("g13","IIVO Dev","A design system teams actually use","g3","Shared components adopted across all product squads.","Component library v1 • 80% of new screens use it"),
-    G("g14","Operations","ISO 27001 certified",null,"Pass the certification audit so enterprise deals stop stalling on security questionnaires.","Certificate issued • ISMS policies approved • Internal audit completed"),
-    G("g15","Product & Technology","Retire the legacy reporting module",null,"Switch off the old reporting module and its database.","All customers migrated • Module removed • €40k/year hosting saved"),
-    G("g16","IIVO Helpdesk","Knowledge base customers actually find",null,"Rewrite and restructure the help centre around real search queries.","Top 50 articles rewritten • Self-service rate +15%"),
-    G("g17","IIVO Dev","Clean up on-call",null,"Fewer, more actionable alerts and a fair rotation.","Alert volume −50% • Runbook for every alert • Rotation of 6 people"),
-    G("g18","IIVO Helpdesk","Security awareness for everyone who talks to customers","g14","Support and onboarding staff trained and tested on the new security policies.","100% trained • Phishing test pass rate >90%"),
-    G("g19","Data Science","Move reporting data to the new warehouse","g15","Migrate the legacy reporting data so the old module can be switched off.","All datasets migrated • Legacy database decommissioned"),
-    G("g20","LG Dev","Redesign the reporting screens","g15","New reporting screens built on the design system, replacing the legacy module's UI.","8 screens shipped • Usability score ≥80"),
-    G("g21","Sales","Launch a partner referral programme",null,"Existing customers and partners refer new business and get rewarded for it.","Programme live • 10 referred deals • Referral terms published"),
+    G("g12","Data Science","Reporting data in the new warehouse","g8","All reporting datasets in the warehouse, with parity checks.","All datasets migrated • Legacy database switched off"),
+    G("g13","Data Science","Predict churn before it happens","g2","A churn signal account managers trust and act on.","Model in production • 70% of churners flagged 60 days ahead"),
+    G("g14","Research","Validate the next-generation sensor","g8","Prove the new sensor concept in two customer greenhouses.","Test rig • 2 field trials • Go/no-go report"),
+    G("g15","Research","Publish two application notes",null,"Share what we learn with customers and the field.","2 application notes published"),
+    G("g16","Sales","Launch a partner referral programme",null,"Existing customers and partners refer new business.","Programme live • 10 referred deals"),
   ];
-  const M=(title,done,deadline,upd)=>({id:uid(),title,done,deadline,updates:upd?[{at:d(9,22),text:upd}]:[]});
+  const M=(title,done,deadline,upd)=>({id:uid(),title,done,deadline,updates:upd?[{at:d(10,6),text:upd}]:[]});
   const W=(m,day,text)=>({at:d(m,day),text});
   const R=(id,unit,quarter,title,ownerId,status,goalId,description,deliverables,milestones,updates=[])=>
     ({id,unitId:U(unit),quarter,title,ownerId,status,goalId,description,deliverables,milestones,updates});
+  const Q="Q4 2026";
   const rocks=[
-    R("r1","Sales","Q3 2026","Packages and pricing","p1","done","g4","Define the three standard packages and publish price bands per market.","Package sheet • Price bands • Internal guidance",
-      [M("Confirm package structure",true,d(7,15)),M("Publish internal guidance",true,d(8,1)),M("Inventory current sales assets",true,d(8,8)),M("Validate price bands",true,d(8,29)),M("Draft standard sales kit",true,d(9,12)),M("Run sales enablement session",true,d(9,26))],
-      [W(9,26,"Enablement session done, all AMs trained on the new packages."),W(8,30,"Price bands validated with 6 customers, no pushback.")]),
-    R("r2","Sales","Q4 2026","Standardise the sales process","p2","on_track","g4","One pipeline, one set of stages and exit criteria, used by every AM.","Pipeline stages • Exit criteria • CRM configured",
-      [M("Agree pipeline stages",true,d(10,2)),M("Write exit criteria per stage",false,d(10,16),"Draft is with the sales leads for review."),M("Configure CRM",false,d(11,6)),M("Migrate open deals",false,d(11,20)),M("Review first month of data",false,d(12,18))],
-      [W(10,1,"Stages agreed in Monday's sales meeting, moving to exit criteria.")]),
-    R("r3","Operations","Q4 2026","Customer journey map","p3","off_track","g2","Map the full journey from first contact to renewal and identify the three biggest friction points.","Journey map • Top-3 friction list • Owner per friction point",
-      [M("Map current customer journey",true,d(9,18)),M("Interview 8 customers",false,d(9,30),"Only 4 interviews done, two customers rescheduled to next week."),M("Validate journey with teams",false,d(10,14)),M("Prioritise friction points",false,d(10,28))],
-      [W(10,2,"Slipping a week because of customer interview reschedules. Still achievable this quarter.")]),
-    R("r4","Sales","Q4 2026","Sales deck and proposal v1","p4","not_set","g4","A single deck and proposal template built on the new packages.","Deck • Proposal template",
-      [M("Collect best existing slides",false,d(10,9)),M("Draft new deck",false,d(10,30)),M("Proposal template",false,d(11,13))]),
-    R("r5","Project Sales","Q4 2026","Sign DACH partner","p5","escalate","g5","Sign a reseller or implementation partner for the German market.","Signed partner agreement • Joint go-to-market plan",
-      [M("Shortlist 5 partners",true,d(8,22)),M("First conversations",true,d(9,12)),M("Term sheet with preferred partner",false,d(9,26),"Partner's legal team pushed back on exclusivity."),M("Agreement signed",false,d(11,27))],
-      [W(10,2,"Need a decision on exclusivity from the leadership team, otherwise we lose the preferred partner."),W(9,19,"Two partners remain, preferred one wants exclusivity for Austria.")]),
-    R("r6","Operations","Q4 2026","Onboarding checklist and kickoff kit","p6","on_track","g6","A standard checklist and kickoff deck so onboarding does not depend on who runs it.","Checklist • Kickoff deck • Success criteria template",
-      [M("Checklist v1",true,d(9,25)),M("Kickoff deck",false,d(10,16)),M("Pilot with 3 new customers",false,d(11,13)),M("Roll out to all onboarding leads",false,d(12,4))],
-      [W(9,29,"Checklist v1 is being used by two onboarding leads already.")]),
-    R("r7","LG Dev","Q4 2026","Billing service split","p6","on_track","g12","Move billing out of the monolith so it can be deployed independently.","Billing service in production • Monolith billing code removed",
-      [M("Define service boundary",true,d(9,11)),M("Build service behind feature flag",false,d(10,23)),M("Shadow traffic for two weeks",false,d(11,13)),M("Cut over",false,d(12,4))]),
-    R("r8","Project Sales","Q4 2026","Hiring: two German account managers","p1","on_track","g10","Hire two experienced AMs based in Germany.","2 signed offers • Start dates before January",
-      [M("Job profile agreed",true,d(9,4)),M("Agency briefed",true,d(9,11)),M("First-round interviews",false,d(10,17)),M("Offers out",false,d(11,14))],
-      [W(9,30,"Agency has 9 candidates in the pipeline.")]),
-    R("r9","LG Service Desk","Q4 2026","Support macros and triage rules","p3","not_set","g11","Templates and triage rules so first response fits within the hour.","20 macros • Triage rules live",[]),
-    R("r10","IIVO Dev","Q4 2026","Component library v1","p4","cancelled","g13","Superseded by adopting an open-source system instead of building our own.","—",
-      [M("Audit existing components",true,d(9,18)),M("Build core set",false,d(10,30))],
-      [W(9,24,"Cancelled: we are adopting an existing open-source design system instead.")]),
-    R("r11","Hoogendoorn","Q4 2026","Team offsite and engagement survey","p5","on_track",null,"Run the autumn offsite and the engagement survey, publish the follow-ups.","Offsite held • Survey results shared • 3 actions agreed",
-      [M("Book venue",true,d(9,5)),M("Send survey",false,d(10,10)),M("Offsite",false,d(10,24)),M("Share results and actions",false,d(11,7))]),
-    R("r12","Direct Sales","Q4 2026","Mid-market target list and outreach","p8","on_track","g9","Build the list of 200 NL mid-market accounts and run the first outreach wave.","200-account list • 60 first meetings booked",
-      [M("Define ICP for mid-market",true,d(9,19)),M("Build 200-account list",true,d(10,2)),M("First outreach wave",false,d(10,23)),M("30 meetings booked",false,d(11,13)),M("60 meetings booked",false,d(12,11))],
-      [W(10,2,"List is complete, outreach sequences go live Monday.")]),
-    R("r13","Direct Sales","Q4 2026","Two mid-market case studies","p2","off_track","g9","Publish two Dutch mid-market customer stories to use in outreach.","2 case studies published",
-      [M("Select customers",true,d(9,12)),M("Interviews",false,d(9,26),"One customer went quiet, chasing a replacement."),M("Draft and approve",false,d(10,30)),M("Publish",false,d(11,13))],
-      [W(9,30,"Second customer dropped out, approaching two alternatives this week.")]),
-    R("r14","Project Sales","Q4 2026","German sales collateral","p7","on_track","g10","Translate and localise the deck, one-pager and proposal template.","Deck DE • One-pager DE • Proposal DE",
-      [M("Translate deck",true,d(9,26)),M("Localise pricing examples",false,d(10,10)),M("One-pager",false,d(10,24)),M("Proposal template",false,d(11,7))],
-      [W(10,1,"Deck translated and reviewed by the agency; pricing examples next.")]),
-    R("r15","IIVO Helpdesk","Q4 2026","Rewrite the top 20 help articles","p9","on_track","g16","Rewrite the 20 most-searched articles around what customers actually type in search.","20 articles rewritten • Search success rate measured",
-      [M("Pull search query report",true,d(9,18)),M("First 10 rewritten",false,d(10,16)),M("Second 10 rewritten",false,d(11,6)),M("Measure search success",false,d(11,27))],
-      [W(9,25,"Report pulled, 6 of the first 10 drafted.")]),
-    R("r16","IIVO Helpdesk","Q4 2026","Security awareness training for support","p9","not_set","g18","Everyone on the support team completes the new security training and phishing test.","100% trained • Phishing pass rate >90%",
-      [M("Schedule training sessions",false,d(10,9)),M("All sessions held",false,d(11,6)),M("Phishing test",false,d(11,20))]),
-    R("r17","IIVO Dev","Q4 2026","Alert clean-up: halve the noise","p10","escalate","g17","Delete or tune the noisiest alerts and write a runbook for every remaining one.","Alert volume −50% • Runbook per alert",
-      [M("Alert inventory",true,d(9,11)),M("Remove top 20 noisy alerts",true,d(9,25)),M("Runbooks for remaining alerts",false,d(9,30),"Blocked: no time allocated because of the billing split."),M("Measure volume",false,d(11,13))],
-      [W(10,2,"Need a decision: pause this rock or pull a second engineer off the billing split.")]),
-    R("r18","Data Science","Q4 2026","Migrate reporting datasets to the warehouse","p6","on_track","g19","Move all legacy reporting datasets into the new warehouse with parity checks.","All datasets migrated • Parity report signed off",
-      [M("Dataset inventory",true,d(9,18)),M("Migrate first 5 datasets",false,d(10,16)),M("Migrate remaining datasets",false,d(11,20)),M("Parity sign-off",false,d(12,11))]),
-    R("r19","Product & Technology","Q4 2026","Self-serve for the top 3 tasks","p4","on_track","g7","Ship in-app flows for the three tasks that generate the most support tickets.","3 flows live • Related tickets −30%",
-      [M("Confirm top 3 tasks from ticket data",true,d(9,11)),M("Flow 1 shipped",true,d(10,2)),M("Flow 2 shipped",false,d(10,30)),M("Flow 3 shipped",false,d(11,27))],
-      [W(10,2,"Flow 1 (export) is live, tickets about exports already down.")]),
-    R("r20","Operations","Q4 2026","ISO 27001 internal audit","p3","on_track","g14","Run the internal audit and close the findings before the certification audit.","Internal audit report • All major findings closed",
-      [M("Audit plan",true,d(9,18)),M("Fieldwork",false,d(10,16)),M("Report and findings",false,d(10,30)),M("Findings closed",false,d(12,4))]),
+    // Leadership Team
+    R("r1","Leadership Team",Q,"Annual plan 2027","p1","on_track","g1","Agree the 2027 one-year plan and budget with all departments.","Plan • Budget • Department goals",
+      [M("Draft company goals",true,d(10,2)),M("Department goals in",false,d(10,30)),M("Budget agreed",false,d(11,27)),M("Plan published",false,d(12,11))],[W(10,9,"Company goals drafted, departments are working on theirs.")]),
+    R("r2","Leadership Team",Q,"Engagement survey and offsite","c13","on_track","g3","Run the survey and the autumn offsite, publish the follow-ups.","Survey results • 3 actions agreed",
+      [M("Send survey",true,d(10,10)),M("Offsite",false,d(10,24)),M("Share results and actions",false,d(11,7))]),
+    // Sales MT
+    R("r3","Sales MT","Q3 2026","Packages and pricing","p2","done","g4","Three standard packages with price bands per market.","Package sheet • Price bands",
+      [M("Package structure",true,d(7,15)),M("Validate price bands",true,d(8,29)),M("Enablement session",true,d(9,26))],[W(9,26,"All AMs trained on the new packages.")]),
+    R("r4","Sales MT",Q,"Standardise the sales process","p2","on_track","g4","One pipeline, one set of stages and exit criteria.","Pipeline stages • Exit criteria • CRM configured",
+      [M("Agree pipeline stages",true,d(10,2)),M("Exit criteria per stage",false,d(10,16),"Draft is with the team leads."),M("Configure CRM",false,d(11,6)),M("Review first month",false,d(12,18))],[W(10,1,"Stages agreed, moving to exit criteria.")]),
+    R("r5","Sales MT",Q,"Sales deck and proposal v1","c11","not_set","g4","One deck and proposal template on the new packages.","Deck • Proposal template",
+      [M("Collect best slides",false,d(10,23)),M("Draft new deck",false,d(11,13))]),
+    // Direct Sales
+    R("r6","Direct Sales",Q,"Mid-market target list and outreach","c1","on_track","g9","200 NL mid-market accounts and the first outreach wave.","200-account list • 60 meetings booked",
+      [M("Define ICP",true,d(9,19)),M("Build 200-account list",true,d(10,2)),M("First outreach wave",false,d(10,23)),M("60 meetings booked",false,d(12,11))],[W(10,2,"List complete, sequences go live Monday.")]),
+    R("r7","Direct Sales",Q,"Two mid-market case studies","c2","off_track","g9","Two Dutch mid-market customer stories for outreach.","2 case studies published",
+      [M("Select customers",true,d(9,12)),M("Interviews",false,d(10,9),"One customer went quiet."),M("Publish",false,d(11,13))],[W(10,9,"Second customer dropped out, approaching alternatives.")]),
+    R("r8","Direct Sales",Q,"Pricing exceptions policy","p4","not_set","g9","A clear approval path for discounts above standard.","Policy • Approval flow in CRM",
+      [M("Draft policy",false,d(10,30)),M("Approval flow live",false,d(11,27))]),
+    // Project Sales
+    R("r9","Project Sales",Q,"Sign DACH partner","c3","escalate","g10","A reseller or implementation partner for Germany.","Signed agreement • Joint go-to-market plan",
+      [M("Shortlist partners",true,d(8,22)),M("Term sheet",false,d(9,26),"Their legal team pushed back on exclusivity."),M("Agreement signed",false,d(11,27))],[W(10,8,"Need a leadership decision on exclusivity for Austria.")]),
+    R("r10","Project Sales",Q,"German sales collateral","c4","on_track","g10","Translate and localise the deck, one-pager and proposal.","Deck DE • One-pager DE • Proposal DE",
+      [M("Translate deck",true,d(9,26)),M("Localise pricing examples",false,d(10,16)),M("Proposal template",false,d(11,7))]),
+    R("r11","Project Sales",Q,"Hiring: two German account managers","p5","on_track","g10","Two experienced AMs based in Germany.","2 signed offers",
+      [M("Agency briefed",true,d(9,11)),M("First-round interviews",false,d(10,17)),M("Offers out",false,d(11,14))],[W(9,30,"Agency has 9 candidates.")]),
+    // LG Service Desk
+    R("r12","LG Service Desk",Q,"Support macros and triage rules","c5","on_track","g11","Templates and triage rules so first response fits within the hour.","20 macros • Triage rules live",
+      [M("Top 20 ticket types",true,d(9,25)),M("Macros written",false,d(10,23)),M("Triage rules live",false,d(11,13))]),
+    R("r13","LG Service Desk",Q,"First-response dashboard","p6","off_track","g11","See first-response times per hour and per agent.","Dashboard • Weekly review",
+      [M("Data source agreed",true,d(9,18)),M("Dashboard v1",false,d(10,9),"Waiting for warehouse access."),M("Weekly review in place",false,d(11,6))],[W(10,12,"Blocked on data access, asked Data Science for help.")]),
+    R("r14","LG Service Desk",Q,"Customer journey map","c6","escalate","g6","Map the journey from first contact to renewal; top-3 friction points.","Journey map • Top-3 friction list",
+      [M("Map current journey",true,d(9,18)),M("Interview 8 customers",false,d(9,30),"Only 4 interviews done."),M("Prioritise friction points",false,d(10,28))],[W(10,2,"Slipping: needs a decision who owns the friction list.")]),
+    // Product & Technology MT
+    R("r15","Product & Technology MT",Q,"Self-serve for the top 3 tasks","p3","on_track","g7","In-app flows for the three tasks with the most tickets.","3 flows live • Related tickets −30%",
+      [M("Top 3 tasks from ticket data",true,d(9,11)),M("Flow 1 shipped",true,d(10,2)),M("Flow 2 shipped",false,d(10,30)),M("Flow 3 shipped",false,d(11,27))],[W(10,2,"Flow 1 (export) live, export tickets already down.")]),
+    R("r16","Product & Technology MT",Q,"Engineering hiring plan 2027","c12","not_set","g8","Which roles, when, and how we find them.","Hiring plan • Budget",
+      [M("Roles per team",false,d(10,30)),M("Plan approved",false,d(11,20))]),
+    // Data Science
+    R("r17","Data Science",Q,"Migrate reporting datasets to the warehouse","c7","on_track","g12","Move all reporting datasets with parity checks.","All datasets migrated • Parity sign-off",
+      [M("Dataset inventory",true,d(9,18)),M("First 5 datasets",false,d(10,16)),M("Remaining datasets",false,d(11,20)),M("Parity sign-off",false,d(12,11))]),
+    R("r18","Data Science",Q,"Churn prediction prototype","p7","off_track","g13","A first model on historic churn, reviewed with account managers.","Prototype • Review with AMs",
+      [M("Training data set",true,d(9,25)),M("First model",false,d(10,9),"Labels are messier than expected."),M("Review with AMs",false,d(11,13))],[W(10,10,"Two weeks behind on data cleaning.")]),
+    // Research
+    R("r19","Research",Q,"Sensor test rig","p8","on_track","g14","A rig to compare the new sensor with the current one.","Rig built • First comparison",
+      [M("Design",true,d(9,11)),M("Parts ordered",true,d(9,25)),M("Rig built",false,d(10,23)),M("First comparison",false,d(11,20))]),
+    R("r20","Research",Q,"Application note: greenhouse climate","c9","on_track","g15","Write up the climate study for customers.","Application note",
+      [M("Outline",true,d(10,2)),M("Draft",false,d(11,6)),M("Published",false,d(12,4))]),
+    R("r21","Research",Q,"Literature review sensor materials","c10","done","g14","What's known about the candidate materials.","Review document",
+      [M("Sources collected",true,d(9,4)),M("Review written",true,d(9,25))],[W(9,26,"Done: two materials remain candidates.")]),
   ];
+  const tracked={r13:"Business Review",r15:"Business Review"}; // two rocks tracked in Business Review (escalated ones show up anyway)
   rocks.forEach((r,i)=>{
     r.rank=i;
-    r.trackIn=r.id==="r3"||r.id==="r19"?[U("Business Review")]:[]; // sample: two rocks tracked in Business Review
+    r.trackIn=tracked[r.id]?[U(tracked[r.id])]:[];
     [r,...r.milestones].forEach(x=>x.updates.forEach(u=>{u.who=r.ownerId}));
     r.history=[
       ...(r.status!=="not_set"?[{at:d(10,1),who:r.ownerId,text:`Status set to ${statusOf(r.status).label}`}]:[]),
       {at:r.quarter==="Q3 2026"?d(7,1):d(9,29),who:r.ownerId,text:"Created"},
     ];
   });
-  return migrate({version:10,people,units,goals,rocks,cards:seedCards(U)}); // the sample has rocks on departments: v11 moves them to "<department> MT" teams
+  return migrate({version:10,people,units,goals,rocks,cards:seedCards(U)});
 }
-/* Level 10 board cards; U(name) gives a unit id. Same card type in every column, so an IDS item can become a to-do. */
+/* Level 10 board cards for every persona's team and meeting; U(name) gives a unit id. Same card type in every column,
+   so an IDS item can become a to-do. */
 function seedCards(U){
-  const C=(unit,column,title,description,owners,day,updates=[])=>({id:uid(),unitId:U(unit),column,title,description,owners,createdBy:"p1",createdAt:d(10,day),
-    updates:updates.map(([dd,text])=>({at:d(10,dd),who:owners[0]||"p1",text})),history:[{at:d(10,day),who:"p1",text:"Created"}]});
+  const C=(unit,column,title,description,owners,day,by,updates=[])=>({id:uid(),unitId:U(unit),column,title,description,owners,createdBy:by,createdAt:d(10,day),
+    updates:updates.map(([dd,text])=>({at:d(10,dd),who:owners[0]||by,text})),history:[{at:d(10,day),who:by,text:"Created"}]});
   return [
-    C("LG Dev","ids","Release pipeline takes 40 minutes","Every release waits on the full end-to-end suite. Can we split it into a fast smoke set and a nightly run?",[],2),
-    C("LG Dev","ids","Who owns the flaky end-to-end tests?","Three different people fixed the same test this month.",[],5),
-    C("LG Dev","todo","Share incident post-mortem with the service desk","",["p6"],1,[[2,"Draft is ready, reviewing with Ravi."]]),
-    C("LG Dev","todo","Book architecture review for the billing split","",["p10","p6"],1),
-    C("LG Dev","done","Update the on-call rota for Q4","",["p6"],1),
-    C("Direct Sales","ids","Pricing exceptions are approved ad hoc","Deals over €50k get custom discounts without a clear approval path.",[],2),
-    C("Direct Sales","todo","Send updated case-study shortlist","",["p8"],1),
+    C("Leadership Team","ids","Office move: one floor or two?","The landlord offers a second floor from March.",[],8,"p1"),
+    C("Leadership Team","ids","Rock to Discuss: Annual plan 2027 – budget envelope per department","",[],12,"p2"),
+    C("Leadership Team","todo","Share the 2027 planning calendar","",["p1"],6,"p1"),
+    C("Leadership Team","done","Confirm offsite venue","",["c13"],2,"c13"),
+    C("Business Review","ids","Rock to Discuss: Sign DACH partner – exclusivity for Austria?","The preferred partner wants exclusivity; without it we may lose them.",[],8,"p2"),
+    C("Business Review","ids","Rock to Discuss: Customer journey map – who owns the friction list?","",[],9,"p6"),
+    C("Business Review","todo","Decide on DACH exclusivity","",["p2"],9,"p2",[[12,"Options paper drafted."]]),
+    C("Business Review","done","Agree the Business Review agenda","",["p3"],1,"p3"),
+    C("Sales MT","ids","Win-rate dropped in September","From 31% to 24%; mostly mid-market.",[],7,"p2"),
+    C("Sales MT","ids","Who approves pricing exceptions until the policy is live?","",[],9,"c11"),
+    C("Sales MT","todo","Send exit-criteria draft to the team leads","",["c11"],6,"p2"),
+    C("Sales MT","done","Book the CRM consultant","",["p2"],2,"p2"),
+    C("Direct Sales","ids","Pricing exceptions are approved ad hoc","Deals over €50k get custom discounts without a clear approval path.",[],2,"c1"),
+    C("Direct Sales","ids","Outreach sequences land in spam","Two big domains bounce our emails.",[],9,"c2"),
+    C("Direct Sales","todo","Send updated case-study shortlist","",["c2"],5,"p4"),
+    C("Direct Sales","todo","Check the email domain settings with IT","",["p4"],9,"c2"),
+    C("Direct Sales","done","Finish the 200-account list","",["c1"],1,"c1"),
+    C("Project Sales","ids","Agency candidates lack German market experience","",[],8,"p5"),
+    C("Project Sales","ids","Translation agency is slow","",[],10,"c4"),
+    C("Project Sales","todo","Prepare the exclusivity options for Business Review","",["c3"],8,"c3"),
+    C("Project Sales","done","Translate the deck","",["c4"],1,"c4"),
+    C("LG Service Desk","ids","No access to the warehouse for the dashboard","",[],5,"p6"),
+    C("LG Service Desk","ids","Weekend tickets wait until Monday","",[],9,"c5"),
+    C("LG Service Desk","todo","Ask Data Science for a read-only warehouse account","",["p6"],6,"p6",[[9,"Asked Ravi, waiting for approval."]]),
+    C("LG Service Desk","done","List the top 20 ticket types","",["c5","c6"],1,"c5"),
+    C("Product & Technology MT","ids","Release pipeline takes 40 minutes","Every release waits on the full end-to-end suite.",[],2,"c12"),
+    C("Product & Technology MT","ids","Two teams want the same front-end developer","",[],9,"p3"),
+    C("Product & Technology MT","todo","Book the architecture review for the billing split","",["c12"],6,"p3"),
+    C("Product & Technology MT","done","Update the on-call rota for Q4","",["p3"],1,"p3"),
+    C("Data Science","ids","Churn labels are inconsistent between systems","",[],7,"p7"),
+    C("Data Science","ids","Who owns the warehouse access requests?","",[],9,"c7"),
+    C("Data Science","todo","Give LG Service Desk read-only warehouse access","",["c7"],9,"c7"),
+    C("Data Science","done","Dataset inventory","",["c8"],1,"c8"),
+    C("Research","ids","Sensor parts delayed two weeks","",[],6,"p8"),
+    C("Research","ids","Which customer greenhouses for the field trial?","",[],9,"c9"),
+    C("Research","todo","Ask Sales for two trial customers","",["p8"],9,"p8"),
+    C("Research","done","Finish the literature review","",["c10"],1,"c10"),
   ].map((c,i)=>({...c,rank:i}));
 }
 
@@ -773,7 +824,7 @@ function migrateV7(old){
     const tracked=trackBR||(!hadForums&&(r.id==="r3"||r.id==="r19")); // the sample rocks were tracked when forums were added
     return {...r,unitId:unitId(team),status:statusKey(r.status),trackIn:tracked&&forumId?[forumId]:[]};
   });
-  const cards=old.cards?old.cards.map(({team,...c})=>({...c,unitId:unitId(team)})):seedCards(unitId);
+  const cards=(old.cards||[]).map(({team,...c})=>({...c,unitId:unitId(team)}));
   return {version:8,people:old.people||[],units,goals,rocks,cards};
 }
 // v8: order was the array order; rocks and cards get an explicit rank (a database keeps no order)
@@ -885,7 +936,7 @@ function moveLegacyData(data){ // returns false when the new copy can't be store
    save() compares every record with the copy last stored and sends only what changed, each with its ETag, so a change
    someone else made in the meantime is detected (412: reload, your change is dropped) instead of silently overwritten. */
 const SYNCED=["people","units","goals","rocks","cards"];
-const ADMIN_ONLY=["people","units"]; // only admins may change these (the server enforces it)
+const ORG=["people","units"]; // the organisation: saved before the content that refers to it
 function createRemoteBackend(kind,transport,config){
   const synced=new Map(),etags=new Map(); // "collection/id" → JSON as last stored / its ETag
   const key=(c,id)=>`${c}/${id}`;
@@ -951,7 +1002,7 @@ function createRemoteBackend(kind,transport,config){
     showSaveState("Saving…");
     // order: the structure first (units, people: a rock may move to a team created in the same save), then the content,
     // the data version last (it only moves once every record is stored)
-    const meta=puts.find(p=>p.c==="meta"),first=puts.filter(p=>ADMIN_ONLY.includes(p.c));
+    const meta=puts.find(p=>p.c==="meta"),first=puts.filter(p=>ORG.includes(p.c));
     const jobs=[...puts.filter(p=>p!==meta&&!first.includes(p)).map(p=>()=>putOne(p)),...dels.map(k=>()=>deleteOne(k))];
     let problem=(await runLimited(first.map(p=>()=>putOne(p)),4)).find(Boolean);
     if(!problem)problem=(await runLimited(jobs,4)).find(Boolean);
@@ -1115,12 +1166,18 @@ const defaultUnitId=kind=>{
 /* rights:start — this block is identical in index.html and api/src/core.js (tests/api-core.test.html checks that).
    Who may see and change what. The tree: company → departments → teams; meetings (forums) and teams without a department
    hang under the company. Rights flow down, never up: belonging to a unit gives rights on it and on everything below it
-   (a director in the company has rights everywhere; a team member has none on the department above). Admins: everything.
-   Goals live on any unit; rocks and Level 10 boards only on teams and meetings ("team level"). */
+   (a director in the company has rights everywhere; a team member has none on the department above). Admins: everything,
+   even without any unit, and only admins grant the admin flag. Everyone assigned sees everything in the organisation.
+   - goals, rocks, cards: change them in units you have rights on. Goals live on any unit; rocks and Level 10 boards only
+     on teams and meetings ("team level"). A meeting's members also fully edit the rocks the meeting shows.
+   - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
+   - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
+     its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it. */
 function createRights({units,people,adminEmails}){
   const byId=new Map(units.map(u=>[u.id,u]));
   const company=units.find(u=>u.kind==="company");
-  const parentOf=u=>u.kind==="company"?null:u.kind==="team"&&byId.has(u.parentId)?byId.get(u.parentId):company||null;
+  // the unit above u (also for a record not stored yet): a team's department, else the company
+  const parentOf=u=>u.kind==="company"?null:u.kind==="team"&&byId.get(u.parentId)?.kind==="department"?byId.get(u.parentId):company||null;
   const above=new Map(); // unit id → the ids of the units above it
   for(const u of units){const ids=[];for(let p=parentOf(u),n=0;p&&n<10;p=parentOf(p),n++)ids.push(p.id);above.set(u.id,ids)}
   const admins=(adminEmails||[]).map(e=>String(e).toLowerCase());
@@ -1133,11 +1190,16 @@ function createRights({units,people,adminEmails}){
   const canEditRock=(p,r)=>hasRights(p,r.unitId)||units.some(f=>f.kind==="forum"&&inForum(f,r)&&hasRights(p,f.id));
   const teamLevel=id=>{const u=byId.get(id);return !!u&&(u.kind==="team"||u.kind==="forum")}; // where rocks and boards live
   const canEdit={goals:(p,g)=>hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
+  // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins
+  const canManageUnit=(p,u)=>isAdmin(p)||(u.kind!=="company"&&!!parentOf(u)&&hasRights(p,parentOf(u).id));
+  // a record's fields apart from some keys (and _etag etc.), to check that nothing else changed
+  const fieldsBut=(x,skip)=>JSON.stringify(Object.keys(x||{}).filter(k=>!skip.includes(k)&&k[0]!=="_").sort().map(k=>[k,x[k]]));
   return {
-    isAdmin,role,hasRights,canEditRock,teamLevel,
+    isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,
     canEditGoal:canEdit.goals,
     canEditCard:canEdit.cards,
     canSeeBoard:(p,unitId)=>teamLevel(unitId)&&hasRights(p,unitId), // Level 10: the team and meeting boards of your units and below
+    canManageMembers:hasRights, // add / remove people in this unit
     // the team filter: the company, your units, the units above them and the units below them
     branch(p){
       if(isAdmin(p))return units.map(u=>u.id);
@@ -1151,7 +1213,17 @@ function createRights({units,people,adminEmails}){
       if(role(p)==="pending")return false;
       if((collection==="rocks"||collection==="cards")&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
       if(isAdmin(p)||collection==="meta")return true;
-      const can=canEdit[collection];if(!can)return false; // people and units: admins only
+      if(collection==="units"){ // structure: rights on the unit above, before and after (moving a team needs both departments)
+        if(!before&&!after)return false;
+        if(after&&(after.kind==="company"||(before&&before.kind!==after.kind)))return false;
+        return (!before||canManageUnit(p,before))&&(!after||canManageUnit(p,after));
+      }
+      if(collection==="people"){ // membership only: nothing else of a person changes, and every unit added or removed is yours
+        if(!before||!after||fieldsBut(before,["unitIds"])!==fieldsBut(after,["unitIds"]))return false; // people are created at sign-in
+        const was=memberOf(before),now=memberOf(after);
+        return [...now.filter(id=>!was.includes(id)),...was.filter(id=>!now.includes(id))].every(id=>hasRights(p,id));
+      }
+      const can=canEdit[collection];if(!can)return false;
       if(before&&!can(p,before))return false;
       // creating, or moving to another unit, needs rights on that unit itself: a meeting member may edit and resolve
       // the rocks it shows, but not move them to another team or create rocks for other teams
@@ -1174,6 +1246,8 @@ const canEditUnit=id=>rights.hasRights(me(),id);   // goals, rocks and cards of 
 const canEditGoal=g=>rights.canEditGoal(me(),g);
 const canEditRock=r=>rights.canEditRock(me(),r);   // also the rocks shown by a meeting you're in
 const canSeeBoard=id=>rights.canSeeBoard(me(),id); // Level 10
+const canManageUnit=u=>rights.canManageUnit(me(),u);       // organisation: rename / move / delete this unit (rights on the unit above)
+const canManageMembers=id=>rights.canManageMembers(me(),id); // organisation: add / remove people in this unit
 const myUnits=kind=>S.units.filter(u=>canEditUnit(u.id)&&(kind==="rock"?isTeamLevel(u.id):u.kind!=="forum")); // where you may create a goal / rock
 const viewOnly=()=>toast("View only: you can change the items of your own teams.",3000);
 const goalFilter=()=>isForum(teamFilter)?"":teamFilter; // forums have no goals: the plan shows everything
@@ -1563,48 +1637,55 @@ function renderOrgPage(){
   const tabs=`<div class="mtabs vtabs" role="tablist">${tab("structure","Organisation")}${tab("people",`People${waiting?` <span class="tabn">${waiting}</span>`:""}`)}</div>`;
   return head+tabs+`<div class="orgwrap">${orgTab==="people"?renderPeople():renderOrg()}</div>`;
 }
-// the org tree; departments and teams are reordered (and teams moved to another department) by dragging their handle
+// the org tree; you change the units below your own (rename, reorder by dragging the handle, move a team, delete when empty)
 function renderOrg(){
-  const del=u=>`<button class="del" data-act="unitdel" data-id="${u.id}" aria-label="Delete ${esc(u.name)}" data-tip="Delete">${ICONS.trash}</button>`;
-  const grip=u=>`<span class="grip" data-tip="Drag to move" aria-hidden="true">${ICONS.grip}</span>`;
-  const row=(u,depth,extra="")=>`<div class="orow ${u.kind}" data-unit-row="${u.id}" style="--depth:${depth}">${["department","team"].includes(u.kind)?grip(u):`<span class="grip off"></span>`}
-    <span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span>
-    <input class="inline oname" value="${esc(u.name)}" data-act="unitname" data-id="${u.id}" aria-label="Name of ${esc(u.name)}">${extra}${u.kind==="company"?"":del(u)}</div>`;
-  const rule=(f,key,label,tip)=>`<label class="chkrow" data-tip="${tip}"><input type="checkbox" data-act="forumrule" data-rule="${key}" data-id="${f.id}" ${f[key]?"checked":""}>${label}</label>`;
+  const del=u=>canManageUnit(u)?`<button class="del" data-act="unitdel" data-id="${u.id}" aria-label="Delete ${esc(u.name)}" data-tip="Delete">${ICONS.trash}</button>`:"";
+  const grip=u=>["department","team"].includes(u.kind)&&canManageUnit(u)?`<span class="grip" data-tip="Drag to move" aria-hidden="true">${ICONS.grip}</span>`:`<span class="grip off"></span>`;
+  const name=u=>canManageUnit(u)?`<input class="inline oname" value="${esc(u.name)}" data-act="unitname" data-id="${u.id}" aria-label="Name of ${esc(u.name)}">`
+    :`<span class="oname ro">${esc(u.name)}</span>`;
+  const row=(u,depth,extra="")=>`<div class="orow ${u.kind}" data-unit-row="${u.id}" style="--depth:${depth}">${grip(u)}
+    <span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span>${name(u)}${extra}${u.kind==="company"?"":del(u)}</div>`;
+  const rule=(f,key,label,tip)=>`<label class="chkrow" data-tip="${tip}"><input type="checkbox" data-act="forumrule" data-rule="${key}" data-id="${f.id}" ${f[key]?"checked":""} ${canManageUnit(f)?"":"disabled"}>${label}</label>`;
+  const top=canEditUnit(company().id); // directors and admins manage departments and meetings
+  const addTeam=dep=>canEditUnit(dep.id)?`<button class="btn sm ghost" data-act="addteam" data-id="${dep.id}">+ Team</button>`:"";
   return `<section class="board opanel">
-    <p class="muted onote">Rights flow down: people in a department can change that department and all its teams; people in ${esc(company().name)} (directors) can change everything. Goals live on any level; rocks and Level 10 boards only on teams and meetings: for department-level work, add a management team (e.g. “Sales MT”). Drag <span class="grip inline">${ICONS.grip}</span> to reorder departments and teams, or to move a team to another department.</p>
+    <p class="muted onote">Everyone manages the organisation below their own units: department members add, rename and reorder their department's teams; people in ${esc(company().name)} (directors) also manage departments and meetings. Goals live on any level; rocks and Level 10 boards only on teams and meetings: for department-level work, add a management team (e.g. “Sales MT”).${S.units.some(canManageUnit)?` Drag <span class="grip inline">${ICONS.grip}</span> to reorder, or to move a team to another department.`:""}</p>
     ${row(company(),0)}
-    ${departments().map(dep=>row(dep,1,`<button class="btn sm ghost" data-act="addteam" data-id="${dep.id}">+ Team</button>`)+teamsOf(dep.id).map(t=>row(t,2)).join("")).join("")}
+    ${departments().map(dep=>row(dep,1,addTeam(dep))+teamsOf(dep.id).map(t=>row(t,2)).join("")).join("")}
     ${S.units.filter(u=>u.kind==="team"&&!u.parentId).map(t=>row(t,1,`<span class="ometa">no department</span>`)).join("")}
-    <div><button class="btn sm" data-act="addunit" data-kind="department">+ Department</button></div>
+    ${top?`<div><button class="btn sm" data-act="addunit" data-kind="department">+ Department</button></div>`:""}
     <h2 class="osub">Meetings</h2>
-    <p class="muted onote">Members of a meeting see its Level 10 board and can fully edit the rocks it shows.</p>
+    <p class="muted onote">Members of a meeting see its Level 10 board, can fully edit the rocks it shows, and add members, like a team.</p>
     ${forums().map(f=>row(f,0,rule(f,"includeTracked","Tracked rocks","Shows rocks that are marked “Track in "+esc(f.name)+"”")+rule(f,"includeEscalated","Escalated rocks","Shows every rock with status OT - Escalate"))).join("")}
-    <div><button class="btn sm" data-act="addunit" data-kind="forum">+ Meeting</button></div>
+    ${top?`<div><button class="btn sm" data-act="addunit" data-kind="forum">+ Meeting</button></div>`:""}
   </section>`;
 }
+// people and their units; you add and remove people in your own units and everything below them
 function renderPeople(){
   const people=[...S.people].sort((a,b)=>(roleOf(b)==="pending")-(roleOf(a)==="pending")||a.name.localeCompare(b.name)); // waiting people first, then A→Z
-  const waiting=people.filter(p=>roleOf(p)==="pending");
+  const waiting=people.filter(p=>roleOf(p)==="pending"),iAmAdmin=myRole()==="admin";
   const unitOptions=p=>{
-    const opt=u=>(p.unitIds||[]).includes(u.id)?"":`<option value="${u.id}">${esc(u.name)}</option>`;
-    return `<option value="">+ Add to…</option><optgroup label="Company">${opt(company())}</optgroup>`
-      +(forums().length?`<optgroup label="Meetings">${forums().map(opt).join("")}</optgroup>`:"")
-      +departments().map(dep=>`<optgroup label="${esc(dep.name)}">${opt(dep)}${teamsOf(dep.id).map(opt).join("")}</optgroup>`).join("");
+    const opt=u=>(p.unitIds||[]).includes(u.id)||!canManageMembers(u.id)?"":`<option value="${u.id}">${esc(u.name)}</option>`;
+    const group=(label,list)=>{const html=list.map(opt).join("");return html?`<optgroup label="${esc(label)}">${html}</optgroup>`:""};
+    const groups=group("Company",[company()])+group("Meetings",forums())+departments().map(dep=>group(dep.name,[dep,...teamsOf(dep.id)])).join("")
+      +group("Other teams",S.units.filter(u=>u.kind==="team"&&!u.parentId));
+    return groups?`<select class="ctl sm" data-act="assign" data-id="${p.id}" aria-label="Add ${esc(p.name)} to a unit"><option value="">+ Add to…</option>${groups}</select>`:"";
   };
-  const personRow=p=>{
-    const role=roleOf(p),always=isAlwaysAdmin(p),units=(p.unitIds||[]).filter(unit);
-    return `<div class="prow ${role==="pending"?"waiting":""}">
+  const chip=(p,id)=>`<span class="ochip uchip"><span class="dot" style="background:var(--${levelOf(id).toLowerCase()})"></span>${esc(unitName(id))}${canManageMembers(id)?`<button data-act="unassign" data-id="${p.id}" data-unit="${id}" aria-label="Remove from ${esc(unitName(id))}">×</button>`:""}</span>`;
+  const adminCell=p=>{
+    const always=isAlwaysAdmin(p),admin=roleOf(p)==="admin";
+    if(!iAmAdmin)return admin?`<span class="pill adminpill" ${always?'data-tip="Always admin (ADMIN_EMAILS setting)"':""}>Admin</span>`:"<span></span>";
+    return `<label class="chkrow" ${always?'data-tip="Always admin (ADMIN_EMAILS setting)"':""}><input type="checkbox" data-act="admin" data-id="${p.id}" ${admin?"checked":""} ${always?"disabled":""}>Admin</label>`;
+  };
+  const personRow=p=>`<div class="prow ${roleOf(p)==="pending"?"waiting":""}">
       ${avatarHTML(p.id)}
       <div class="pname"><b>${esc(p.name)}${p.id===session.userId?` <span class="muted">(you)</span>`:""}</b><span class="muted">${esc(p.email||"")}</span></div>
-      <div class="punits">${units.map(id=>`<span class="ochip uchip"><span class="dot" style="background:var(--${levelOf(id).toLowerCase()})"></span>${esc(unitName(id))}<button data-act="unassign" data-id="${p.id}" data-unit="${id}" aria-label="Remove from ${esc(unitName(id))}">×</button></span>`).join("")}
-        <select class="ctl sm" data-act="assign" data-id="${p.id}" aria-label="Add ${esc(p.name)} to a team">${unitOptions(p)}</select></div>
-      <label class="chkrow" ${always?'data-tip="Always admin (ADMIN_EMAILS setting)"':""}><input type="checkbox" data-act="admin" data-id="${p.id}" ${role==="admin"?"checked":""} ${always?"disabled":""}>Admin</label>
+      <div class="punits">${(p.unitIds||[]).filter(unit).map(id=>chip(p,id)).join("")}${unitOptions(p)}</div>
+      ${adminCell(p)}
     </div>`;
-  };
   return `<section class="board opanel">
-    ${waiting.length?`<p class="onote"><b>${peopleCount(waiting.length)} waiting for a team.</b> They have signed in but see nothing until you add them to a team, department or meeting.</p>`:""}
-    <p class="muted onote">People appear here when they first sign in. Add them to the units they work in: they can change the goals, rocks and Level 10 boards of those units and everything below them (directors: add them to ${esc(company().name)}). Everyone assigned sees all goals, and the rocks of their own branch. Admins also manage the organisation and people.</p>
+    ${waiting.length?`<p class="onote"><b>${peopleCount(waiting.length)} waiting for a team.</b> They have signed in but see nothing until someone adds them to a team, department or meeting: anyone in that unit (or above it) can.</p>`:""}
+    <p class="muted onote">People appear here when they first sign in. You add and remove people in your own units and everything below them; being in a unit lets them change its goals, rocks and Level 10 board and everything below it (directors: ${esc(company().name)}). Admins can always do everything and are the only ones who make others admin.</p>
     ${people.map(personRow).join("")}
   </section>`;
 }
@@ -1657,7 +1738,7 @@ const waitingHTML=(name,email,hint)=>`<div class="board gate"><h1>Welcome, ${esc
 
 /* ---------- render ---------- */
 const VIEWS={plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10,org:renderOrgPage};
-const ADMIN_VIEWS=["org"];
+const ADMIN_VIEWS=[]; // none any more: the organisation manages itself (everyone sees it, edits follow rights)
 function render(){
   if(!S)return; // still loading, or stopped at a "no access" / error screen
   refreshToday();refreshRights();
@@ -1670,7 +1751,7 @@ function render(){
     return;
   }
   const waiting=S.people.filter(p=>roleOf(p)==="pending").length,orgTabBtn=$('.tab[data-view="org"]');
-  orgTabBtn.hidden=role!=="admin";
+  orgTabBtn.hidden=false; // everyone assigned sees the organisation
   orgTabBtn.innerHTML=`Organisation${waiting?` <span class="tabn" title="${peopleCount(waiting)} waiting for a team">${waiting}</span>`:""}`;
   if(ADMIN_VIEWS.includes(view)&&role!=="admin")view="plan";
   app.innerHTML=VIEWS[view]();
@@ -2281,45 +2362,48 @@ const APP_ACTIONS={
     const col=$(`.kcol[data-col="${to}"]`);if(!col)return;
     col.scrollIntoView({block:"nearest",behavior:"smooth"});col.classList.remove("flash");void col.offsetWidth;col.classList.add("flash"); // restart the flash
   },
-  // Organisation (admins)
+  // Organisation: everyone sees it; the rights block decides what you may change (and the server checks it again)
   orgtab:b=>{orgTab=b.dataset.tab;render()},
   orgrefresh:async()=>{try{if(await backend.refresh(()=>true))render();toast("Up to date")}catch(e){toast(e.message,5000)}},
-  addunit:b=>addUnit(b.dataset.kind),
-  addteam:(b,id)=>addUnit("team",id),
+  addunit:b=>canEditUnit(company().id)?addUnit(b.dataset.kind):viewOnly(),
+  addteam:(b,id)=>canEditUnit(id)?addUnit("team",id):viewOnly(),
   unitdel:async(b,id)=>{
-    const u=unit(id),x=unitUsage(id);
-    const blockers=[[x.teams,"team"],[x.goals,"goal"],[x.rocks,"rock"],[x.cards,"Level 10 card"]].filter(([n])=>n).map(([n,w])=>plural(n,w));
-    if(blockers.length){toast(`Can't delete ${u.name}: it still has ${blockers.join(", ")}. Move or delete those first.`,6000);return}
-    if(!await askConfirm(`Delete “${u.name}”?${x.people?` ${peopleCount(x.people)} will be removed from it.`:""}`,"Delete"))return;
+    const u=unit(id),x=unitUsage(id);if(!canManageUnit(u))return viewOnly();
+    const blockers=[[x.teams,"team"],[x.people,"member"],[x.goals,"goal"],[x.rocks,"rock"],[x.cards,"Level 10 card"]].filter(([n])=>n).map(([n,w])=>plural(n,w));
+    if(blockers.length){toast(`Can't delete ${u.name}: it still has ${blockers.join(", ")}. Move or remove those first.`,6000);return}
+    if(!await askConfirm(`Delete “${u.name}”?`,"Delete"))return;
     S.units=S.units.filter(v=>v.id!==id);
-    S.people.forEach(p=>{if((p.unitIds||[]).includes(id))p.unitIds=p.unitIds.filter(v=>v!==id)});
     S.rocks.forEach(r=>{if((r.trackIn||[]).includes(id)){r.trackIn=r.trackIn.filter(v=>v!==id);logHist(r,`No longer tracked in ${u.name} (deleted)`)}});
     if(teamFilter===id)teamFilter="";
     save();render();toast(`${u.name} deleted`);
   },
-  unassign:(b,id)=>{
-    const p=person(id),unitId=b.dataset.unit;
-    p.unitIds=(p.unitIds||[]).filter(v=>v!==unitId);save();render();
-    toast(roleOf(p)==="pending"?`${p.name} is no longer in any team and can't use EOS Tracker until added again`:`${p.name} removed from ${unitName(unitId)}`,4000);
+  unassign:async(b,id)=>{
+    const p=person(id),unitId=b.dataset.unit;if(!canManageMembers(unitId))return viewOnly();
+    const rest=(p.unitIds||[]).filter(v=>v!==unitId),last=!rest.length&&!rights.isAdmin(p);
+    if(p.id===session.userId&&!await askConfirm(last?`Remove yourself from ${unitName(unitId)}? It's your last unit: you'll see nothing until someone adds you again.`
+      :`Remove yourself from ${unitName(unitId)}? You lose your rights there.`,"Remove me"))return;
+    p.unitIds=rest;save();render();
+    toast(last?`${p.name} is no longer in any unit and can't use EOS Tracker until added again`:`${p.name} removed from ${unitName(unitId)}`,4000);
   },
 };
 const APP_CHANGES={
-  // Organisation (admins)
+  // Organisation
   unitname:el=>{
     const u=unit(el.dataset.id),name=el.value.trim();
+    if(!canManageUnit(u)){el.value=u.name;return viewOnly()}
     if(!name||name===u.name){el.value=u.name;return}
     if(S.units.some(v=>v!==u&&v.name.toLowerCase()===name.toLowerCase())){toast(`There's already a unit called “${name}”`,4000);el.value=u.name;return}
     u.name=name;save();render();toast("Renamed");
   },
-  forumrule:el=>{unit(el.dataset.id)[el.dataset.rule]=el.checked;save();render()},
+  forumrule:el=>{const f=unit(el.dataset.id);if(!canManageUnit(f)){render();return viewOnly()}f[el.dataset.rule]=el.checked;save();render()},
   assign:el=>{
-    const p=person(el.dataset.id),id=el.value;if(!id)return;
+    const p=person(el.dataset.id),id=el.value;if(!id)return;if(!canManageMembers(id)){render();return viewOnly()}
     const wasWaiting=roleOf(p)==="pending";
     p.unitIds=[...(p.unitIds||[]),id];save();render();
     toast(wasWaiting?`${p.name} added to ${unitName(id)} and can now use EOS Tracker`:`${p.name} added to ${unitName(id)}`,4000);
   },
   admin:el=>{
-    const p=person(el.dataset.id);
+    const p=person(el.dataset.id);if(myRole()!=="admin"){render();return viewOnly()} // only admins grant admin
     if(el.checked)p.admin=true;else delete p.admin;
     save();render();toast(el.checked?`${p.name} is now an admin`:`${p.name} is no longer an admin`);
   },
@@ -2421,7 +2505,9 @@ $("#app").addEventListener("dragstart",e=>{
 });
 $("#app").addEventListener("dragover",e=>{
   if(!orgDrag)return;
-  const row=e.target.closest(".orow");const place=row&&orgDropPlace(orgDrag,unit(row.dataset.unitRow),row,e.clientY);if(!place)return;
+  const row=e.target.closest(".orow");let place=row&&orgDropPlace(orgDrag,unit(row.dataset.unitRow),row,e.clientY);
+  if(place&&!rights.writeAllowed(me(),"units",orgDrag,{...orgDrag,parentId:orgDrag.kind==="team"?place.parentId:orgDrag.parentId}))place=null; // e.g. into a department you don't manage
+  if(!place)return;
   e.preventDefault();e.dataTransfer.dropEffect="move";
   orgDrop=place;const [el,where]=place.marker;el[where](orgMarker);
 });

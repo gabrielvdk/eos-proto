@@ -12,9 +12,9 @@
      GET    attachments/{sha256}        → the image (pasted images are moved out of descriptions on save)
 
    Roles: admin = in ADMIN_EMAILS (always) or person.admin · member = assigned to at least one unit (person.unitIds)
-   · pending = signed in, not assigned yet: sees and changes nothing. Only admins change people and units (the org tree);
-   members change goals, rocks and cards of their units and everything below them, and see only those Level 10 boards
-   (createRights below; the page uses the same block).
+   · pending = signed in, not assigned yet: sees and changes nothing. The organisation manages itself: members change goals,
+   rocks, cards and memberships of their units and everything below them, and the structure below their units; they see
+   only those Level 10 boards (createRights below; the page uses the same block).
 
    store interface (Cosmos DB in index.js, memory in createMemoryStore):
      list() → all item docs incl. _etag · listType(type) → the docs of one type · get(type, id) → doc|null · put(doc, ifMatch) → saved doc,
@@ -25,7 +25,7 @@
 })(typeof self!=="undefined"?self:this,function(){
   "use strict";
   const COLLECTIONS=["meta","people","units","goals","rocks","cards"]; // "meta" holds one record {id:"meta", version}
-  const ADMIN_ONLY=["people","units"]; // the org tree and who belongs where
+  const ORG=["people","units"]; // the org tree and who belongs where
   const ID_RE=/^[A-Za-z0-9_-]{1,80}$/;
   const HASH_RE=/^[a-f0-9]{64}$/;
   const MAX_ITEM_CHARS=1900000; // Cosmos DB items are limited to 2 MB
@@ -58,12 +58,18 @@
 /* rights:start — this block is identical in index.html and api/src/core.js (tests/api-core.test.html checks that).
    Who may see and change what. The tree: company → departments → teams; meetings (forums) and teams without a department
    hang under the company. Rights flow down, never up: belonging to a unit gives rights on it and on everything below it
-   (a director in the company has rights everywhere; a team member has none on the department above). Admins: everything.
-   Goals live on any unit; rocks and Level 10 boards only on teams and meetings ("team level"). */
+   (a director in the company has rights everywhere; a team member has none on the department above). Admins: everything,
+   even without any unit, and only admins grant the admin flag. Everyone assigned sees everything in the organisation.
+   - goals, rocks, cards: change them in units you have rights on. Goals live on any unit; rocks and Level 10 boards only
+     on teams and meetings ("team level"). A meeting's members also fully edit the rocks the meeting shows.
+   - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
+   - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
+     its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it. */
 function createRights({units,people,adminEmails}){
   const byId=new Map(units.map(u=>[u.id,u]));
   const company=units.find(u=>u.kind==="company");
-  const parentOf=u=>u.kind==="company"?null:u.kind==="team"&&byId.has(u.parentId)?byId.get(u.parentId):company||null;
+  // the unit above u (also for a record not stored yet): a team's department, else the company
+  const parentOf=u=>u.kind==="company"?null:u.kind==="team"&&byId.get(u.parentId)?.kind==="department"?byId.get(u.parentId):company||null;
   const above=new Map(); // unit id → the ids of the units above it
   for(const u of units){const ids=[];for(let p=parentOf(u),n=0;p&&n<10;p=parentOf(p),n++)ids.push(p.id);above.set(u.id,ids)}
   const admins=(adminEmails||[]).map(e=>String(e).toLowerCase());
@@ -76,11 +82,16 @@ function createRights({units,people,adminEmails}){
   const canEditRock=(p,r)=>hasRights(p,r.unitId)||units.some(f=>f.kind==="forum"&&inForum(f,r)&&hasRights(p,f.id));
   const teamLevel=id=>{const u=byId.get(id);return !!u&&(u.kind==="team"||u.kind==="forum")}; // where rocks and boards live
   const canEdit={goals:(p,g)=>hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
+  // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins
+  const canManageUnit=(p,u)=>isAdmin(p)||(u.kind!=="company"&&!!parentOf(u)&&hasRights(p,parentOf(u).id));
+  // a record's fields apart from some keys (and _etag etc.), to check that nothing else changed
+  const fieldsBut=(x,skip)=>JSON.stringify(Object.keys(x||{}).filter(k=>!skip.includes(k)&&k[0]!=="_").sort().map(k=>[k,x[k]]));
   return {
-    isAdmin,role,hasRights,canEditRock,teamLevel,
+    isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,
     canEditGoal:canEdit.goals,
     canEditCard:canEdit.cards,
     canSeeBoard:(p,unitId)=>teamLevel(unitId)&&hasRights(p,unitId), // Level 10: the team and meeting boards of your units and below
+    canManageMembers:hasRights, // add / remove people in this unit
     // the team filter: the company, your units, the units above them and the units below them
     branch(p){
       if(isAdmin(p))return units.map(u=>u.id);
@@ -94,7 +105,17 @@ function createRights({units,people,adminEmails}){
       if(role(p)==="pending")return false;
       if((collection==="rocks"||collection==="cards")&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
       if(isAdmin(p)||collection==="meta")return true;
-      const can=canEdit[collection];if(!can)return false; // people and units: admins only
+      if(collection==="units"){ // structure: rights on the unit above, before and after (moving a team needs both departments)
+        if(!before&&!after)return false;
+        if(after&&(after.kind==="company"||(before&&before.kind!==after.kind)))return false;
+        return (!before||canManageUnit(p,before))&&(!after||canManageUnit(p,after));
+      }
+      if(collection==="people"){ // membership only: nothing else of a person changes, and every unit added or removed is yours
+        if(!before||!after||fieldsBut(before,["unitIds"])!==fieldsBut(after,["unitIds"]))return false; // people are created at sign-in
+        const was=memberOf(before),now=memberOf(after);
+        return [...now.filter(id=>!was.includes(id)),...was.filter(id=>!now.includes(id))].every(id=>hasRights(p,id));
+      }
+      const can=canEdit[collection];if(!can)return false;
       if(before&&!can(p,before))return false;
       // creating, or moving to another unit, needs rights on that unit itself: a meeting member may edit and resolve
       // the rocks it shows, but not move them to another team or create rocks for other teams
@@ -140,7 +161,7 @@ function createRights({units,people,adminEmails}){
       const before=await store.get(t.collection,t.id);
       if(rights.writeAllowed(me,t.collection,before&&toRecord(before),after))return null;
       const why=rights.role(me)==="pending"?"You haven't been added to a team yet."
-        :ADMIN_ONLY.includes(t.collection)?"Only administrators can change the organisation and people."
+        :ORG.includes(t.collection)?"You can only change the organisation where you have rights (your own units and below)."
         :"You can only change items of your own teams.";
       return reply(403,{error:why});
     }
@@ -239,5 +260,5 @@ function createRights({units,people,adminEmails}){
     };
   }
 
-  return {createApi,createMemoryStore,createRights,parsePrincipal,displayName,COLLECTIONS,ADMIN_ONLY};
+  return {createApi,createMemoryStore,createRights,parsePrincipal,displayName,COLLECTIONS,ORG};
 });
