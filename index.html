@@ -195,6 +195,10 @@ td.title{font-weight:400}
 .lvl-Company{background:color-mix(in srgb,var(--company) 14%,transparent);color:var(--company)}
 .lvl-Department{background:color-mix(in srgb,var(--department) 14%,transparent);color:var(--department)}
 .lvl-Team{background:color-mix(in srgb,var(--team) 16%,transparent);color:var(--team)}
+.pill.lvl-hidden{background:color-mix(in srgb,var(--red) 14%,transparent);color:var(--red)} /* a goal hidden behind a private meeting (DT Team only) */
+.pill .ico-lock,.visseg .ico-lock{width:12px;height:12px;flex:none}
+.visseg button{display:inline-flex;align-items:center;gap:6px}
+.visseg button[aria-pressed="true"]:has(.ico-lock){background:color-mix(in srgb,var(--red) 14%,transparent);color:var(--red)}
 .brtag{font-size:10.5px;font-weight:700;letter-spacing:.03em;color:var(--forum);background:color-mix(in srgb,var(--forum) 14%,transparent);border-radius:5px;padding:1px 5px;margin-left:4px;white-space:nowrap}
 .chkrow{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2);cursor:pointer;justify-self:start}
 .chkrow input{accent-color:var(--forum);width:14px;height:14px;margin:0}
@@ -604,7 +608,8 @@ const currentUserId=()=>session.userId;
            A team's parentId is its department; other units have none. A department without teams acts as its own team (HR).
            A forum is a meeting (Business Review) that acts like a team for rocks and Level 10, but has no goals;
            it also has {includeTracked, includeEscalated}: show rocks tracked in it / rocks with status "escalate".
-   goals   [{id, unitId, year, title, parentId, description, deliverables, history}]       level = levelOf(unitId)
+   goals   [{id, unitId, year, title, parentId, visibleTo, description, deliverables, history}]   level = levelOf(unitId);
+           visibleTo = a private meeting's id: only its members see the goal (company goals default to it)
    rocks   [{id, unitId, quarter:"Q4 2026", rank, title, ownerId, status (STATUSES key), goalId, trackIn:[forum id],
              description, deliverables, milestones:[{id, title, done, deadline:"YYYY-MM-DD", updates}], updates, history}]
    cards   [{id, unitId, column (COLS key), rank, title, description (sanitized HTML), owners:[person id], createdBy, createdAt, updates, history}]
@@ -682,6 +687,9 @@ function seed(){
     G("g14","Research","Validate the next-generation sensor","g8","Prove the new sensor concept in two customer greenhouses.","Test rig • 2 field trials • Go/no-go report"),
     G("g15","Research","Publish two application notes",null,"Share what we learn with customers and the field.","2 application notes published"),
     G("g16","Sales","Launch a partner referral programme",null,"Existing customers and partners refer new business.","Programme live • 10 referred deals"),
+    // DT Team only (hidden): only the Director sees these
+    {...G("g17","Hoogendoorn","Acquire a sensor start-up",null,"Find and buy a company that strengthens our sensor roadmap.","Shortlist of 5 • Two offers made • One deal signed"),visibleTo:U("DT Team")},
+    {...G("g18","Hoogendoorn","Succession plan for key roles","g3","A named successor for every leadership role.","Successor per role • Development plan per successor"),visibleTo:U("DT Team")},
   ];
   const M=(title,done,deadline,upd)=>({id:uid(),title,done,deadline,updates:upd?[{at:d(10,6),text:upd}]:[]});
   const W=(m,day,text)=>({at:d(m,day),text});
@@ -1136,7 +1144,8 @@ const plural=(n,word)=>`${n} ${word}${n===1?"":"s"}`;
 const peopleCount=n=>n===1?"1 person":`${n} people`;
 const toggleIn=(set,x)=>set.has(x)?set.delete(x):set.add(x);
 const replaceById=(list,rec)=>{const i=list.findIndex(x=>x.id===rec.id);if(i>=0)list[i]=rec;else list.push(rec)}; // by id: S may have been reloaded meanwhile
-const goal=id=>S.goals.find(g=>g.id===id);
+const goal=id=>S.goals.find(g=>g.id===id&&rights.canSeeGoal(me(),g)); // a hidden goal (visible to a private meeting) only for its members
+const visibleGoals=()=>S.goals.filter(g=>rights.canSeeGoal(me(),g));
 const rock=id=>S.rocks.find(r=>r.id===id);
 const card=id=>S.cards.find(c=>c.id===id);
 const person=id=>S.people.find(p=>p.id===id);
@@ -1180,7 +1189,8 @@ const defaultUnitId=kind=>{
    - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
    - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
      its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it.
-   - private meetings (unit.private, e.g. the DT Team): only their direct members see and change their rocks and board.
+   - private meetings (unit.private, e.g. the DT Team): only their direct members see and change their rocks and board,
+     and the goals set to be visible to them only (goal.visibleTo).
      Rights don't flow into them, not even for admins; their rocks never show up in other meetings; only members rename,
      delete or un-private them. Admins can still add themselves as a member (break-glass, visible to everyone). */
 function createRights({units,people,adminEmails}){
@@ -1204,7 +1214,9 @@ function createRights({units,people,adminEmails}){
   // rocks: your units' rocks, plus every rock a meeting you're in shows (its members fully edit those)
   const canEditRock=(p,r)=>hasRights(p,r.unitId)||units.some(f=>f.kind==="forum"&&inForum(f,r)&&hasRights(p,f.id));
   const teamLevel=id=>{const u=byId.get(id);return !!u&&(u.kind==="team"||u.kind==="forum")}; // where rocks and boards live
-  const canEdit={goals:(p,g)=>hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
+  // goals visible to a private meeting only (goal.visibleTo, e.g. the DT Team's company goals): its members only, admins too
+  const canSeeGoal=(p,g)=>!g.visibleTo||isMember(p,g.visibleTo);
+  const canEdit={goals:(p,g)=>canSeeGoal(p,g)&&hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
   // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins;
   // a private meeting only by its own members
   const canManageUnit=(p,u)=>u.private===true||isPrivate(u.id)?isMember(p,u.id)
@@ -1213,7 +1225,7 @@ function createRights({units,people,adminEmails}){
   // a record's fields apart from some keys (and _etag etc.), to check that nothing else changed
   const fieldsBut=(x,skip)=>JSON.stringify(Object.keys(x||{}).filter(k=>!skip.includes(k)&&k[0]!=="_").sort().map(k=>[k,x[k]]));
   return {
-    isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,canManageMembers,isMember,isPrivate,canSeeContent,inForum,
+    isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,canManageMembers,isMember,isPrivate,canSeeContent,inForum,canSeeGoal,
     canSeeRock:canEditRock, // rocks: you see exactly the ones you can change (your teams and below, plus what your meetings show)
     canEditGoal:canEdit.goals,
     canEditCard:canEdit.cards,
@@ -1233,6 +1245,8 @@ function createRights({units,people,adminEmails}){
       if((collection==="rocks"||collection==="cards")&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
       if((collection==="rocks"||collection==="cards")&&[before,after].some(x=>x&&!canSeeContent(p,x.unitId)))return false; // private: admins too
       if(collection==="units"&&before&&before.private===true&&!isMember(p,before.id))return false; // only members change a private meeting, admins too
+      if(collection==="goals"&&[before,after].some(g=>g&&!canSeeGoal(p,g)))return false; // a hidden goal: its meeting's members only, admins too
+      if(collection==="goals"&&after&&after.visibleTo&&!isPrivate(after.visibleTo))return false; // hidden only behind a private meeting
       if(isAdmin(p)||collection==="meta")return true;
       if(collection==="units"){ // structure: rights on the unit above, before and after (moving a team needs both departments)
         if(!before&&!after)return false;
@@ -1282,7 +1296,7 @@ function rockMatches(r,filter){
 // years and quarters offered in the pickers: this year (+ next), plus every one that has data
 function yearList(){
   const y=TODAY.getFullYear(),set=new Set([y,y+1,planYear]);
-  S.goals.forEach(g=>set.add(g.year));
+  visibleGoals().forEach(g=>set.add(g.year));
   return [...set].sort((a,b)=>a-b);
 }
 function quarterList(){
@@ -1316,6 +1330,7 @@ const ICONS={
   chev:'<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2l4 4-4 4"/></svg>',
   note:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h10v7H7l-3 3v-3H3z"/><path d="M8 5v3M6.5 6.5h3"/></svg>',
   trash:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 9h5.6l.7-9"/></svg>',
+  lock:'<svg class="ico-lock" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-label="hidden"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>',
   check:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg>',
   image:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="6" cy="6.5" r="1.2"/><path d="M14 11l-3.5-3.5L4 13"/></svg>',
   grip:'<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.2"/><circle cx="10" cy="4" r="1.2"/><circle cx="6" cy="8" r="1.2"/><circle cx="10" cy="8" r="1.2"/><circle cx="6" cy="12" r="1.2"/><circle cx="10" cy="12" r="1.2"/></svg>',
@@ -1394,7 +1409,7 @@ const GOAL_SORTS={
 };
 const goalSort=(key,dir)=>(a,b)=>dir*(GOAL_SORTS[key]||az)(a,b);
 function renderPlan(){
-  const all=S.goals.filter(g=>g.year===planYear),unitF=goalFilter();
+  const all=visibleGoals().filter(g=>g.year===planYear),unitF=goalFilter();
   const filtering=levelFilter.size<LEVELS.length||!!unitF;
   let goals=all.filter(g=>levelFilter.has(goalLevel(g))&&unitMatches(g.unitId,unitF));
   const ctx=new Set(); // tree view: ancestors shown (greyed) for context
@@ -1441,7 +1456,7 @@ function goalRow(g,depth,hasKids,isCtx){
   const chev=planMode==="tree"?`<button class="chev ${hasKids?"":"leaf"}${lone?" lone":""}" data-act="collapse" data-id="${g.id}" aria-expanded="${!collapsed.has(g.id)}" aria-label="Toggle children">${ICONS.chev}</button>`:"";
   return `<tr class="row ${isCtx?"ctx":""}" ${isCtx?'title="Shown for context — does not match the filter"':""}>
     <td class="title" style="--depth:${depth}"><span class="treeline">${chev}<button class="titlebtn" data-act="editgoal" data-id="${g.id}"><span class="t">${esc(g.title)}</span></button></span></td>
-    <td><span class="pill lvl-${level}">${level}</span></td>
+    <td>${levelPillHTML(g)}</td>
     <td><span class="pill teampill">${esc(unitName(g.unitId))}</span></td>
     <td>${parent?`<span class="cell-link"><span class="dot" style="background:var(--${goalLevel(parent).toLowerCase()})"></span>${esc(parent.title)}</span>`:`<span class="muted">—</span>`}</td></tr>`;
 }
@@ -1892,20 +1907,34 @@ const sidePaneHTML=(obj,tab,canPost=true)=>`<div class="side">
 
 /* goal modal */
 function goalModal(g){
-  const obj=g?structuredClone(g):{id:uid(),unitId:defaultUnitId("goal"),year:planYear,title:"",parentId:null,description:"",deliverables:"",history:[]};
+  const unitId=defaultUnitId("goal");
+  const obj=g?structuredClone(g):{id:uid(),unitId,year:planYear,title:"",parentId:null,visibleTo:defaultVisibility(unitId),description:"",deliverables:"",history:[]};
   startModal({kind:"goal",obj,orig:g,isNew:!g,tab:"details",readOnly:!!g&&!canEditGoal(g)});
+}
+/* goal visibility: company goals can be hidden behind a private meeting you're in (e.g. "DT Team only"); new company goals
+   start hidden, so nothing is published by accident. Publishing (→ everyone) asks first. */
+const myPrivateMeetings=()=>forums().filter(f=>f.private&&rights.isMember(me(),f.id));
+const defaultVisibility=unitId=>levelOf(unitId)==="Company"?(myPrivateMeetings()[0]?.id||null):null;
+// the level pill; a hidden goal shows a lock and the "hidden" colour
+const levelPillHTML=(g,suffix="")=>{const level=levelOf(g.unitId);
+  return `<span class="pill lvl-${level}${g.visibleTo?" lvl-hidden":""}" ${g.visibleTo?`data-tip="Visible to ${esc(unitName(g.visibleTo))} only"`:""}>${level}${suffix}${g.visibleTo?ICONS.lock:""}</span>`};
+function visibilityFieldHTML(g){
+  const options=myPrivateMeetings();
+  if(levelOf(g.unitId)!=="Company"||(!options.length&&!g.visibleTo))return "";
+  const btn=(id,label)=>`<button type="button" data-m="visibility" data-id="${id}" aria-pressed="${(g.visibleTo||"")===id}">${label}</button>`;
+  return field("Visible to",`<div class="seg visseg" role="group" aria-label="Visible to">${options.map(f=>btn(f.id,`${ICONS.lock} ${esc(f.name)} only`)).join("")}${btn("","Everyone")}</div>`);
 }
 // view only: the text of a field instead of its control
 const roField=(label,text,empty="—")=>field(label,`<div class="rotext">${text?esc(text):`<span class="muted">${empty}</span>`}</div>`);
 const roNote=what=>`<p class="ronote">View only: you can change the ${what} of your own teams.</p>`;
 function drawGoalModal(){
-  const {obj:g,isNew,tab,readOnly}=modalState,level=levelOf(g.unitId);
+  const {obj:g,isNew,tab,readOnly}=modalState;
   const tabs=isNew?"":`<div class="mtabs" role="tablist">${tabBtn("details","Details",undefined,tab)}${tabBtn("history","History",(g.history||[]).length,tab)}</div>`;
   if(readOnly){
     const body=tab==="history"?`<div class="body">${historyHTML(g)}</div>`:`<div class="body">
       ${roNote("goals")}
       ${roField("Title",g.title)}
-      <div class="grid2">${field("Team",`<div class="rotext"><span class="pill lvl-${level}">${level} goal</span> ${esc(unitName(g.unitId))}</div>`)}${roField("Linked to goal",goal(g.parentId)?.title)}</div>
+      <div class="grid2">${field("Team",`<div class="rotext">${levelPillHTML(g," goal")} ${esc(unitName(g.unitId))}</div>`)}${roField("Linked to goal",goal(g.parentId)?.title)}</div>
       ${roField("Description",g.description)}
       ${roField("Deliverables",g.deliverables)}
     </div>`;
@@ -1915,24 +1944,42 @@ function drawGoalModal(){
   const body=tab==="history"?`<div class="body">${historyHTML(g)}</div>`:`<div class="body">
     ${field("Title",`<input id="f-title" value="${esc(g.title)}" placeholder="What do we want to be true at the end of ${g.year}?">`)}
     <div class="grid2">
-      <div class="field"><label for="f-unit-in">Team <span class="pill lvl-${level}" id="f-level-pill" title="The goal's level follows from the team">${level} goal</span></label>${unitPickerHTML(g.unitId)}</div>
+      <div class="field"><label for="f-unit-in">Team <span id="f-level-pill" title="The goal's level follows from the team">${levelPillHTML(g," goal")}</span></label>${unitPickerHTML(g.unitId)}</div>
       ${field("Linked to goal",pickerHTML("f-parent"))}
     </div>
+    <div id="f-vis">${visibilityFieldHTML(g)}</div>
     ${field("Description",`<textarea id="f-desc">${esc(g.description)}</textarea>`)}
     ${field("Deliverables",`<textarea id="f-deliv" placeholder="How we'll know it's done">${esc(g.deliverables)}</textarea>`)}
   </div>`;
   openModal(`${modalHeader(isNew?`New goal · ${g.year}`:`Goal · ${g.year}`)}${tabs}${body}
   <footer>${isNew?"":`<button class="btn danger" data-m="delgoal">Delete</button><span class="spacer"></span>`}<button class="btn" data-m="close">Cancel</button>${tab==="details"?`<button class="btn primary" data-m="savegoal">${isNew?"Create goal":"Save changes"}</button>`:""}</footer>`);
-  if(tab==="details"){initUnitPicker("goal");initLinkedPicker(g)}
+  if(tab==="details"){
+    initUnitPicker("goal");initLinkedPicker(g);
+    $("#f-unit-id").addEventListener("change",()=>{ // company level: hidden by default; other levels: always visible
+      g.unitId=$("#f-unit-id").value;
+      g.visibleTo=levelOf(g.unitId)==="Company"?(g.visibleTo||defaultVisibility(g.unitId)):null;
+      drawGoalVisibility();
+    });
+  }
+}
+// after a team or visibility change: the pill, the "Visible to" buttons, and a link that is no longer allowed
+function drawGoalVisibility(){
+  const g=modalState.obj;
+  $("#f-level-pill").innerHTML=levelPillHTML(g," goal");$("#f-vis").innerHTML=visibilityFieldHTML(g);
+  const p=S.goals.find(x=>x.id===g.parentId);if(p&&p.visibleTo&&p.visibleTo!==g.visibleTo)g.parentId=null; // a public goal can't link to a hidden one
+  modalState.parentPicker?.refresh();
 }
 function syncGoalFields(){
-  const g=modalState.obj;if(!$("#f-title"))return; // parentId is set directly by the picker
+  const g=modalState.obj;if(!$("#f-title"))return; // parentId and visibleTo are set directly by their controls
   g.title=$("#f-title").value;g.unitId=$("#f-unit-id").value;g.description=$("#f-desc").value;g.deliverables=$("#f-deliv").value;
 }
-function saveGoal(){
+async function saveGoal(){
   syncGoalFields();
   const {obj:g,orig:o,isNew}=modalState;
   g.title=g.title.trim();if(!g.title){$("#f-title").focus();return}
+  if(!g.visibleTo)delete g.visibleTo;
+  const publishing=levelOf(g.unitId)==="Company"&&!g.visibleTo&&(isNew?myPrivateMeetings().length:!!o.visibleTo);
+  if(publishing&&!await askConfirm(`Publish “${g.title}” to everyone? Everyone in the organisation will see this company goal.`,"Publish"))return;
   if(isNew){logHist(g,"Created");S.goals.push(g)}
   else{
     const gn=id=>id?goal(id)?.title??"?":"none";
@@ -1940,12 +1987,13 @@ function saveGoal(){
       title:(a,b)=>`Title changed to “${b}”`,
       unitId:(a,b)=>`Team changed from ${unitName(a)} to ${unitName(b)}`,
       parentId:(a,b)=>`Linked to goal changed from ${gn(a)} to ${gn(b)}`,
+      visibleTo:(a,b)=>b?`Hidden: visible to ${unitName(b)} only`:"Published: visible to everyone",
       description:()=>"Description updated",
       deliverables:()=>"Deliverables updated",
     }).forEach(t=>logHist(g,t));
     replaceById(S.goals,g);
   }
-  save();closeModal();render();toast("Goal saved");
+  save();closeModal();render();toast(publishing?"Goal published":"Goal saved");
 }
 async function deleteGoal(){
   const g=modalState.orig;
@@ -1972,18 +2020,22 @@ const msDateCls=m=>!m.deadline?"empty":m.done?"":isPast(m.deadline)?"over":isSoo
    not people in a unit above, not admins). multi: a card has several owners; a rock has one, and picking replaces it.
    Owners who aren't in the unit (any more) stay visible, marked. modalState.ownerField = the field of the open modal. */
 const unitMembers=unitId=>S.people.filter(p=>rights.isMember(p,unitId));
-const ownerFieldHTML=()=>`<div class="owners"><div class="chips" id="f-ownchips"></div>${pickerHTML("f-owneradd")}</div>`;
+// one owner (rock): the picker shows the owner itself, like the Team field; several (card): chips plus an "Add owner…" picker
+const ownerFieldHTML=multi=>multi?`<div class="owners"><div class="chips" id="f-ownchips"></div>${pickerHTML("f-owneradd")}</div>`:pickerHTML("f-owneradd",{dot:true});
 function initOwnerField({unitId,get,set,multi}){
   let current=unitId;
+  const isIn=id=>rights.isMember(person(id),current);
   const draw=()=>{
-    const members=new Set(unitMembers(current).map(p=>p.id));
-    $("#f-ownchips").innerHTML=get().filter(person).map(id=>`<span class="ochip">${ownerHTML(id)}${esc(personName(id))}${members.has(id)?"":` <span class="muted">(not in this team)</span>`}${multi?`<button data-m="ownerdel" data-id="${id}" aria-label="Remove ${esc(personName(id))}">×</button>`:""}</span>`).join("");
+    if(multi)$("#f-ownchips").innerHTML=get().filter(person).map(id=>`<span class="ochip">${ownerHTML(id)}${esc(personName(id))}${isIn(id)?"":` <span class="muted">(not in this team)</span>`}<button data-m="ownerdel" data-id="${id}" aria-label="Remove ${esc(personName(id))}">×</button></span>`).join("");
     picker.refresh();
   };
-  const picker=initPicker("f-owneradd",{get:()=>"",display:()=>"",allowNone:false,noun:"members",placeholder:multi?"Add owner…":"Choose owner…",
-    set:v=>{if(v&&!get().includes(v)){set(multi?[...get(),v]:[v]);draw()}},
+  const picker=initPicker("f-owneradd",{allowNone:false,noun:"members",placeholder:multi?"Add owner…":"Choose owner…",
+    get:()=>multi?"":get()[0]||"",
+    display:id=>multi?"":personName(id)+(isIn(id)?"":" (not in this team)"),
+    dotColor:id=>person(id)?.color,
+    set:v=>{if(!v)return;if(multi){if(!get().includes(v))set([...get(),v])}else set([v]);draw()},
     emptyText:()=>`${unitName(current)} has no members yet: add them under Organisation → People.`,
-    groups:()=>[{name:`Members of ${unitName(current)}`,items:unitMembers(current).filter(p=>!get().includes(p.id)).map(p=>({id:p.id,title:p.name,color:p.color}))}]});
+    groups:()=>[{name:`Members of ${unitName(current)}`,items:unitMembers(current).filter(p=>!multi||!get().includes(p.id)).map(p=>({id:p.id,title:p.name,color:p.color}))}]});
   draw();
   return {
     remove:id=>{set(get().filter(x=>x!==id));draw()},
@@ -2023,7 +2075,7 @@ function drawRockModal(){
   const details=`<div class="body">
     ${field("Title",`<input id="f-title" value="${esc(r.title)}" placeholder="What will be done in 90 days?">`)}
     <div class="grid3">
-      ${field("Owner",ownerFieldHTML())}
+      ${field("Owner",ownerFieldHTML(false))}
       ${field("Team",unitPickerHTML(r.unitId))}
       ${field("Quarter",`<select id="f-quarter">${opt(quarterList().concat(quarterList().includes(r.quarter)?[]:[r.quarter]),r.quarter)}</select>`)}
     </div>
@@ -2118,7 +2170,7 @@ function drawCardModal(){
     ${field("Title",`<input id="f-title" value="${esc(c.title)}">`)}
     <div class="grid2">
       ${field("Column",`<div class="seg colseg" role="group" aria-label="Column">${COLS.map(col=>`<button data-m="cardcol" data-col="${col.key}" aria-pressed="${c.column===col.key}">${col.label}</button>`).join("")}</div>`)}
-      ${field("Owners",ownerFieldHTML())}
+      ${field("Owners",ownerFieldHTML(true))}
     </div>
     <div class="field"><label for="f-cdesc">Description</label><div id="f-cdesc" class="rte" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Add detail… paste a screenshot with Ctrl+V">${sanitizeHTML(c.description)}</div></div>
     <div class="muted" style="font-size:12px">Added by ${esc(personName(c.createdBy))} on ${fmtDate(c.createdAt)}</div>
@@ -2239,9 +2291,10 @@ function initLinkedPicker(g){
   const descendants=(id,acc=new Set())=>{S.goals.filter(x=>x.parentId===id).forEach(x=>{acc.add(x.id);descendants(x.id,acc)});return acc};
   const blocked=descendants(g.id);
   const unitId=()=>$("#f-unit-id").value,level=()=>levelOf(unitId());
-  const allowed=x=>x.id!==g.id&&x.year===g.year&&!blocked.has(x.id)&&LEVELS.indexOf(goalLevel(x))<LEVELS.indexOf(level());
+  // a public goal links only to public goals; a hidden one also to goals hidden behind the same meeting
+  const allowed=x=>x.id!==g.id&&x.year===g.year&&!blocked.has(x.id)&&LEVELS.indexOf(goalLevel(x))<LEVELS.indexOf(level())&&(!x.visibleTo||x.visibleTo===modalState.obj.visibleTo);
   const groups=()=>{
-    const cand=S.goals.filter(allowed).sort(byLevelTitle),companyGoals=cand.filter(x=>goalLevel(x)==="Company");
+    const cand=visibleGoals().filter(allowed).sort(byLevelTitle),companyGoals=cand.filter(x=>goalLevel(x)==="Company");
     if(level()!=="Team")return [{name:company().name,goals:companyGoals}];
     const dept=deptOf(unitId()),depGoals=cand.filter(x=>goalLevel(x)==="Department");
     const others=depGoals.filter(x=>x.unitId!==dept).sort((a,b)=>unitName(a.unitId).localeCompare(unitName(b.unitId))||az(a,b));
@@ -2253,8 +2306,8 @@ function initLinkedPicker(g){
   };
   const picker=initGoalPicker("f-parent",{get:()=>modalState.obj.parentId,set:v=>{modalState.obj.parentId=v},groups,
     emptyText:()=>level()==="Company"?`${company().name} goals are the top level, so they don't link to another goal.`:"No higher-level goals yet."});
-  $("#f-unit-id").addEventListener("change",()=>{
-    const lv=level(),pill=$("#f-level-pill");pill.className=`pill lvl-${lv}`;pill.textContent=`${lv} goal`;
+  modalState.parentPicker=picker;
+  $("#f-unit-id").addEventListener("change",()=>{ // the level pill is redrawn by drawGoalVisibility
     const p=goal(modalState.obj.parentId);if(p&&!allowed(p))modalState.obj.parentId=null; // e.g. became a Department goal while linked to a Department goal
     picker.refresh();
   });
@@ -2262,7 +2315,7 @@ function initLinkedPicker(g){
 /* rock "Contributes to goal": every goal of the rock's year, ordered by closeness to the rock's team:
    own team → own department → Company → own department's other teams → other departments */
 function rockGoalGroups(unitId,year){
-  const deptId=deptOf(unitId),used=new Set(),pool=S.goals.filter(g=>g.year===year);
+  const deptId=deptOf(unitId),used=new Set(),pool=visibleGoals().filter(g=>g.year===year&&(!g.visibleTo||g.visibleTo===unitId)); // a hidden goal only for rocks of its own private meeting
   const take=gs=>gs.filter(g=>!used.has(g.id)).sort(byLevelTitle).filter(g=>used.add(g.id));
   const where=g=>isDept(g.unitId)?"Department":unitName(g.unitId); // shown on the right in the later groups
   const companyGroup=()=>({name:company().name,goals:take(pool.filter(g=>goalLevel(g)==="Company"))});
@@ -2473,6 +2526,7 @@ const MODAL_ACTIONS={
   updadd:()=>{const t=$("#f-newupd").value.trim();if(!t)return;syncModal();addUpdate(modalState.obj,t);drawModal()},
   // goal
   savegoal:saveGoal,
+  visibility:b=>{modalState.obj.visibleTo=b.dataset.id||null;drawGoalVisibility()},
   delgoal:deleteGoal,
   // rock
   ltab:b=>{syncRockFields();modalState.left=b.dataset.tab;drawRockModal();if(modalState.left==="milestones")$("#modal .msr input.mt")?.focus()},

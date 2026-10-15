@@ -215,6 +215,23 @@ test("server: rocks are only sent where you have rights; private meeting content
   eq((await api.data({principal:dir})).json.cards.map(c=>c.id),[],"the DT board isn't sent to the director");
   eq((await api.data({principal:bob})).json.cards.map(c=>c.id),["cP"],"… only to its member");
 });
+test("server: goals visible to a private meeting only (e.g. DT Team company goals)",async()=>{
+  const {api}=setup();await tree(api);await asAna(api,"units",DT);
+  const dir=user("dir@letsgrow.com"),dave=user("dave@letsgrow.com");
+  await assign(api,bob,["C","P"]);await assign(api,dir,["C"]);await assign(api,dave,["T1"]);
+  const put=(p,rec)=>api.putItem({principal:p,params:{collection:"goals",id:rec.id},body:{record:rec}}).then(r=>r.status);
+  const hidden={id:"gS",unitId:"C",title:"Acquisition",visibleTo:"P"};
+  eq(await put(ana,hidden),403,"an admin can't create a DT-only goal");
+  eq(await put(dir,hidden),403,"nor a director outside the DT Team");
+  eq(await put(bob,{...hidden,visibleTo:"F"}),403,"only behind a private meeting");
+  eq(await put(bob,hidden),200,"a DT member can");
+  await asAna(api,"goals",{id:"gP",unitId:"C",title:"Public"});
+  const goals=async p=>(await api.data({principal:p})).json.goals.map(g=>g.id).sort();
+  eq([await goals(bob),await goals(dir),await goals(ana),await goals(dave)],[["gP","gS"],["gP"],["gP"],["gP"]],"only DT members receive it");
+  eq(await put(dir,{...hidden,title:"Renamed"}),403,"others can't change it");
+  eq(await put(bob,{...hidden,visibleTo:null}),200,"a DT member publishes it");
+  eq(await goals(dave),["gP","gS"],"… then everyone sees it");
+});
 test("server: a team member onboards a newcomer, into their own team only",async()=>{
   const {api}=setup();await tree(api);await assign(api,bob,["T1"]);
   const carol=user("carol@letsgrow.com");eq((await api.data({principal:carol})).json.waiting,true,"carol waits");

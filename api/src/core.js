@@ -66,7 +66,8 @@
    - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
    - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
      its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it.
-   - private meetings (unit.private, e.g. the DT Team): only their direct members see and change their rocks and board.
+   - private meetings (unit.private, e.g. the DT Team): only their direct members see and change their rocks and board,
+     and the goals set to be visible to them only (goal.visibleTo).
      Rights don't flow into them, not even for admins; their rocks never show up in other meetings; only members rename,
      delete or un-private them. Admins can still add themselves as a member (break-glass, visible to everyone). */
 function createRights({units,people,adminEmails}){
@@ -90,7 +91,9 @@ function createRights({units,people,adminEmails}){
   // rocks: your units' rocks, plus every rock a meeting you're in shows (its members fully edit those)
   const canEditRock=(p,r)=>hasRights(p,r.unitId)||units.some(f=>f.kind==="forum"&&inForum(f,r)&&hasRights(p,f.id));
   const teamLevel=id=>{const u=byId.get(id);return !!u&&(u.kind==="team"||u.kind==="forum")}; // where rocks and boards live
-  const canEdit={goals:(p,g)=>hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
+  // goals visible to a private meeting only (goal.visibleTo, e.g. the DT Team's company goals): its members only, admins too
+  const canSeeGoal=(p,g)=>!g.visibleTo||isMember(p,g.visibleTo);
+  const canEdit={goals:(p,g)=>canSeeGoal(p,g)&&hasRights(p,g.unitId),rocks:canEditRock,cards:(p,c)=>hasRights(p,c.unitId)};
   // structure: managed by whoever has rights on the unit above (so never by the unit itself); the company only by admins;
   // a private meeting only by its own members
   const canManageUnit=(p,u)=>u.private===true||isPrivate(u.id)?isMember(p,u.id)
@@ -99,7 +102,7 @@ function createRights({units,people,adminEmails}){
   // a record's fields apart from some keys (and _etag etc.), to check that nothing else changed
   const fieldsBut=(x,skip)=>JSON.stringify(Object.keys(x||{}).filter(k=>!skip.includes(k)&&k[0]!=="_").sort().map(k=>[k,x[k]]));
   return {
-    isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,canManageMembers,isMember,isPrivate,canSeeContent,inForum,
+    isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,canManageMembers,isMember,isPrivate,canSeeContent,inForum,canSeeGoal,
     canSeeRock:canEditRock, // rocks: you see exactly the ones you can change (your teams and below, plus what your meetings show)
     canEditGoal:canEdit.goals,
     canEditCard:canEdit.cards,
@@ -119,6 +122,8 @@ function createRights({units,people,adminEmails}){
       if((collection==="rocks"||collection==="cards")&&after&&!teamLevel(after.unitId))return false; // for everyone, admins too
       if((collection==="rocks"||collection==="cards")&&[before,after].some(x=>x&&!canSeeContent(p,x.unitId)))return false; // private: admins too
       if(collection==="units"&&before&&before.private===true&&!isMember(p,before.id))return false; // only members change a private meeting, admins too
+      if(collection==="goals"&&[before,after].some(g=>g&&!canSeeGoal(p,g)))return false; // a hidden goal: its meeting's members only, admins too
+      if(collection==="goals"&&after&&after.visibleTo&&!isPrivate(after.visibleTo))return false; // hidden only behind a private meeting
       if(isAdmin(p)||collection==="meta")return true;
       if(collection==="units"){ // structure: rights on the unit above, before and after (moving a team needs both departments)
         if(!before&&!after)return false;
@@ -220,6 +225,7 @@ function createRights({units,people,adminEmails}){
         if(role==="pending")return reply(200,{waiting:true,role,meId:me.id,me:{name:me.name,email:a.email}}); // nothing else until assigned
         out.cards=out.cards.filter(c=>rights.canSeeBoard(me,c.unitId)); // Level 10 boards only where you have rights
         out.rocks=out.rocks.filter(r=>rights.canSeeRock(me,r)); // only the rocks you may change: your teams and below, your meetings
+        out.goals=out.goals.filter(g=>rights.canSeeGoal(me,g)); // goals hidden behind a private meeting only to its members
         return reply(200,{...out,meId:me.id,role,adminEmails});
       },
       async putItem({principal,params,body}){
