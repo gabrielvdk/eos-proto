@@ -5,7 +5,7 @@
   "description": "EOS Tracker API: Azure Functions behind Azure Static Web Apps, Cosmos DB store. See docs/AZURE.md.",
   "main": "src/index.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "@azure/cosmos": "^4.1.1",

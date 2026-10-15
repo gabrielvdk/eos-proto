@@ -3,12 +3,13 @@
   Deploys EOS Tracker (the page + the API) from this machine to an existing Static Web App: no GitHub needed.
   The resources must exist already (infra/deploy.ps1 or the portal, see docs/AZURE.md).
 
-  Needs (once):
-    Node.js 20 LTS              winget install OpenJS.NodeJS.LTS            (then open a new terminal)
+  Needs (once; .\infra\setup-tools.ps1 installs them):
+    Node.js LTS (20 or newer)   winget install OpenJS.NodeJS.LTS            (then open a new terminal)
     Static Web Apps CLI         npm install -g @azure/static-web-apps-cli
     Azure CLI (optional)        winget install Microsoft.AzureCLI, then az login
                                 — only to look up the deployment token; or pass -DeploymentToken yourself
                                 (portal: Static Web App > Overview > Manage deployment token)
+  The API itself runs on Node.js 22 in Azure (azure/staticwebapp.config.json); the local version only runs the tools.
 
 .EXAMPLE
   ./infra/deploy-app.ps1 -Env test
@@ -32,9 +33,9 @@ $root = Split-Path $PSScriptRoot -Parent
 function Assert-Tool($command, $hint) {
   if (-not (Get-Command $command -ErrorAction SilentlyContinue)) { throw "'$command' wasn't found. $hint" }
 }
-Assert-Tool 'node.exe' 'Install Node.js 20 LTS: winget install OpenJS.NodeJS.LTS (then open a new terminal).'
-Assert-Tool 'npm.cmd' 'npm comes with Node.js: install Node.js 20 LTS (winget install OpenJS.NodeJS.LTS).'
-Assert-Tool 'swa.cmd' 'Install the Static Web Apps CLI: npm install -g @azure/static-web-apps-cli'
+Assert-Tool 'node.exe' 'Install Node.js LTS: run .\infra\setup-tools.ps1, or winget install OpenJS.NodeJS.LTS (then open a new terminal).'
+Assert-Tool 'npm.cmd' 'npm comes with Node.js: install Node.js LTS (.\infra\setup-tools.ps1).'
+Assert-Tool 'swa.cmd' 'Install the Static Web Apps CLI: run .\infra\setup-tools.ps1, or npm install -g @azure/static-web-apps-cli'
 if ($AuthMode -eq 'entra' -and -not $EntraTenantId) { throw '-AuthMode entra needs -EntraTenantId.' }
 
 # 1. the deployment token of the Static Web App
@@ -76,7 +77,7 @@ try {
 
 # 4. upload site + API
 Write-Host "Deploying to $Name..."
-& swa.cmd deploy $dist --api-location (Join-Path $root 'api') --api-language node --api-version 20 --deployment-token $DeploymentToken --env production
+& swa.cmd deploy $dist --api-location (Join-Path $root 'api') --api-language node --api-version 22 --deployment-token $DeploymentToken --env production
 if ($LASTEXITCODE -ne 0) { throw 'swa deploy failed.' }
 
 Write-Host ''

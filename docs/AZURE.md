@@ -121,15 +121,19 @@ GitHub Pages keeps publishing `main` as a local-mode demo. Each visitor gets the
 
 The GitHub workflow is one way to deploy; `infra/deploy-app.ps1` is another. It uploads the page and the API from your machine to an existing Static Web App, using Microsoft's **Static Web Apps CLI**. That works with any Git server (or none), and the two ways can be used side by side.
 
-**Install once:**
+**Install once:** run `infra/setup-tools.ps1` in any PowerShell window. It installs whatever is missing, and is safe to run again. Add `-SkipAzureCli` to leave out the Azure CLI.
 
-| Tool | Why | Install |
+```powershell
+powershell -ExecutionPolicy Bypass -File .\infra\setup-tools.ps1
+```
+
+| Tool | Why | Installed with |
 |---|---|---|
-| Node.js 20 LTS | runs the SWA CLI and installs the API's packages | `winget install OpenJS.NodeJS.LTS`, then open a new terminal |
+| Node.js LTS (20 or newer) | runs the SWA CLI and installs the API's packages; the API itself runs on Node.js 22 in Azure | `winget install OpenJS.NodeJS.LTS` |
 | Static Web Apps CLI | does the upload (downloads a small Microsoft upload tool on first use) | `npm install -g @azure/static-web-apps-cli` |
 | Azure CLI (optional) | looks up the deployment token for you; also needed for `infra/deploy.ps1` | `winget install Microsoft.AzureCLI`, then `az login` |
 
-If company policy blocks `winget`, use the installers from nodejs.org and learn.microsoft.com/cli/azure.
+The winget installers may ask for admin rights (a Windows UAC prompt). Open a new terminal afterwards so the new commands are found. If company policy blocks `winget`, use the installers from nodejs.org and learn.microsoft.com/cli/azure, then `npm install -g @azure/static-web-apps-cli`.
 
 **Deploy:**
 

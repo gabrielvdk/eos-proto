@@ -1,6 +1,6 @@
 {
   "platform": {
-    "apiRuntime": "node:20"
+    "apiRuntime": "node:22"
   },
   "routes": [
     { "route": "/.auth/login/github", "statusCode": 404 },
