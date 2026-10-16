@@ -1075,7 +1075,8 @@ function migrateV11(data){
   }
   return {...data,measurables,version:12};
 }
-function prepareData(data){data.units.sort(byRank);data.rocks.sort(byRank);data.cards.sort(byRank);data.measurables.sort(byRank);return data}
+function prepareData(data){SYNCED.forEach(c=>{data[c]||=[]}); // a collection that is missing (e.g. a new one) is simply empty
+  data.units.sort(byRank);data.rocks.sort(byRank);data.cards.sort(byRank);data.measurables.sort(byRank);return data}
 
 /* ---------- backends ----------
    Where the data lives. Every backend fills S and the session on load() and stores changes on save().
@@ -1155,7 +1156,7 @@ function createRemoteBackend(kind,transport,config){
     SYNCED.forEach(c=>(json[c]||[]).forEach(rec=>take(c,rec)));
     let data;
     if(!json.meta&&!json.units.length){ // empty database: start with the organisation (plus sample content where SEED=sample)
-      data=config.seed==="sample"?seed():{version:DATA_VERSION,people:[],units:seedOrg(),goals:[],rocks:[],cards:[]};
+      data=config.seed==="sample"?seed():{version:DATA_VERSION,people:[],units:seedOrg(),goals:[],rocks:[],cards:[],measurables:[]};
       data.people=[...json.people,...data.people];
     }else data={version:json.meta?.version??DATA_VERSION,...Object.fromEntries(SYNCED.map(c=>[c,json[c]||[]]))};
     return {data:prepareData(migrate(data)),sync,tags,meId:json.meId,adminEmails:json.adminEmails||[]}; // migrated records differ from `sync`, so save() stores them
