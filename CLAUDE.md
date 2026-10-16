@@ -34,6 +34,7 @@ Originally built as a Claude.ai artifact; the original conversation is not avail
   - Left column per rock: owner, title, team tag (hidden when that team is filtered), update icon (hover = latest update, click = quick-update popover), status button, progress bar.
   - Layout is two tables side by side (`.rr-left` fixed, `.rr-right` inside `.rr-scroll`) so only the weeks scroll; `syncReviewRows()` equalises row heights after each render. The update popover is rendered outside the tables so rows can't cover it.
   - Rock Review and Level 10 are held per team (or meeting). Without one chosen, both show the same team picker (`renderTeamPick`): your teams and meetings grouped per department; with a department selected, only its teams.
+  - Level 10, Scorecard and Rock Review have a ✕ at the top right of the view (`closeBoardHTML`, action `closeboard`): it sets the team filter to All teams, so the team picker shows again.
   - Light-grey IDS icon (`idsBtnHTML`): opens a popover (`idsOpen`, `idsPopHTML`, `placeIdsPop`) with a text box prefilled "Rock to Discuss: <rock title>" so you can add your question; Add / Enter puts it at the end of the IDS column of the viewed board (else the rock's own board; hidden when neither is a board you may use), Cancel / Esc closes; no duplicates of an open IDS card.
   - Horizontal scroll is kept across re-renders (`rrScroll`); entering the view or changing quarter jumps to the current week.
 - Rock modal: left tabs **Details · Milestones** (`modalState.left`), right tabs **Updates · History** (`modalState.tab`).

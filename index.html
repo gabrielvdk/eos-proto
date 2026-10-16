@@ -123,6 +123,7 @@ select.ctl.sm{padding:3px 8px;font-size:12.5px;font-weight:500;border-radius:7px
 .tab{border:0;background:transparent;padding:7px 14px;border-radius:9px;font-weight:600;color:var(--ink-2)}
 .tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(28,36,48,.12)}
 .spacer{flex:1}
+.viewhead .vclose{font-size:16px;line-height:1;padding:6px 10px;color:var(--ink-2)} /* closes a team's board (Level 10, Scorecard, Rock Review) */
 .btn{border:1px solid var(--line-strong);background:var(--surface);padding:7px 12px;border-radius:9px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .btn:hover{background:var(--canvas)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -1552,6 +1553,8 @@ function ownerHTML(id){
 const teamTagHTML=id=>id&&id!==teamFilter?`<span class="teamtag">${esc(unitName(id))}</span>`:""; // hidden when that team is filtered
 const abbr=name=>name.split(/\s+/).map(w=>w[0]).join("").toUpperCase();
 const trackTagsHTML=r=>(r.trackIn||[]).map(unit).filter(Boolean).map(f=>`<span class="brtag" title="Tracked in ${esc(f.name)}">${esc(abbr(f.name))}</span>`).join("");
+// Level 10 / Scorecard / Rock Review: ✕ closes this team's board and goes back to the team picker (team filter: All teams)
+const closeBoardHTML=what=>`<button class="btn ghost sm vclose" data-act="closeboard" aria-label="Close" data-tip="Close ${what} of ${esc(unitName(teamFilter))} and pick another team">✕</button>`;
 const viewTitle=(title,id)=>`<h1>${title}${id?` <span class="dim">· ${esc(unitName(id))}</span>`:""}</h1>`;
 const quarterSelectHTML=()=>`<select class="ctl" data-act="quarter" aria-label="Quarter">${quarterList().map(q=>`<option ${q===quarterFilter?"selected":""}>${q}</option>`).join("")}</select>`;
 const legendHTML=(items,extra="")=>`<div class="legend" style="margin-top:10px">${items.map(([color,label])=>`<span><i class="sw" style="background:var(--${color})"></i> ${label}</span>`).join("")}${extra}</div>`;
@@ -1669,7 +1672,7 @@ function renderReview(){
   for(const w=mondayOf(start);w<=end;w.setDate(w.getDate()+7))weeks.push(localISO(w));
   const nowWk=localISO(mondayOf(TODAY));
   const wkCls=k=>k<nowWk?"past":k===nowWk?"now":"";
-  const head=`<div class="viewhead">${viewTitle("Rock Review",teamFilter)}<span class="count">${plural(rocks.length,"rock")} · week ${isoWeek(TODAY)}</span><div class="spacer"></div>${quarterSelectHTML()}</div>`;
+  const head=`<div class="viewhead">${viewTitle("Rock Review",teamFilter)}<span class="count">${plural(rocks.length,"rock")} · week ${isoWeek(TODAY)}</span><div class="spacer"></div>${quarterSelectHTML()}${closeBoardHTML("Rock Review")}</div>`;
   const cols=`<thead><tr>${weeks.map(k=>`<th class="wk ${wkCls(k)}" ${k===nowWk?'aria-current="date"':""}><div class="n">Wk ${isoWeek(parseD(k))}</div><div class="dt">${fmtDate(k)}</div></th>`).join("")}</tr></thead>`;
   const chip=(r,m)=>{
     const over=!m.done&&isPast(m.deadline),soon=!m.done&&!over&&isSoon(m.deadline),u=(m.updates||[])[0];
@@ -1751,7 +1754,7 @@ function addIdsFromPop(){
 function renderL10(){
   if(!boardOk(teamFilter))return renderL10Pick(); // not a board, or not one of yours
   const cards=S.cards.filter(c=>c.unitId===teamFilter),open=cards.filter(c=>c.column!=="done").length;
-  const head=`<div class="viewhead">${viewTitle("Level 10",teamFilter)}<span class="count">${plural(open,"open item")}</span></div>`;
+  const head=`<div class="viewhead">${viewTitle("Level 10",teamFilter)}<span class="count">${plural(open,"open item")}</span><div class="spacer"></div>${closeBoardHTML("Level 10")}</div>`;
   const agendaItem=([name,min,to,subs])=>{
     const inner=`<span class="an">${esc(name)}</span><span class="am ${min>=30?"big":""}">${min} min</span>`;
     const title=to==="review"?"Open Rock Review":to==="scorecard"?"Open the Scorecard":`Show the ${colLabel(to)} column`;
@@ -1949,7 +1952,7 @@ function renderScorecard(){
   if(!boardOk(teamFilter))return renderScorecardPick();
   const list=scList(),weeks=scWeeks(list),cur=localISO(mondayOf(TODAY));
   const edit=canEditScorecard(teamFilter);
-  const head=`<div class="viewhead">${viewTitle("Scorecard",teamFilter)}<span class="count">${plural(list.length,"measurable")} · week ${isoWeek(TODAY)}</span></div>`;
+  const head=`<div class="viewhead">${viewTitle("Scorecard",teamFilter)}<span class="count">${plural(list.length,"measurable")} · week ${isoWeek(TODAY)}</span><div class="spacer"></div>${closeBoardHTML("Scorecard")}</div>`;
   const cell=(id,k,value,can,cls="",extra="")=>`<input class="scc ${cls}" data-sc="${id}" data-k="${k}" value="${esc(value)}" spellcheck="false" autocomplete="off"${can?"":" readonly"}${extra}>`;
   const owner=(id,ownerId,can)=>{ // the avatar; a click opens the owner picker of the rock modal in a popover (scOwnerPop)
     const face=person(ownerId)?avatarHTML(ownerId):`<span class="avatar none">${id==="new"?"+":"?"}</span>`;
@@ -2923,6 +2926,7 @@ const APP_ACTIONS={
     const inp=$(`[data-act="mtitle"][data-id="${m.id}"]`);inp?.focus();inp?.select();
   },
   pickteam:(b,id)=>{teamFilter=id;l10Add=null;rrScroll=null;scJump=true;render()},
+  closeboard:()=>{teamFilter="";l10Add=null;updOpen=null;idsOpen=null;scMenu=null;scOwn=null;render()},
   scmenu:(b,id)=>{scMenu=scMenu===id?null:id;idsOpen=null;render()},
   scown:(b,id)=>{scOwn=scOwn===id?null:id;scMenu=null;idsOpen=null;render()},
   sctrack:b=>{ // show a measurable in a meeting (Business Review), or stop showing it
