@@ -482,21 +482,23 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .home .hgrid{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:18px;align-items:start}
 @media (max-width:1100px){.home .hgrid{grid-template-columns:1fr}}
 .hsec{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3)}
-.hboards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
-.hboard header{display:flex;align-items:center;gap:8px;padding:12px 14px 8px}
-.hboard header h2{margin:0;font-size:16px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hboard header .dot,.hlist .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.home .viewhead{align-items:baseline} /* greeting and "Week 42 · Q4" on one baseline */
+.hsec{display:flex;align-items:baseline;gap:8px}
+.hsec .n{font-weight:600;text-transform:none;letter-spacing:0}
+.hsec .hall{margin-left:auto;border:0;background:none;color:var(--accent);font:inherit;font-size:12.5px;font-weight:600;text-transform:none;letter-spacing:0;cursor:pointer;padding:0}
+table.htable{width:100%;min-width:0;border-collapse:collapse}
+table.htable th{text-align:left;font-size:12px;font-weight:700;color:var(--ink-2);padding:10px 14px;background:var(--canvas);border-bottom:1px solid var(--line)}
+table.htable td{padding:4px 6px;border-top:1px solid var(--line);vertical-align:middle}
+table.htable tbody tr:first-child td{border-top:0}
+table.htable td.hname{padding:10px 14px;white-space:nowrap}
+.hname .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:1px}
+.hname .hkind{margin-left:8px}
 .hkind{font-size:11.5px;color:var(--ink-3);font-weight:600}
-.hlinks{display:grid;padding:0 6px 6px}
-.hlink{display:flex;align-items:baseline;gap:10px;border:0;background:none;text-align:left;padding:8px;border-radius:8px;font:inherit;color:var(--ink);cursor:pointer}
-.hlink:hover{background:var(--accent-soft)}
-.hlink b{width:100px;flex:none;font-size:13.5px}
-.hlink span{font-size:12.5px;color:var(--ink-2)}
-.hlink span.warn{color:var(--red);font-weight:600}
-.hside{display:grid;gap:12px}
-.hlist header{display:flex;align-items:center;gap:8px;padding:12px 14px 6px}
-.hlist header h2{margin:0;font-size:15px}
-.hlist header .n{font-size:12px;color:var(--ink-3);font-weight:600}
+.hlink{display:block;width:100%;border:0;background:none;text-align:left;padding:7px 8px;border-radius:8px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer}
+.hlink:hover{background:var(--accent-soft);color:var(--accent)}
+.hlink .warn{color:var(--red);font-weight:600}
+.hside{display:grid;gap:18px}
+.hlist .hitem:first-child{border-top:0}
 .hitem{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;border:0;border-top:1px solid var(--line);background:none;padding:9px 14px;text-align:left;font:inherit;color:var(--ink);cursor:pointer}
 .hitem:hover{background:var(--canvas)}
 .hitem .tt{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2320,20 +2322,22 @@ function renderHome(){
   const myCards=S.cards.filter(c=>c.column!=="done"&&(c.owners||[]).includes(p.id)&&boardOk(c.unitId))
     .sort((a,b)=>COLS.findIndex(x=>x.key===a.column)-COLS.findIndex(x=>x.key===b.column)||byRank(a,b));
   const myRocks=S.rocks.filter(r=>r.quarter===q&&r.ownerId===p.id&&rights.canSeeRock(p,r)&&r.status!=="cancelled");
-  const boardCard=u=>{
+  // one row per team or meeting; every cell links to that view for this team, with its key numbers
+  const row=u=>{
     const open=S.cards.filter(c=>c.unitId===u.id&&c.column!=="done"),ids=open.filter(c=>c.column==="ids").length;
+    const rocks=S.rocks.filter(r=>r.quarter===q&&rights.canSeeRock(p,r)&&rockMatches(r,u.id)&&r.status!=="cancelled");
+    const offRocks=rocks.filter(r=>["off_track","escalate"].includes(r.status)).length;
     const ms=S.measurables.filter(m=>rights.canSeeMeasurable(p,m)&&scMatches(m,u.id));
     const off=ms.filter(m=>scCellCls(m,m.values?.[lastWk])==="bad").length;
-    const rocks=S.rocks.filter(r=>r.quarter===q&&rights.canSeeRock(p,r)&&rockMatches(r,u.id));
-    const offRocks=rocks.filter(r=>["off_track","escalate"].includes(r.status)).length;
+    const open_ms=rocks.flatMap(r=>r.milestones.filter(m=>!m.done&&m.deadline));
+    const overdue=open_ms.filter(m=>isPast(m.deadline)).length,soon=open_ms.filter(m=>isSoon(m.deadline)).length;
     const kind=u.kind==="forum"?(u.private?"Private meeting":"Meeting"):"Team";
-    const link=(to,label,stat,warn)=>`<button class="hlink" data-act="goto" data-id="${u.id}" data-to="${to}"><b>${label}</b><span class="${warn?"warn":""}">${stat}</span></button>`;
-    return `<section class="board hboard"><header><span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span><h2>${esc(u.name)}</h2><span class="hkind">${kind}</span></header>
-      <div class="hlinks">
-        ${link("l10","Level 10",open.length?`${plural(ids,"issue")} · ${open.length-ids} to do`:"Nothing open")}
-        ${link("scorecard","Scorecard",ms.length?(off?`${off} off goal last week`:`${plural(ms.length,"measurable")}`):"Not set up yet",off>0)}
-        ${link("review","Rock Review",rocks.length?(offRocks?`${offRocks} of ${rocks.length} off track`:`${plural(rocks.length,"rock")} on track`):`No rocks in ${q}`,offRocks>0)}
-      </div></section>`;
+    const cell=(to,stat,warn)=>`<td><button class="hlink" data-act="goto" data-id="${u.id}" data-to="${to}"><span class="${warn?"warn":""}">${stat}</span></button></td>`;
+    return `<tr><td class="hname"><span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span><b>${esc(u.name)}</b><span class="hkind">${kind}</span></td>
+      ${cell("l10",open.length?`${plural(ids,"issue")} · ${open.length-ids} to do`:"Nothing open")}
+      ${cell("rocks",rocks.length?(offRocks?`${offRocks} of ${rocks.length} off track`:`${plural(rocks.length,"rock")} on track`):`No rocks in ${q}`,offRocks>0)}
+      ${cell("scorecard",ms.length?(off?`${off} off goal last week`:`${plural(ms.length,"measurable")}`):"Not set up yet",off>0)}
+      ${cell("review",overdue?`${overdue} milestone${overdue===1?"":"s"} overdue`:soon?`${soon} due this week`:rocks.length?"Nothing due this week":"—",overdue>0)}</tr>`;
   };
   const todo=c=>`<button class="hitem" data-act="editcard" data-id="${c.id}"><span class="colpill c-${c.column}">${esc(colLabel(c.column))}</span><span class="tt">${esc(c.title)}</span><span class="hwhere">${esc(unitName(c.unitId))}</span></button>`;
   const rockItem=r=>`<button class="hitem" data-act="editrock" data-id="${r.id}"><span class="stdot ${statusOf(r.status).cls}" data-tip="${esc(statusOf(r.status).label)}"></span><span class="tt">${esc(r.title)}</span>${progressHTML(r)}</button>`;
@@ -2343,15 +2347,16 @@ function renderHome(){
     <div class="hgrid">
       <div class="hmain">
         <h3 class="hsec">Your teams and meetings</h3>
-        ${boards.length?`<div class="hboards">${boards.map(boardCard).join("")}</div>`
+        ${boards.length?`<div class="board"><table class="htable"><thead><tr><th>Team or meeting</th><th>Level 10</th><th>Rocks <span class="muted">${q}</span></th><th>Scorecard</th><th>Rock Review</th></tr></thead>
+          <tbody>${boards.map(row).join("")}</tbody></table></div>`
           :`<div class="board empty"><b>You're not in a team or meeting yet</b>Ask a colleague to add you under Organisation → People.</div>`}
       </div>
       <aside class="hside">
-        <section class="board hlist"><header><h2>My to-dos</h2><span class="n">${myCards.length}</span><div class="spacer"></div>${myCards.length?`<button class="btn ghost sm" data-act="gotodos">All →</button>`:""}</header>
-          ${myCards.slice(0,MAX).map(todo).join("")||`<p class="muted hnone">Nothing assigned to you.</p>`}
-          ${myCards.length>MAX?`<button class="hmore" data-act="gotodos">${myCards.length-MAX} more…</button>`:""}</section>
-        <section class="board hlist"><header><h2>My rocks</h2><span class="n">${myRocks.length}</span><span class="muted">${q}</span></header>
-          ${myRocks.map(rockItem).join("")||`<p class="muted hnone">No rocks of yours in ${q}.</p>`}</section>
+        <div><h3 class="hsec">My to-dos <span class="n">${myCards.length}</span>${myCards.length?`<button class="hall" data-act="gotodos">All →</button>`:""}</h3>
+          <section class="board hlist">${myCards.slice(0,MAX).map(todo).join("")||`<p class="muted hnone">Nothing assigned to you.</p>`}
+          ${myCards.length>MAX?`<button class="hmore" data-act="gotodos">${myCards.length-MAX} more…</button>`:""}</section></div>
+        <div><h3 class="hsec">My rocks <span class="n">${myRocks.length} · ${q}</span></h3>
+          <section class="board hlist">${myRocks.map(rockItem).join("")||`<p class="muted hnone">No rocks of yours in ${q}.</p>`}</section></div>
       </aside>
     </div></div>`;
 }
@@ -3178,7 +3183,7 @@ const APP_ACTIONS={
   pfcolor:b=>{if(profileDraft){profileDraft.color=b.dataset.color;render()}},
   pfsave:()=>saveProfile(),
   pfreset:()=>{profileDraft=null;render()},
-  goto:(b,id)=>{const to=b.dataset.to;teamFilter=id;view=to;rrScroll=null;if(to==="scorecard")scOpened();if(to==="review")quarterFilter=quarterOf(TODAY);render()},
+  goto:(b,id)=>{const to=b.dataset.to;teamFilter=id;view=to;rrScroll=null;if(to==="scorecard")scOpened();if(to==="review"||to==="rocks")quarterFilter=quarterOf(TODAY);render()},
   gotodos:()=>{view="todos";render()},
   viewas:(b,id)=>startViewAs(id),
   stopviewas:()=>stopViewAs(),
