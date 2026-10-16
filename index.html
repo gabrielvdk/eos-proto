@@ -1876,7 +1876,8 @@ function fitScorecard(left){
   const n=Math.max(6,Math.floor(sc.clientWidth/wk));sc.style.setProperty("--scw",Math.floor(sc.clientWidth/n)+"px");
   syncRows(".sc-left tr",".sc-right tr");
   const now=$("th.c-wk.cur",sc);
-  if(scJump&&now){sc.scrollLeft=Math.max(0,now.offsetLeft-SC_PAST_IN_VIEW*now.offsetWidth);scJump=false} // SC_PAST_IN_VIEW weeks, this week, then the futureelse if(left!==undefined)sc.scrollLeft=left;
+  if(scJump&&now){sc.scrollLeft=Math.max(0,now.offsetLeft-SC_PAST_IN_VIEW*now.offsetWidth);scJump=false} // SC_PAST_IN_VIEW weeks, this week, then the future
+  else if(left!==undefined)sc.scrollLeft=left; // otherwise: stay where you were
 }
 let scEdit=null; // the cell being edited inside its text (F2, double-click, typing); otherwise arrows move between cells
 const measurable=id=>S.measurables.find(m=>m.id===id);
