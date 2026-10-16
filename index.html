@@ -494,13 +494,14 @@ table.sc tbody tr:last-child td{border-bottom:0}
 .sct{display:flex;align-items:center;gap:4px;padding-right:6px}
 .sct .scc{flex:1;min-width:0}
 .sct .teamtag,.sct .brtag{flex:none}
-.scwho{position:relative;display:flex;align-items:center;justify-content:center;height:36px}
+.scwho{display:flex;align-items:center;justify-content:center;width:100%;height:36px;border:0;background:none;padding:0;color:inherit}
+button.scwho{cursor:pointer}
 .scwho .avatar{width:26px;height:26px;font-size:10.5px}
 .scwho .avatar.none{background:none;border:1.5px dashed var(--line-strong);color:var(--ink-3);font-size:13px;font-weight:600}
-.scwho select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font:inherit} /* invisible, on top of the avatar: a click opens the list */
-.scwho select:disabled{cursor:default}
-.scwho:focus-within .avatar{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
-.scwho:hover .avatar.none{border-color:var(--accent);color:var(--accent)}
+button.scwho:hover .avatar,button.scwho:focus-visible .avatar,.scwho.on .avatar{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+button.scwho:focus-visible{outline:none}
+button.scwho:hover .avatar.none{border-color:var(--accent);color:var(--accent)}
+.scownpop{width:280px;padding:8px} /* the rock modal's owner field (a picker) in a popover */
 .schelp{display:inline-flex;align-items:center;gap:5px;cursor:help}
 .schelp i{font-style:normal;width:15px;height:15px;border-radius:50%;background:var(--line);color:var(--ink-2);font-size:10.5px;display:inline-flex;align-items:center;justify-content:center}
 .scc{display:block;width:100%;border:0;margin:0;padding:9px 10px;background:transparent;color:var(--ink);font:inherit;font-size:13.5px;outline:none;cursor:cell;text-overflow:ellipsis}
@@ -1843,6 +1844,7 @@ const SC_HISTORY=26; // weeks to scroll back through at least (more when older v
 const SC_FUTURE=10;  // weeks ahead of this week
 let scJump=true;     // after the next render: scroll to this week (set when the view is opened)
 let scMenu=null;     // the ⋯ menu of a row: measurable id
+let scOwn=null;      // the owner popover of a row: measurable id or "new"
 const scOpened=()=>{scJump=true};
 function scWeeks(list){ // oldest first, up to SC_FUTURE weeks ahead
   const cur=mondayOf(TODAY),first=new Date(cur);first.setDate(first.getDate()-7*(SC_HISTORY-1));
@@ -1949,12 +1951,11 @@ function renderScorecard(){
   const edit=canEditScorecard(teamFilter);
   const head=`<div class="viewhead">${viewTitle("Scorecard",teamFilter)}<span class="count">${plural(list.length,"measurable")} · week ${isoWeek(TODAY)}</span></div>`;
   const cell=(id,k,value,can,cls="",extra="")=>`<input class="scc ${cls}" data-sc="${id}" data-k="${k}" value="${esc(value)}" spellcheck="false" autocomplete="off"${can?"":" readonly"}${extra}>`;
-  const owner=(id,unitId,ownerId,can)=>{ // the avatar; the select on top of it is invisible but opens on click (and works with the keyboard)
-    const opts=unitMembers(unitId).sort((a,b)=>a.name.localeCompare(b.name));
-    if(ownerId&&!opts.some(p=>p.id===ownerId)&&person(ownerId))opts.push(person(ownerId)); // a former member stays visible
+  const owner=(id,ownerId,can)=>{ // the avatar; a click opens the owner picker of the rock modal in a popover (scOwnerPop)
     const face=person(ownerId)?avatarHTML(ownerId):`<span class="avatar none">${id==="new"?"+":"?"}</span>`;
-    return `<div class="scwho" data-tip="${esc(person(ownerId)?.name||(id==="new"?"Who: start a new measurable":"Who? Pick an owner"))}">${face}
-      <select data-act="scowner" data-id="${id}" aria-label="Who"${can?"":" disabled"}><option value="">—</option>${opts.map(p=>`<option value="${p.id}" ${p.id===ownerId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div>`;
+    const tip=person(ownerId)?.name||(id==="new"?"Who: start a new measurable":"Who? Pick an owner");
+    return can?`<button class="scwho ${scOwn===id?"on":""}" data-act="scown" data-id="${id}" aria-label="Who: ${esc(tip)}" data-tip="${esc(tip)}">${face}</button>`
+      :`<div class="scwho" data-tip="${esc(tip)}">${face}</div>`;
   };
   const wkCls=k=>k===cur?"cur":k>cur?"fut":"";
   const left=m=>{
@@ -1963,12 +1964,12 @@ function renderScorecard(){
     return `<tr data-row="${m.id}"><td class="c-title"><div class="sct">
         ${can?`<span class="scgrip" data-tip="Drag to reorder" aria-hidden="true">${ICONS.grip}</span>`:`<span class="scgrip off"></span>`}
         ${cell(m.id,"title",m.title,can,"",` placeholder="Name this measurable"`)}${teamTagHTML(m.unitId)}${trackTagsHTML(m)}${idsBtnHTML(m,"measurable")}${menu}</div></td>
-      <td class="c-who">${owner(m.id,m.unitId,m.ownerId,can)}</td>
+      <td class="c-who">${owner(m.id,m.ownerId,can)}</td>
       <td class="c-goal">${cell(m.id,"goal",m.goal||"",can,badGoal?"badgoal":"",` placeholder="—"${badGoal?` data-tip="${esc("Not a goal I understand: "+GOAL_HELP)}"`:""}`)}</td></tr>`;
   };
   const right=m=>{const g=parseGoal(m.goal),can=canEditMeasurable(m);
     return `<tr data-row="${m.id}">${weeks.map(w=>{const k=localISO(w),v=m.values?.[k];return `<td class="c-wk ${wkCls(k)}">${cell(m.id,k,fmtNum(v,g?.fmt),can,scCellCls(m,v))}</td>`}).join("")}</tr>`};
-  const newLeft=edit?`<tr class="scnew" data-row="new"><td class="c-title"><div class="sct"><span class="scgrip off"></span>${cell("new","title","",true,"",` placeholder="+ Add measurable"`)}</div></td><td class="c-who">${owner("new",teamFilter,"",true)}</td><td class="c-goal">${cell("new","goal","",true)}</td></tr>`:"";
+  const newLeft=edit?`<tr class="scnew" data-row="new"><td class="c-title"><div class="sct"><span class="scgrip off"></span>${cell("new","title","",true,"",` placeholder="+ Add measurable"`)}</div></td><td class="c-who">${owner("new","",true)}</td><td class="c-goal">${cell("new","goal","",true)}</td></tr>`:"";
   const newRight=edit?`<tr class="scnew" data-row="new">${weeks.map(w=>`<td class="c-wk ${wkCls(localISO(w))}">${cell("new",localISO(w),"",true)}</td>`).join("")}</tr>`:"";
   const thL=`<tr><th class="c-title">Measurable</th><th class="c-who">Who</th><th class="c-goal"><span class="schelp" data-tip="${esc(GOAL_TIP)}">Goal <i>?</i></span></th></tr>`;
   const thR=`<tr>${weeks.map(w=>{const k=localISO(w);return `<th class="c-wk ${wkCls(k)}" ${k===cur?'aria-current="date"':""}><b>Wk ${isoWeek(w)}</b><span>${fmtDate(k)}</span></th>`}).join("")}</tr>`;
@@ -1978,7 +1979,7 @@ function renderScorecard(){
   const menuM=scMenu&&list.find(m=>m.id===scMenu),idsM=idsOpen?.kind==="measurable"&&list.find(m=>m.id===idsOpen.id);
   return head+empty+`<div class="board rrwrap scwrap" data-keepscroll="${teamFilter}-sc"><table class="sc sc-left"><thead>${thL}</thead><tbody>${list.map(left).join("")}${newLeft}</tbody></table>`
     +`<div class="scroll sc-scroll"><table class="sc sc-right"><thead>${thR}</thead><tbody>${list.map(right).join("")}${newRight}</tbody></table></div></div>`
-    +keys+(menuM?scMenuHTML(menuM):"")+(idsM?idsPopHTML(idsM):"");
+    +keys+(menuM?scMenuHTML(menuM):"")+(idsM?idsPopHTML(idsM):"")+(scOwn&&(scOwn==="new"||list.some(m=>m.id===scOwn))?`<div class="pop scownpop" data-scown>${ownerFieldHTML(false,"scown")}</div>`:"");
 }
 // the ⋯ menu of a row: show it in a meeting (Business Review: rarely needed, so tucked away here) and delete
 function scMenuHTML(m){
@@ -1991,6 +1992,26 @@ function placeScMenu(){
   const r=btn.getBoundingClientRect();pop.style.top=(r.bottom+4)+"px";pop.style.left=Math.max(8,Math.min(r.left,innerWidth-pop.offsetWidth-8))+"px";
 }
 function closeScMenu(){if(scMenu){scMenu=null;render()}}
+/* the Who popover: the same owner field as the rock modal (initOwnerField: a searchable list of the team's members),
+   opened on the avatar; picking someone sets the owner (or, on the empty row, starts a measurable) */
+function placeScOwner(){
+  const pop=$("[data-scown]"),btn=$(".scwho.on");if(!pop||!btn)return;
+  const r=btn.getBoundingClientRect();pop.style.top=(r.bottom+4)+"px";pop.style.left=Math.max(8,Math.min(r.left-8,innerWidth-pop.offsetWidth-8))+"px";
+  const m=scOwn==="new"?null:measurable(scOwn);
+  const field=initOwnerField({id:"scown",unitId:m?.unitId||teamFilter,get:()=>m?.ownerId?[m.ownerId]:[],set:([v])=>setScOwner(v)});
+  const inp=$("#scown-in");
+  inp.addEventListener("keydown",e=>{if(e.key==="Escape")closeScOwner()}); // one Esc closes list and popover
+  inp.addEventListener("blur",()=>setTimeout(()=>{if(scOwn&&!$("[data-scown]")?.contains(document.activeElement))closeScOwner()},150)); // Tab away
+  field.open(); // focus and show the list
+}
+function setScOwner(v){
+  const id=scOwn;scOwn=null;
+  if(id==="new"){const r=scRowIds().length-1;newMeasurable("",v);save();render();scFocus(r,0);return} // then type its name
+  const m=measurable(id);
+  if(m&&v&&m.ownerId!==v){m.ownerId=v;logHist(m,`Owner set to ${personName(v)}`);save()}
+  render();
+}
+function closeScOwner(){if(scOwn){scOwn=null;render()}}
 // the IDS text for a measurable: its name with the latest value against the goal, e.g. "Win rate (24% · goal >= 30%)"
 function measurableToDiscuss(m){
   const g=parseGoal(m.goal),last=Object.keys(m.values||{}).filter(k=>k<=localISO(TODAY)).sort().pop();
@@ -2249,7 +2270,7 @@ function render(){
   if(view==="l10"&&l10Add)$("#app .kcompose textarea")?.focus();
   if(view==="review"){syncReviewRows();restoreReviewScroll()}
   if(view==="scorecard")fitScorecard(scLeft);
-  placeUpdPop();placeIdsPop();placeScMenu();
+  placeUpdPop();placeIdsPop();placeScMenu();placeScOwner();
   savePrefs();writeRoute();
 }
 
@@ -2468,15 +2489,15 @@ const msDateCls=m=>!m.deadline?"empty":m.done?"":isPast(m.deadline)?"over":isSoo
    Owners who aren't in the unit (any more) stay visible, marked. modalState.ownerField = the field of the open modal. */
 const unitMembers=unitId=>S.people.filter(p=>rights.isMember(p,unitId));
 // one owner (rock): the picker shows the owner itself, like the Team field; several (card): chips plus an "Add owner…" picker
-const ownerFieldHTML=multi=>multi?`<div class="owners"><div class="chips" id="f-ownchips"></div>${pickerHTML("f-owneradd")}</div>`:pickerHTML("f-owneradd",{dot:true});
-function initOwnerField({unitId,get,set,multi}){
+const ownerFieldHTML=(multi,id="f-owneradd")=>multi?`<div class="owners"><div class="chips" id="f-ownchips"></div>${pickerHTML(id)}</div>`:pickerHTML(id,{dot:true});
+function initOwnerField({unitId,get,set,multi,id="f-owneradd"}){ // id: the picker's element id (the Scorecard has its own)
   let current=unitId;
   const isIn=id=>rights.isMember(person(id),current);
   const draw=()=>{
     if(multi)$("#f-ownchips").innerHTML=get().filter(person).map(id=>`<span class="ochip">${ownerHTML(id)}${esc(personName(id))}${isIn(id)?"":` <span class="muted">(not in this team)</span>`}<button data-m="ownerdel" data-id="${id}" aria-label="Remove ${esc(personName(id))}">×</button></span>`).join("");
     picker.refresh();
   };
-  const picker=initPicker("f-owneradd",{allowNone:false,noun:"members",placeholder:multi?"Add owner…":"Choose owner…",
+  const picker=initPicker(id,{allowNone:false,noun:"members",placeholder:multi?"Add owner…":"Choose owner…",
     get:()=>multi?"":get()[0]||"",
     display:id=>multi?"":personName(id)+(isIn(id)?"":" (not in this team)"),
     dotColor:id=>person(id)?.color,
@@ -2487,6 +2508,7 @@ function initOwnerField({unitId,get,set,multi}){
   return {
     remove:id=>{set(get().filter(x=>x!==id));draw()},
     setUnit:id=>{current=id;draw()}, // the item moved to another team: offer that team's members
+    open:()=>picker.open(),
   };
 }
 function drawRockModalReadOnly(){
@@ -2703,7 +2725,7 @@ function initPicker(id,{get,set,groups,emptyText,display,dotOf,dotColor,noun="it
   list.addEventListener("mousedown",e=>{const it=e.target.closest(".item");if(!it)return;e.preventDefault();pick(it.dataset.id)});
   inp.addEventListener("blur",()=>setTimeout(()=>{if(box.offsetParent)close()},120)); // skip if the modal was closed (hidden) meanwhile
   setLabel();
-  return {refresh:()=>{if(isOpen())draw();setLabel()}};
+  return {refresh:()=>{if(isOpen())draw();setLabel()},open:()=>{inp.focus();if(!isOpen())open()}}; // open: e.g. a picker shown in a popover
 }
 const byLevelTitle=(a,b)=>LEVELS.indexOf(goalLevel(a))-LEVELS.indexOf(goalLevel(b))||az(a,b);
 function initGoalPicker(id,{get,set,groups,emptyText}){
@@ -2902,6 +2924,7 @@ const APP_ACTIONS={
   },
   pickteam:(b,id)=>{teamFilter=id;l10Add=null;rrScroll=null;scJump=true;render()},
   scmenu:(b,id)=>{scMenu=scMenu===id?null:id;idsOpen=null;render()},
+  scown:(b,id)=>{scOwn=scOwn===id?null:id;scMenu=null;idsOpen=null;render()},
   sctrack:b=>{ // show a measurable in a meeting (Business Review), or stop showing it
     const m=measurable(b.dataset.id),f=unit(b.dataset.f);if(!m||!f)return;
     const on=(m.trackIn||[]).includes(f.id);
@@ -2975,13 +2998,6 @@ const APP_CHANGES={
     const p=person(el.dataset.id);if(myRole()!=="admin"){render();return viewOnly()} // only admins grant admin
     if(el.checked)p.admin=true;else delete p.admin;
     save();render();toast(el.checked?`${p.name} is now an admin`:`${p.name} is no longer an admin`);
-  },
-  scowner:el=>{
-    if(el.dataset.id==="new"){ // the empty row: picking its Who starts a measurable; then type its name
-      if(!el.value)return;
-      const r=scRowIds().length-1;newMeasurable("",el.value);save();render();scFocus(r,0);return;
-    }
-    const m=measurable(el.dataset.id);if(m.ownerId!==el.value){m.ownerId=el.value;logHist(m,el.value?`Owner set to ${personName(el.value)}`:"Owner removed");save()}render();
   },
   levelfilter:el=>{el.checked?levelFilter.add(el.value):levelFilter.delete(el.value);render()},
   year:el=>{planYear=Number(el.value);render()},
@@ -3173,6 +3189,7 @@ document.addEventListener("mousedown",e=>{ // clicking outside closes the status
   if(updOpen&&!e.target.closest("[data-pop]")&&!e.target.closest('[data-act="addupd"]'))closeUpdPop();
   if(idsOpen&&!e.target.closest("[data-idspop]")&&!e.target.closest('[data-act="idsopen"]'))closeIdsPop();
   if(scMenu&&!e.target.closest("[data-scmenu]")&&!e.target.closest(".scdots"))closeScMenu();
+  if(scOwn&&!e.target.closest("[data-scown]")&&!e.target.closest(".scwho"))closeScOwner();
 });
 document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el!==tipEl)el?showTip(el):hideTip()});
 document.addEventListener("scroll",e=>{ // capture: also scrolls inside elements
@@ -3235,7 +3252,7 @@ function showWaiting(){
   setInterval(async()=>{if(!document.hidden&&!await backend.stillWaiting().catch(()=>true))location.reload()},30000);
 }
 /* other people's changes: picked up when you come back to the tab and every minute, but only while you aren't editing */
-const isIdle=()=>!!S&&backend.kind!=="local"&&!document.hidden&&!modalState&&!updOpen&&!idsOpen&&!scMenu&&!l10Add&&!stMenu.btn&&!dragId&&!orgDrag
+const isIdle=()=>!!S&&backend.kind!=="local"&&!document.hidden&&!modalState&&!updOpen&&!idsOpen&&!scMenu&&!scOwn&&!l10Add&&!stMenu.btn&&!dragId&&!orgDrag
   &&!$("#cbackdrop").classList.contains("open")&&!$("#lightbox").classList.contains("open")
   &&!document.activeElement?.matches("input,textarea,select,[contenteditable]")&&!backend.pending();
 async function refreshFromServer(){
