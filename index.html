@@ -485,6 +485,8 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .swatches{display:flex;gap:8px;flex-wrap:wrap}
 .swatch{width:28px;height:28px;border-radius:50%;border:0;cursor:pointer;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
 .swatch.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
+.swatch.custom{position:relative;display:inline-block;background:conic-gradient(#D93B4F,#E29A1C,#19A974,#1F8FD1,#7C4DFF,#C2185B,#D93B4F)} /* any colour: the native picker, invisible on top */
+.swatch.custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
 .pfunits{display:flex;flex-wrap:wrap;gap:6px}
 .pfunits .teamtag{margin-left:0}
 .profile .row{display:flex;gap:8px}
@@ -2230,7 +2232,8 @@ function renderProfile(){
     <div class="field"><label for="pf-n">Name</label><input id="pf-n" data-pf="name" value="${esc(d.name)}" maxlength="100" autocomplete="name"></div>
     <div class="field"><label for="pf-i">Initials <span class="muted">· up to 3 letters; empty = from your name</span></label>
       <input id="pf-i" data-pf="initials" value="${esc(d.initials)}" maxlength="3" placeholder="${esc(initials(preview.name))}" class="pfinit"></div>
-    <div class="field"><label>Colour</label><div class="swatches">${PROFILE_COLORS.map(c=>`<button type="button" class="swatch ${c===d.color?"on":""}" data-act="pfcolor" data-color="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c===d.color}"></button>`).join("")}</div></div>
+    <div class="field"><label>Colour</label><div class="swatches">${PROFILE_COLORS.map(c=>`<button type="button" class="swatch ${c===d.color?"on":""}" data-act="pfcolor" data-color="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c===d.color}"></button>`).join("")}
+      <label class="swatch custom ${PROFILE_COLORS.includes(d.color)?"":"on"}" data-tip="Any other colour" style="${PROFILE_COLORS.includes(d.color)?"":`background:${esc(d.color)}`}"><input type="color" data-pf="color" value="${esc(d.color)}" aria-label="Choose any colour"></label></div></div>
     <div class="field"><label>Teams and meetings</label><div class="pfunits">${units.map(u=>`<span class="teamtag">${esc(u.name)}</span>`).join("")||`<span class="muted">None yet</span>`}</div></div>
     <div class="row"><button class="btn primary" data-act="pfsave" ${dirty?"":"disabled"}>Save</button><button class="btn ghost" data-act="pfreset" ${dirty?"":"disabled"}>Undo changes</button></div>
   </div>`;
@@ -2243,6 +2246,11 @@ function profileInput(el){
   const preview={...p,name:d.name.trim()||p.name,initials:d.initials,color:d.color};
   $("#pf-avatar").textContent=personInitials(preview);$("#pf-name").textContent=preview.name;
   $("#pf-i").placeholder=initials(preview.name);
+  if(el.dataset.pf==="color"){ // the colour picker: preview, and mark it (not a standard swatch) as chosen
+    $("#pf-avatar").style.background=d.color;
+    $$(".swatches .swatch").forEach(s=>s.classList.toggle("on",s.classList.contains("custom")?!PROFILE_COLORS.includes(d.color):s.dataset.color===d.color));
+    const c=$(".swatch.custom");c.style.background=PROFILE_COLORS.includes(d.color)?"":d.color;
+  }
   $$('[data-act="pfsave"],[data-act="pfreset"]').forEach(b=>b.disabled=!profileDirty(p,d));
 }
 function saveProfile(){
