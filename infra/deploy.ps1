@@ -36,8 +36,13 @@ if (-not $AllowedEmailDomains -and -not $AllowedEmails) {
 }
 if ($EntraClientId -and -not $EntraTenantId) { throw '-EntraClientId needs -EntraTenantId as well.' }
 
-Write-Host "Resource group $ResourceGroup ($Location)..."
-Invoke-Az group create --name $ResourceGroup --location $Location --output none
+# an existing group is used as it is: re-creating it would drop its tags (and policies may require tags, e.g. 'Team')
+if ((Invoke-Az group exists --name $ResourceGroup) -eq 'true') {
+  Write-Host "Resource group $ResourceGroup exists: using it."
+} else {
+  Write-Host "Resource group $ResourceGroup ($Location)..."
+  Invoke-Az group create --name $ResourceGroup --location $Location --output none
+}
 
 $params = @("env=$Env", "location=$Location")
 if ($Sku) { $params += "sku=$Sku" }
