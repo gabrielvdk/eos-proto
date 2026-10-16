@@ -751,9 +751,11 @@ const DATA_VERSION=12;
 /* ---------- sample data (only used when this browser has no saved data) ---------- */
 const DEMO_YEAR=2026; // the sample content is written for this year
 const d=(m,day,y=DEMO_YEAR)=>`${y}-${pad2(m)}-${pad2(day)}`;
+// sample and starting records get fixed ids (not random ones), so a first save that was interrupted can be completed later
+const seedId=(prefix,name)=>`${prefix}-${name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}`;
 function seedOrg(){
   const units=[];
-  const add=(kind,name,parentId=null,extra={})=>{const u={id:uid(),kind,name,parentId,rank:units.length,...extra};units.push(u);return u};
+  const add=(kind,name,parentId=null,extra={})=>{const u={id:seedId("u",name),kind,name,parentId,rank:units.length,...extra};units.push(u);return u};
   add("company","Hoogendoorn");
   [
     ["Product & Technology",["Data Science","Research","LG Dev","IIVO Dev","Hardware","Controls"]],
@@ -773,7 +775,7 @@ function seed(){
   const units=seedOrg(),U=name=>units.find(u=>u.name===name).id;
   const add=(kind,name,parentId,extra={})=>{ // management teams go first in their department
     const sib=units.filter(u=>u.kind===kind&&u.parentId===parentId);
-    units.push({id:uid(),kind,name,parentId,rank:sib.length?Math.min(...sib.map(u=>u.rank))-1:units.length,...extra});
+    units.push({id:seedId("u",name),kind,name,parentId,rank:sib.length?Math.min(...sib.map(u=>u.rank))-1:units.length,...extra});
   };
   add("team","Sales MT",U("Sales"));
   add("team","Product & Technology MT",U("Product & Technology"));
@@ -935,7 +937,7 @@ function seedCards(U){
     C("Research","ids","Which customer greenhouses for the field trial?","",[],9,"c9"),
     C("Research","todo","Ask Sales for two trial customers","",["p8"],9,"p8"),
     C("Research","done","Finish the literature review","",["c10"],1,"c10"),
-  ].map((c,i)=>({...c,rank:i}));
+  ].map((c,i)=>({...c,id:`k${i+1}`,rank:i})); // fixed ids, see seedId
 }
 
 /* Scorecard rows for the persona teams: 12 weeks of numbers up to last week (this week is still to be filled in).
@@ -982,7 +984,7 @@ function seedMeasurables(U){
     M("Data Science","Model accuracy","p7",">= 80%",79,5),
     M("Research","Test runs on the rig","p8","5+",5,3),
     M("Research","Lab hours used","c9","30-40",35,9),
-  ].map((m,i)=>({...m,rank:i}));
+  ].map((m,i)=>({...m,id:`m${i+1}`,rank:i})); // fixed ids, see seedId
 }
 /* ---------- migration ----------
    Brings data of any older shape up to DATA_VERSION. It runs on every load in every backend; on Azure the first visit
@@ -1155,10 +1157,15 @@ function createRemoteBackend(kind,transport,config){
     if(json.meta)take("meta",json.meta);
     SYNCED.forEach(c=>(json[c]||[]).forEach(rec=>take(c,rec)));
     let data;
-    if(!json.meta&&!json.units.length){ // empty database: start with the organisation (plus sample content where SEED=sample)
-      data=config.seed==="sample"?seed():{version:DATA_VERSION,people:[],units:seedOrg(),goals:[],rocks:[],cards:[],measurables:[]};
-      data.people=[...json.people,...data.people];
-    }else data={version:json.meta?.version??DATA_VERSION,...Object.fromEntries(SYNCED.map(c=>[c,json[c]||[]]))};
+    if(!json.meta){ // a new database, or one whose first save was interrupted (the data version is stored last, after everything else):
+      // start from the organisation (plus sample content where SEED=sample) and keep what is stored already, so the next save
+      // completes it. Starting records have fixed ids (seedId), so nothing is duplicated.
+      const base=config.seed==="sample"?seed():{people:[],units:seedOrg(),goals:[],rocks:[],cards:[],measurables:[]};
+      data={version:DATA_VERSION,...Object.fromEntries(SYNCED.map(c=>{
+        const stored=json[c]||[],ids=new Set(stored.map(r=>r.id));
+        return [c,[...stored,...(base[c]||[]).filter(r=>!ids.has(r.id))]];
+      }))};
+    }else data={version:json.meta.version??DATA_VERSION,...Object.fromEntries(SYNCED.map(c=>[c,json[c]||[]]))};
     return {data:prepareData(migrate(data)),sync,tags,meId:json.meId,adminEmails:json.adminEmails||[]}; // migrated records differ from `sync`, so save() stores them
   }
   function adopt(snap){
