@@ -471,6 +471,40 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .lightbox.open{display:flex}
 .lightbox img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:var(--shadow);background:#fff}
 
+/* the logo + name: a button to Home */
+.brandlink{display:inline-flex;align-items:center;gap:10px;border:0;background:none;padding:4px 8px 4px 4px;margin-left:-4px;border-radius:10px;font:inherit;color:inherit;cursor:pointer}
+.brandlink:hover,.brandlink.on{background:var(--canvas)}
+/* View as (admins): a bar above the view while you see the app as someone else */
+.viewasbar{display:flex;align-items:center;gap:10px;margin:-6px 0 14px;padding:8px 12px;border-radius:12px;background:var(--amber-soft);border:1px solid var(--amber);color:var(--ink)}
+.viewasbar span:not(.avatar){flex:1}
+.padm{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+/* Home */
+.home .hgrid{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:18px;align-items:start}
+@media (max-width:1100px){.home .hgrid{grid-template-columns:1fr}}
+.hsec{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3)}
+.hboards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.hboard header{display:flex;align-items:center;gap:8px;padding:12px 14px 8px}
+.hboard header h2{margin:0;font-size:16px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hboard header .dot,.hlist .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.hkind{font-size:11.5px;color:var(--ink-3);font-weight:600}
+.hlinks{display:grid;padding:0 6px 6px}
+.hlink{display:flex;align-items:baseline;gap:10px;border:0;background:none;text-align:left;padding:8px;border-radius:8px;font:inherit;color:var(--ink);cursor:pointer}
+.hlink:hover{background:var(--accent-soft)}
+.hlink b{width:100px;flex:none;font-size:13.5px}
+.hlink span{font-size:12.5px;color:var(--ink-2)}
+.hlink span.warn{color:var(--red);font-weight:600}
+.hside{display:grid;gap:12px}
+.hlist header{display:flex;align-items:center;gap:8px;padding:12px 14px 6px}
+.hlist header h2{margin:0;font-size:15px}
+.hlist header .n{font-size:12px;color:var(--ink-3);font-weight:600}
+.hitem{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;border:0;border-top:1px solid var(--line);background:none;padding:9px 14px;text-align:left;font:inherit;color:var(--ink);cursor:pointer}
+.hitem:hover{background:var(--canvas)}
+.hitem .tt{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hitem .hwhere{font-size:12px;color:var(--ink-3);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.hitem .prog{width:80px}
+.stdot{width:10px;height:10px;border-radius:50%;background:var(--grey-pill)}
+.hnone{margin:0;padding:10px 14px 14px;font-size:13px}
+.hmore{display:block;width:100%;border:0;border-top:1px solid var(--line);background:none;padding:8px 14px;text-align:left;color:var(--accent);font:inherit;font-size:13px;cursor:pointer}
 /* top bar: your avatar (and name) open the Profile page */
 .mebtn{display:inline-flex;align-items:center;gap:8px;border:0;background:none;padding:3px 6px 3px 3px;border-radius:999px;color:var(--ink);font:inherit;cursor:pointer}
 .mebtn:hover{background:var(--canvas)}
@@ -644,8 +678,8 @@ try{const t=localStorage.getItem("eos-theme");if(t==="light"||t==="dark")documen
 
 <div class="topbar">
   <div class="brand">
-    <svg viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M4 18 L9 7 L14 13 L18 9 L23 18 Z" fill="var(--green)"/><path d="M2 20h22" stroke="var(--ink-3)" stroke-width="2" stroke-linecap="round"/></svg>
-    EOS Tracker
+    <button class="brandlink" id="homeBtn" title="Home"><svg viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M4 18 L9 7 L14 13 L18 9 L23 18 Z" fill="var(--green)"/><path d="M2 20h22" stroke="var(--ink-3)" stroke-width="2" stroke-linecap="round"/></svg>
+    EOS Tracker</button>
     <span class="envtag" id="envTag" hidden></span>
   </div>
   <div class="tabs" role="tablist">
@@ -1095,7 +1129,11 @@ const PREFS_KEY="eos-tracker-prefs";
 const THEME_KEY="eos-theme";
 let S;       // all shared data (see "data model")
 let backend; // localBackend or a remote backend (api / mock)
-const save=()=>backend.save(); // call after every change to S
+let viewAsWarned=0;
+const save=()=>{ // call after every change to S
+  if(viewAs){if(Date.now()-viewAsWarned>4000){viewAsWarned=Date.now();toast(`Viewing as ${personName(session.userId)}: changes aren't saved`,3000)}return false}
+  return backend.save();
+};
 
 /* local: localStorage */
 let storageProblem=null; // set when saving must not happen (unreadable data) or failed while moving old data
@@ -1333,7 +1371,7 @@ function writeRoute(){
 }
 
 /* ---------- ui state (per viewer; teamFilter, quarter and year are remembered in prefs) ---------- */
-let view="plan";            // plan | rocks | review | l10 | scorecard | todos | org | profile (no tab: your name in the top bar)
+let view="home";            // home (the logo) | plan | rocks | review | l10 | scorecard | todos | org | profile (no tab: your name in the top bar)
 let planMode="list";        // One Year Plan: list | tree
 let planYear;               // One Year Plan year
 let quarterFilter;          // Rocks and Rock Review quarter
@@ -2271,6 +2309,71 @@ function saveProfile(){
 }
 const openProfile=()=>{profileDraft=null;view="profile";render()};
 
+/* ---------- Home (click the logo; also where the app opens): your to-dos and rocks, and quick links to the boards you're in ----------
+   Boards = the teams and meetings you are a direct member of (that have a board you may use), each with Level 10, Scorecard
+   and Rock Review, and a few numbers. */
+function renderHome(){
+  const p=me();if(!p)return `<div class="empty">No profile.</div>`;
+  const hour=new Date().getHours(),hello=hour<12?"Good morning":hour<18?"Good afternoon":"Good evening";
+  const q=quarterOf(TODAY),lastWk=(()=>{const x=mondayOf(TODAY);x.setDate(x.getDate()-7);return localISO(x)})();
+  const boards=S.units.filter(u=>(p.unitIds||[]).includes(u.id)&&boardOk(u.id));
+  const myCards=S.cards.filter(c=>c.column!=="done"&&(c.owners||[]).includes(p.id)&&boardOk(c.unitId))
+    .sort((a,b)=>COLS.findIndex(x=>x.key===a.column)-COLS.findIndex(x=>x.key===b.column)||byRank(a,b));
+  const myRocks=S.rocks.filter(r=>r.quarter===q&&r.ownerId===p.id&&rights.canSeeRock(p,r)&&r.status!=="cancelled");
+  const boardCard=u=>{
+    const open=S.cards.filter(c=>c.unitId===u.id&&c.column!=="done"),ids=open.filter(c=>c.column==="ids").length;
+    const ms=S.measurables.filter(m=>rights.canSeeMeasurable(p,m)&&scMatches(m,u.id));
+    const off=ms.filter(m=>scCellCls(m,m.values?.[lastWk])==="bad").length;
+    const rocks=S.rocks.filter(r=>r.quarter===q&&rights.canSeeRock(p,r)&&rockMatches(r,u.id));
+    const offRocks=rocks.filter(r=>["off_track","escalate"].includes(r.status)).length;
+    const kind=u.kind==="forum"?(u.private?"Private meeting":"Meeting"):"Team";
+    const link=(to,label,stat,warn)=>`<button class="hlink" data-act="goto" data-id="${u.id}" data-to="${to}"><b>${label}</b><span class="${warn?"warn":""}">${stat}</span></button>`;
+    return `<section class="board hboard"><header><span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span><h2>${esc(u.name)}</h2><span class="hkind">${kind}</span></header>
+      <div class="hlinks">
+        ${link("l10","Level 10",open.length?`${plural(ids,"issue")} · ${open.length-ids} to do`:"Nothing open")}
+        ${link("scorecard","Scorecard",ms.length?(off?`${off} off goal last week`:`${plural(ms.length,"measurable")}`):"Not set up yet",off>0)}
+        ${link("review","Rock Review",rocks.length?(offRocks?`${offRocks} of ${rocks.length} off track`:`${plural(rocks.length,"rock")} on track`):`No rocks in ${q}`,offRocks>0)}
+      </div></section>`;
+  };
+  const todo=c=>`<button class="hitem" data-act="editcard" data-id="${c.id}"><span class="colpill c-${c.column}">${esc(colLabel(c.column))}</span><span class="tt">${esc(c.title)}</span><span class="hwhere">${esc(unitName(c.unitId))}</span></button>`;
+  const rockItem=r=>`<button class="hitem" data-act="editrock" data-id="${r.id}"><span class="stdot ${statusOf(r.status).cls}" data-tip="${esc(statusOf(r.status).label)}"></span><span class="tt">${esc(r.title)}</span>${progressHTML(r)}</button>`;
+  const MAX=8;
+  return `<div class="home">
+    <div class="viewhead"><h1>${hello}${p.name?`, ${esc(p.name.split(" ")[0])}`:""}</h1><span class="count">Week ${isoWeek(TODAY)} · ${q}</span></div>
+    <div class="hgrid">
+      <div class="hmain">
+        <h3 class="hsec">Your teams and meetings</h3>
+        ${boards.length?`<div class="hboards">${boards.map(boardCard).join("")}</div>`
+          :`<div class="board empty"><b>You're not in a team or meeting yet</b>Ask a colleague to add you under Organisation → People.</div>`}
+      </div>
+      <aside class="hside">
+        <section class="board hlist"><header><h2>My to-dos</h2><span class="n">${myCards.length}</span><div class="spacer"></div>${myCards.length?`<button class="btn ghost sm" data-act="gotodos">All →</button>`:""}</header>
+          ${myCards.slice(0,MAX).map(todo).join("")||`<p class="muted hnone">Nothing assigned to you.</p>`}
+          ${myCards.length>MAX?`<button class="hmore" data-act="gotodos">${myCards.length-MAX} more…</button>`:""}</section>
+        <section class="board hlist"><header><h2>My rocks</h2><span class="n">${myRocks.length}</span><span class="muted">${q}</span></header>
+          ${myRocks.map(rockItem).join("")||`<p class="muted hnone">No rocks of yours in ${q}.</p>`}</section>
+      </aside>
+    </div></div>`;
+}
+
+/* ---------- View as (admins, on Azure and the mock API): see the app through someone else's eyes, read only ----------
+   You only see what the server sent you (an admin gets everything except private meetings' content and hidden goals), now
+   filtered by their rights. Nothing is saved meanwhile (save() is blocked); Stop puts back the data as it was. */
+let viewAs=null; // {realId, snapshot} while viewing as someone: session.userId is that person
+function startViewAs(id){
+  if(viewAs||myRole()!=="admin"||id===session.userId)return;
+  viewAs={realId:session.userId,snapshot:JSON.stringify(S)};
+  session.userId=id;profileDraft=null;teamFilter="";view="home";
+  render();drawTopBar();toast(`Viewing as ${personName(id)}: read only`,3000);
+}
+function stopViewAs(){
+  if(!viewAs)return;
+  const {realId,snapshot}=viewAs;viewAs=null;
+  S=JSON.parse(snapshot);session.userId=realId;refreshRights(); // anything changed meanwhile was never saved: drop it
+  teamFilter="";view="org";orgTab="people";render();drawTopBar();
+}
+const viewAsBarHTML=()=>viewAs?`<div class="viewasbar">${avatarHTML(session.userId)}<span>Viewing as <b>${esc(personName(session.userId))}</b> · read only, nothing you change is saved</span><button class="btn sm" data-act="stopviewas">Stop</button></div>`:"";
+
 /* ---------- Organisation (admins only): one page with two tabs, the org tree and the people ----------
    Changes go through save() like everything else; the server only accepts them from admins. */
 let orgTab="structure"; // structure | people
@@ -2324,7 +2427,9 @@ function renderPeople(){
   const adminCell=p=>{
     const always=isAlwaysAdmin(p),admin=roleOf(p)==="admin";
     if(!iAmAdmin)return admin?`<span class="pill adminpill" ${always?'data-tip="Always admin (ADMIN_EMAILS setting)"':""}>Admin</span>`:"<span></span>";
-    return `<label class="chkrow" ${always?'data-tip="Always admin (ADMIN_EMAILS setting)"':""}><input type="checkbox" data-act="admin" data-id="${p.id}" ${admin?"checked":""} ${always?"disabled":""}>Admin</label>`;
+    const viewAsBtn=backend.kind!=="local"&&!viewAs&&p.id!==session.userId&&roleOf(p)!=="pending" // local mode: use "You" in the top bar
+      ?`<button class="btn ghost sm" data-act="viewas" data-id="${p.id}" data-tip="See EOS Tracker as ${esc(p.name)} sees it (read only)">View as</button>`:"";
+    return `<div class="padm">${viewAsBtn}<label class="chkrow" ${always?'data-tip="Always admin (ADMIN_EMAILS setting)"':""}><input type="checkbox" data-act="admin" data-id="${p.id}" ${admin?"checked":""} ${always?"disabled":""}>Admin</label></div>`;
   };
   const personRow=p=>`<div class="prow ${roleOf(p)==="pending"?"waiting":""}">
       ${avatarHTML(p.id)}
@@ -2386,7 +2491,7 @@ const waitingHTML=(name,email,hint)=>`<div class="board gate"><h1>Welcome, ${esc
   <p class="muted">${esc(hint)}</p></div>`;
 
 /* ---------- render ---------- */
-const VIEWS={plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10,scorecard:renderScorecard,todos:renderTodos,org:renderOrgPage,profile:renderProfile};
+const VIEWS={home:renderHome,plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10,scorecard:renderScorecard,todos:renderTodos,org:renderOrgPage,profile:renderProfile};
 const ADMIN_VIEWS=[]; // none any more: the organisation manages itself (everyone sees it, edits follow rights)
 function render(){
   if(!S)return; // still loading, or stopped at a "no access" / error screen
@@ -2405,13 +2510,14 @@ function render(){
   if(ADMIN_VIEWS.includes(view)&&role!=="admin")view="plan";
   const scrolls=$$("[data-keepscroll]").map(el=>[el.dataset.keepscroll,el.scrollTop]); // lists that scroll inside a panel keep their place
   const scLeft=$(".sc-scroll")?.scrollLeft??0; // Scorecard: keeps its horizontal place across re-renders
-  app.innerHTML=VIEWS[view]();
+  app.innerHTML=viewAsBarHTML()+VIEWS[view]();
   scrolls.forEach(([k,top])=>{const el=$(`[data-keepscroll="${k}"]`);if(el)el.scrollTop=top});
   fitL10();
   app.classList.toggle("wide",view!=="plan");
   tfPicker?.refresh(); // views can change teamFilter (e.g. the Level 10 team picker)
   $("#tf").classList.toggle("active",!!teamFilter);
   $$(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===view));
+  $("#homeBtn").classList.toggle("on",view==="home");
   if(view==="l10"&&l10Add)$("#app .kcompose textarea")?.focus();
   if(view==="review"){syncReviewRows();restoreReviewScroll()}
   if(view==="scorecard")fitScorecard(scLeft);
@@ -3072,6 +3178,10 @@ const APP_ACTIONS={
   pfcolor:b=>{if(profileDraft){profileDraft.color=b.dataset.color;render()}},
   pfsave:()=>saveProfile(),
   pfreset:()=>{profileDraft=null;render()},
+  goto:(b,id)=>{const to=b.dataset.to;teamFilter=id;view=to;rrScroll=null;if(to==="scorecard")scOpened();if(to==="review")quarterFilter=quarterOf(TODAY);render()},
+  gotodos:()=>{view="todos";render()},
+  viewas:(b,id)=>startViewAs(id),
+  stopviewas:()=>stopViewAs(),
   closeboard:()=>{teamFilter="";l10Add=null;updOpen=null;idsOpen=null;scMenu=null;scOwn=null;render()},
   scmenu:(b,id)=>{scMenu=scMenu===id?null:id;idsOpen=null;render()},
   scown:(b,id)=>{scOwn=scOwn===id?null:id;scMenu=null;idsOpen=null;render()},
@@ -3193,6 +3303,7 @@ const MODAL_ACTIONS={
   carddel:deleteCard,
 };
 
+$("#homeBtn").addEventListener("click",()=>{hideTip();view="home";render()}); // the logo: Home
 $("#userBox").addEventListener("click",e=>{if(e.target.closest("[data-profile]")){hideTip();openProfile()}}); // your avatar / name in the top bar
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{view=t.dataset.view;if(view==="review")rrScroll=null;if(view==="scorecard")scOpened();render()}));
 $("#app").addEventListener("click",e=>{
@@ -3365,7 +3476,7 @@ document.addEventListener("visibilitychange",()=>{ // back to this tab: pick up 
   refreshFromServer();
 });
 window.addEventListener("hashchange",()=>{if(!S)return;applyRoute();render()}); // a link or bookmark to another tab or team
-window.addEventListener("beforeunload",e=>{if(backend?.pending()){e.preventDefault();e.returnValue=""}}); // changes still being sent
+window.addEventListener("beforeunload",e=>{if(!viewAs&&backend?.pending()){e.preventDefault();e.returnValue=""}}); // changes still being sent
 $("#themeBtn").addEventListener("click",()=>{
   const next=isDark()?"light":"dark";document.documentElement.dataset.theme=next;
   try{localStorage.setItem(THEME_KEY,next)}catch(e){}
@@ -3407,7 +3518,7 @@ function showWaiting(){
   setInterval(async()=>{if(!document.hidden&&!await backend.stillWaiting().catch(()=>true))location.reload()},30000);
 }
 /* other people's changes: picked up when you come back to the tab and every minute, but only while you aren't editing */
-const isIdle=()=>!!S&&backend.kind!=="local"&&!document.hidden&&!modalState&&!updOpen&&!idsOpen&&!scMenu&&!scOwn&&!l10Add&&!stMenu.btn&&!dragId&&!orgDrag
+const isIdle=()=>!!S&&!viewAs&&backend.kind!=="local"&&!document.hidden&&!modalState&&!updOpen&&!idsOpen&&!scMenu&&!scOwn&&!l10Add&&!stMenu.btn&&!dragId&&!orgDrag
   &&!$("#cbackdrop").classList.contains("open")&&!$("#lightbox").classList.contains("open")
   &&!document.activeElement?.matches("input,textarea,select,[contenteditable]")&&!backend.pending();
 async function refreshFromServer(){
