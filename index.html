@@ -131,6 +131,7 @@ select.ctl.sm{padding:3px 8px;font-size:12.5px;font-weight:500;border-radius:7px
 .btn.danger{color:var(--red)}
 .btn.danger-solid{background:var(--red);border-color:var(--red);color:#fff}
 .btn.danger-solid:hover{filter:brightness(1.07);background:var(--red)}
+.btn:disabled{opacity:.45;cursor:default;pointer-events:none} /* e.g. Save on the Profile page while nothing changed */
 .btn.sm{padding:4px 9px;font-size:13px}
 .btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
 .btn.ghost:hover{background:var(--canvas);color:var(--ink)}
@@ -470,6 +471,47 @@ table.tree .pill{padding:2px 9px;font-size:12px}
 .lightbox.open{display:flex}
 .lightbox img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:var(--shadow);background:#fff}
 
+/* top bar: your avatar (and name) open the Profile page */
+.mebtn{display:inline-flex;align-items:center;gap:8px;border:0;background:none;padding:3px 6px 3px 3px;border-radius:999px;color:var(--ink);font:inherit;cursor:pointer}
+.mebtn:hover{background:var(--canvas)}
+.mebtn .avatar{width:28px;height:28px;font-size:11.5px}
+/* Profile page */
+.profile{max-width:560px;padding:20px 22px;display:grid;gap:16px}
+.pfhead{display:flex;align-items:center;gap:14px}
+.avatar.big{width:56px;height:56px;font-size:20px}
+.pfname{font-family:var(--font-title);font-size:20px;font-weight:700}
+.profile .field input{max-width:360px}
+.profile .field input.pfinit{width:110px;text-transform:uppercase;letter-spacing:.05em}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatch{width:28px;height:28px;border-radius:50%;border:0;cursor:pointer;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+.swatch.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
+.pfunits{display:flex;flex-wrap:wrap;gap:6px}
+.pfunits .teamtag{margin-left:0}
+.profile .row{display:flex;gap:8px}
+/* To-dos: your Level 10 items, per board */
+.todopage{max-width:1100px}
+.todos{display:grid;gap:14px}
+.todogrp header{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.todogrp header h2{margin:0;font-size:15px}
+.todogrp header .dot{width:8px;height:8px;border-radius:50%}
+.todogrp header .n{font-size:12px;color:var(--ink-3);font-weight:600}
+.todolist{display:grid}
+.todo{display:grid;grid-template-columns:64px minmax(0,1fr) auto auto 64px;align-items:center;gap:12px;width:100%;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 14px;text-align:left;font:inherit;color:var(--ink);cursor:pointer}
+.todo:last-child{border-bottom:0}
+.todo:hover{background:var(--canvas)}
+.todo .tt{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.todo.isdone .tt{color:var(--ink-2);text-decoration:line-through}
+.todo .tlast{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--ink-3)}
+.todo .tlast svg{width:14px;height:14px}
+.todo .tothers{display:inline-flex}
+.todo .tothers .avatar{width:22px;height:22px;font-size:10px;margin-left:-5px;box-shadow:0 0 0 2px var(--surface)}
+.todo .tdate{font-size:12px;color:var(--ink-3);text-align:right;white-space:nowrap}
+.colpill{font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;text-align:center;white-space:nowrap}
+.colpill.c-ids{background:var(--amber-soft);color:var(--amber)}
+.colpill.c-todo{background:var(--accent-soft);color:var(--accent)}
+.colpill.c-done{background:var(--green-soft);color:var(--green-deep)}
+.viewhead .check{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);cursor:pointer}
+.viewhead .check input{accent-color:var(--accent)}
 /* scorecard (a spreadsheet: every cell is an input). Like Rock Review: two tables side by side, measurable · who · goal
    stay put (.sc-left) and only the weeks scroll (.sc-right inside .sc-scroll); rows are synced in fitScorecard */
 .scwrap{display:flex;align-items:flex-start}
@@ -610,6 +652,7 @@ try{const t=localStorage.getItem("eos-theme");if(t==="light"||t==="dark")documen
     <button class="tab" role="tab" data-view="l10" aria-selected="false">Level 10</button>
     <button class="tab" role="tab" data-view="scorecard" aria-selected="false">Scorecard</button>
     <button class="tab" role="tab" data-view="review" aria-selected="false">Rock Review</button>
+    <button class="tab" role="tab" data-view="todos" aria-selected="false">To-dos</button>
     <button class="tab" role="tab" data-view="org" aria-selected="false" hidden>Organisation</button>
   </div>
   <div class="spacer"></div>
@@ -1280,7 +1323,7 @@ function writeRoute(){
 }
 
 /* ---------- ui state (per viewer; teamFilter, quarter and year are remembered in prefs) ---------- */
-let view="plan";            // plan | rocks | review | l10 | scorecard | org
+let view="plan";            // plan | rocks | review | l10 | scorecard | todos | org | profile (no tab: your name in the top bar)
 let planMode="list";        // One Year Plan: list | tree
 let planYear;               // One Year Plan year
 let quarterFilter;          // Rocks and Rock Review quarter
@@ -1309,7 +1352,8 @@ const rock=id=>S.rocks.find(r=>r.id===id);
 const card=id=>S.cards.find(c=>c.id===id);
 const person=id=>S.people.find(p=>p.id===id);
 const personName=id=>person(id)?.name??"Unknown";
-const initials=n=>n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+const initials=n=>String(n||"").split(" ").filter(Boolean).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+const personInitials=p=>p.initials||initials(p.name); // chosen on the Profile page, else from the name
 const statusOf=key=>STATUSES.find(s=>s.key===key)||STATUSES[0];
 const colLabel=key=>COLS.find(c=>c.key===key)?.label??key;
 /* organisation. A "unit" is what goals, rocks and cards belong to: the company, a department, a team or a forum. */
@@ -1347,6 +1391,7 @@ const defaultUnitId=kind=>{
      on teams and meetings ("team level"), like the Scorecard (measurables). A meeting's members also fully edit the
      rocks the meeting shows (and the measurables tracked in it).
    - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
+   - your own profile: everyone may change their own name, initials and colour (nothing else of their person record).
    - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
      its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it.
    - private meetings (unit.private, e.g. the DT Team): only their direct members see and change their rocks and board,
@@ -1386,6 +1431,10 @@ function createRights({units,people,adminEmails}){
   const canManageMembers=(p,unitId)=>hasRights(p,unitId)||isAdmin(p); // admins may always add themselves (break-glass)
   // a record's fields apart from some keys (and _etag etc.), to check that nothing else changed
   const fieldsBut=(x,skip)=>JSON.stringify(Object.keys(x||{}).filter(k=>!skip.includes(k)&&k[0]!=="_").sort().map(k=>[k,x[k]]));
+  // a person's own profile (Profile page): a name, at most 3 initials (empty = from the name), a colour like "#1F8FD1"
+  const PROFILE=["name","initials","color"];
+  const validProfile=x=>typeof x.name==="string"&&!!x.name.trim()&&x.name.length<=100
+    &&(x.initials===undefined||x.initials===""||(typeof x.initials==="string"&&x.initials.length<=3))&&(x.color===undefined||/^#[0-9a-fA-F]{6}$/.test(x.color));
   return {
     isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,canManageMembers,isMember,isPrivate,canSeeContent,inForum,canSeeGoal,
     canSeeRock:canEditRock, // rocks: you see exactly the ones you can change (your teams and below, plus what your meetings show)
@@ -1417,8 +1466,10 @@ function createRights({units,people,adminEmails}){
         if(!before&&after.private===true)return !!parentOf(after)&&hasRights(p,parentOf(after).id); // creating a private meeting
         return (!before||canManageUnit(p,before))&&(!after||canManageUnit(p,after));
       }
-      if(collection==="people"){ // membership only: nothing else of a person changes, and every unit added or removed is yours
-        if(!before||!after||fieldsBut(before,["unitIds"])!==fieldsBut(after,["unitIds"]))return false; // people are created at sign-in
+      if(collection==="people"){ // membership (every unit added or removed is yours) and your own profile; nothing else changes
+        const own=p&&before&&before.id===p.id?PROFILE:[]; // your own name, initials and colour
+        if(!before||!after||fieldsBut(before,["unitIds",...own])!==fieldsBut(after,["unitIds",...own]))return false; // people are created at sign-in
+        if(own.length&&!validProfile(after))return false;
         const was=memberOf(before),now=memberOf(after);
         return [...now.filter(id=>!was.includes(id)),...was.filter(id=>!now.includes(id))].every(id=>canManageMembers(p,id));
       }
@@ -1544,11 +1595,11 @@ function goalChainText(g){
 }
 function avatarHTML(id){
   const p=person(id);
-  return `<span class="avatar" style="background:${p?esc(p.color):"var(--grey-fill)"}">${p?initials(p.name):"?"}</span>`;
+  return `<span class="avatar" style="background:${p?esc(p.color):"var(--grey-fill)"}">${p?esc(personInitials(p)):"?"}</span>`;
 }
 function ownerHTML(id){
   const p=person(id);if(!p)return `<span class="muted">—</span>`;
-  return `<span class="avatar" style="background:${esc(p.color)}" data-tip="${esc(p.name)}" aria-label="${esc(p.name)}">${initials(p.name)}</span>`;
+  return `<span class="avatar" style="background:${esc(p.color)}" data-tip="${esc(p.name)}" aria-label="${esc(p.name)}">${esc(personInitials(p))}</span>`;
 }
 const teamTagHTML=id=>id&&id!==teamFilter?`<span class="teamtag">${esc(unitName(id))}</span>`:""; // hidden when that team is filtered
 const abbr=name=>name.split(/\s+/).map(w=>w[0]).join("").toUpperCase();
@@ -2129,6 +2180,81 @@ function scPaste(e){
   toast(bad?`Pasted ${plural(cells,"cell")}; ${plural(bad,"value")} weren't numbers and were skipped`:`Pasted ${plural(cells,"cell")}`,bad?4000:1600);
 }
 
+/* ---------- To-dos: every Level 10 item (IDS and To Do) that has you as an owner, on all boards you can see ----------
+   Grouped per board in the organisation's order; IDS before To Do. Click an item to open it; "Open Level 10" goes to its
+   board. Done items are hidden behind a toggle. The team filter doesn't apply: this is your own list. */
+let todosDone=false; // To-dos: also show the items that are done
+function renderTodos(){
+  const me=currentUserId(),mine=S.cards.filter(c=>(c.owners||[]).includes(me)&&boardOk(c.unitId));
+  const open=mine.filter(c=>c.column!=="done"),done=mine.filter(c=>c.column==="done"),shown=todosDone?mine:open;
+  const colOrder=k=>COLS.findIndex(c=>c.key===k);
+  const boards=S.units.filter(u=>shown.some(c=>c.unitId===u.id)); // in the organisation's order
+  const ids=open.filter(c=>c.column==="ids").length,todo=open.filter(c=>c.column==="todo").length;
+  const head=`<div class="viewhead"><h1>My to-dos</h1><span class="count">${plural(todo,"to-do")} · ${plural(ids,"issue")}</span><div class="spacer"></div>
+    ${done.length?`<label class="check"><input type="checkbox" data-act="todosdone" ${todosDone?"checked":""}> Show done (${done.length})</label>`:""}</div>`;
+  const item=c=>{
+    const others=(c.owners||[]).filter(id=>id!==me),upd=(c.updates||[]).length,last=(c.updates||[])[0];
+    return `<button class="todo ${c.column==="done"?"isdone":""}" data-act="editcard" data-id="${c.id}">
+      <span class="colpill c-${c.column}">${esc(colLabel(c.column))}</span>
+      <span class="tt">${esc(c.title)}</span>
+      ${last?`<span class="tlast" data-tip="${esc(`Latest update · ${updMeta(last)}\n${last.text}`)}">${ICONS.note}${upd}</span>`:""}
+      <span class="tothers">${others.map(ownerHTML).join("")}</span>
+      <span class="tdate" data-tip="Added ${esc(fmtStamp(c.createdAt))}">${esc(fmtDate(stampDay(c.createdAt)))}</span></button>`;
+  };
+  const group=u=>{
+    const cs=shown.filter(c=>c.unitId===u.id).sort((a,b)=>colOrder(a.column)-colOrder(b.column)||byRank(a,b));
+    return `<section class="board todogrp"><header><span class="dot" style="background:var(--${levelOf(u.id).toLowerCase()})"></span><h2>${esc(u.name)}</h2>
+      <span class="n">${cs.filter(c=>c.column!=="done").length}</span><div class="spacer"></div><button class="btn ghost sm" data-act="openboard" data-id="${u.id}">Open Level 10 →</button></header>
+      <div class="todolist">${cs.map(item).join("")}</div></section>`;
+  };
+  const empty=`<div class="empty"><b>Nothing on your list${done.length&&!todosDone?" right now":""}</b>Level 10 items (issues and to-dos) that have you as an owner show up here, from all your teams and meetings.</div>`;
+  return `<div class="todopage">${head}${boards.length?`<div class="todos">${boards.map(group).join("")}</div>`:empty}</div>`;
+}
+
+/* ---------- Profile: your own name, initials and colour (the rights block lets everyone change only these of themselves) ----------
+   Opened from your name / avatar in the top bar. On Azure the name comes from your Microsoft account the first time you
+   sign in; after that it is yours to change. Initials are empty by default: then they follow the name. */
+const PROFILE_COLORS=["#5B4BDB","#1F8FD1","#19A974","#E29A1C","#D93B4F","#0E7A5A","#7C4DFF","#00897B","#C2185B","#5D4037"]; // as the server's
+let profileDraft=null; // the form while you edit: {name, initials, color}
+const profileDirty=(p,d)=>d.name!==p.name||d.initials!==(p.initials||"")||d.color!==p.color;
+function renderProfile(){
+  const p=me();if(!p)return `<div class="empty">No profile.</div>`;
+  const d=profileDraft||={name:p.name,initials:p.initials||"",color:p.color};
+  const units=(p.unitIds||[]).map(unit).filter(Boolean),dirty=profileDirty(p,d);
+  const preview={...p,name:d.name.trim()||p.name,initials:d.initials,color:d.color};
+  const role={admin:"Admin",member:"Member",pending:"Waiting for a team"}[roleOf(p)];
+  return `<div class="viewhead"><h1>Profile</h1></div>
+  <div class="board profile">
+    <div class="pfhead"><span class="avatar big" id="pf-avatar" style="background:${esc(d.color)}">${esc(personInitials(preview))}</span>
+      <div><div class="pfname" id="pf-name">${esc(preview.name)}</div><div class="muted">${esc(p.email||"")}${p.email?" · ":""}${role}</div></div></div>
+    <div class="field"><label for="pf-n">Name</label><input id="pf-n" data-pf="name" value="${esc(d.name)}" maxlength="100" autocomplete="name"></div>
+    <div class="field"><label for="pf-i">Initials <span class="muted">· up to 3 letters; empty = from your name</span></label>
+      <input id="pf-i" data-pf="initials" value="${esc(d.initials)}" maxlength="3" placeholder="${esc(initials(preview.name))}" class="pfinit"></div>
+    <div class="field"><label>Colour</label><div class="swatches">${PROFILE_COLORS.map(c=>`<button type="button" class="swatch ${c===d.color?"on":""}" data-act="pfcolor" data-color="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c===d.color}"></button>`).join("")}</div></div>
+    <div class="field"><label>Teams and meetings</label><div class="pfunits">${units.map(u=>`<span class="teamtag">${esc(u.name)}</span>`).join("")||`<span class="muted">None yet</span>`}</div></div>
+    <div class="row"><button class="btn primary" data-act="pfsave" ${dirty?"":"disabled"}>Save</button><button class="btn ghost" data-act="pfreset" ${dirty?"":"disabled"}>Undo changes</button></div>
+  </div>`;
+}
+// typing updates the preview and the buttons in place (no re-render, so the cursor stays)
+function profileInput(el){
+  const p=me(),d=profileDraft;if(!d)return;
+  d[el.dataset.pf]=el.dataset.pf==="initials"?el.value.toUpperCase().replace(/\s/g,""):el.value;
+  if(el.dataset.pf==="initials"&&el.value!==d.initials)el.value=d.initials;
+  const preview={...p,name:d.name.trim()||p.name,initials:d.initials,color:d.color};
+  $("#pf-avatar").textContent=personInitials(preview);$("#pf-name").textContent=preview.name;
+  $("#pf-i").placeholder=initials(preview.name);
+  $$('[data-act="pfsave"],[data-act="pfreset"]').forEach(b=>b.disabled=!profileDirty(p,d));
+}
+function saveProfile(){
+  const p=me(),d=profileDraft,name=d.name.trim().replace(/\s+/g," ");
+  if(!name){toast("Your name can't be empty",3000);$("#pf-n").focus();return}
+  p.name=name;
+  if(d.initials)p.initials=d.initials.slice(0,3);else delete p.initials;
+  p.color=d.color;
+  profileDraft=null;save();render();drawTopBar();toast("Profile saved");
+}
+const openProfile=()=>{profileDraft=null;view="profile";render()};
+
 /* ---------- Organisation (admins only): one page with two tabs, the org tree and the people ----------
    Changes go through save() like everything else; the server only accepts them from admins. */
 let orgTab="structure"; // structure | people
@@ -2244,7 +2370,7 @@ const waitingHTML=(name,email,hint)=>`<div class="board gate"><h1>Welcome, ${esc
   <p class="muted">${esc(hint)}</p></div>`;
 
 /* ---------- render ---------- */
-const VIEWS={plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10,scorecard:renderScorecard,org:renderOrgPage};
+const VIEWS={plan:renderPlan,rocks:renderRocks,review:renderReview,l10:renderL10,scorecard:renderScorecard,todos:renderTodos,org:renderOrgPage,profile:renderProfile};
 const ADMIN_VIEWS=[]; // none any more: the organisation manages itself (everyone sees it, edits follow rights)
 function render(){
   if(!S)return; // still loading, or stopped at a "no access" / error screen
@@ -2926,6 +3052,10 @@ const APP_ACTIONS={
     const inp=$(`[data-act="mtitle"][data-id="${m.id}"]`);inp?.focus();inp?.select();
   },
   pickteam:(b,id)=>{teamFilter=id;l10Add=null;rrScroll=null;scJump=true;render()},
+  openboard:(b,id)=>{teamFilter=id;view="l10";render()},
+  pfcolor:b=>{if(profileDraft){profileDraft.color=b.dataset.color;render()}},
+  pfsave:()=>saveProfile(),
+  pfreset:()=>{profileDraft=null;render()},
   closeboard:()=>{teamFilter="";l10Add=null;updOpen=null;idsOpen=null;scMenu=null;scOwn=null;render()},
   scmenu:(b,id)=>{scMenu=scMenu===id?null:id;idsOpen=null;render()},
   scown:(b,id)=>{scOwn=scOwn===id?null:id;scMenu=null;idsOpen=null;render()},
@@ -3003,6 +3133,7 @@ const APP_CHANGES={
     if(el.checked)p.admin=true;else delete p.admin;
     save();render();toast(el.checked?`${p.name} is now an admin`:`${p.name} is no longer an admin`);
   },
+  todosdone:el=>{todosDone=el.checked;render()},
   levelfilter:el=>{el.checked?levelFilter.add(el.value):levelFilter.delete(el.value);render()},
   year:el=>{planYear=Number(el.value);render()},
   quarter:el=>{quarterFilter=el.value;rrScroll=null;render()},
@@ -3046,6 +3177,7 @@ const MODAL_ACTIONS={
   carddel:deleteCard,
 };
 
+$("#userBox").addEventListener("click",e=>{if(e.target.closest("[data-profile]")){hideTip();openProfile()}}); // your avatar / name in the top bar
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{view=t.dataset.view;if(view==="review")rrScroll=null;if(view==="scorecard")scOpened();render()}));
 $("#app").addEventListener("click",e=>{
   const b=e.target.closest("[data-act]"),fn=b&&APP_ACTIONS[b.dataset.act];if(!fn)return;
@@ -3056,6 +3188,7 @@ $("#app").addEventListener("change",e=>APP_CHANGES[e.target.dataset.act]?.(e.tar
 $("#app").addEventListener("input",e=>{
   if(e.target.matches("[data-pop-text]")&&updOpen)updOpen.draft=e.target.value;
   if(e.target.matches("[data-ids-text]")&&idsOpen)idsOpen.draft=e.target.value;
+  if(e.target.dataset.pf)profileInput(e.target);
 });
 $("#app").addEventListener("keydown",e=>{
   const t=e.target;
@@ -3071,6 +3204,7 @@ $("#app").addEventListener("keydown",e=>{
   else if(t.matches(".kcard")&&(e.key==="Enter"||e.key===" ")){e.preventDefault();cardModal(card(t.dataset.card))}
   else if(t.matches("input.inline")&&e.key==="Enter")t.blur(); // commits via "change"
   else if(t.matches(".scc"))scKey(e);
+  else if(t.dataset.pf&&e.key==="Enter"){e.preventDefault();saveProfile()}
 });
 /* Scorecard: cells act like spreadsheet cells (see "Scorecard") */
 $("#app").addEventListener("mousedown",e=>{ // a click selects the whole cell (typing replaces it); a click in the focused cell edits
@@ -3232,13 +3366,14 @@ function drawTopBar(){
     :kind==="mock"?"Mock API: the server code runs in this browser on test data; sign-in is simulated."
     :`${backend.env} environment on Azure`;
   const box=$("#userBox");
+  const profileBtn=label=>S&&myRole()!=="pending"?`<button class="mebtn" data-profile data-tip="Your profile: name, initials and colour">${avatarHTML(session.userId)}${label}</button>`:"";
   if(kind==="local"){ // simulated sign-in: pick who you are
-    box.innerHTML=`<label for="me-in" data-tip="Simulated sign-in (local mode): pick who you are">You</label>`+pickerHTML("me",{dot:true});
-    initPicker("me",{get:()=>session.userId,set:v=>{if(v){session.userId=v;render()}},display:personName,dotColor:id=>person(id)?.color,allowNone:false,noun:"people",
+    box.innerHTML=profileBtn("")+`<label for="me-in" data-tip="Simulated sign-in (local mode): pick who you are">You</label>`+pickerHTML("me",{dot:true});
+    initPicker("me",{get:()=>session.userId,set:v=>{if(v){session.userId=v;profileDraft=null;render();drawTopBar()}},display:personName,dotColor:id=>person(id)?.color,allowNone:false,noun:"people",
       groups:()=>[{name:"Sign in as (simulated)",items:S.people.map(p=>({id:p.id,title:p.name,color:p.color,label:{admin:"Admin",pending:"Waiting"}[roleOf(p)]||""}))}]});
   }else{
     const name=S?personName(session.userId):backend.waiting?.name||""; // no S while waiting to be added to a team
-    box.innerHTML=`${S?avatarHTML(session.userId):""}<span class="uname" data-tip="${esc(backend.user?.email||"")}">${esc(name)}</span>`
+    box.innerHTML=(S?profileBtn(`<span class="uname">${esc(name)}</span>`):`<span class="uname">${esc(name)}</span>`)
       +(kind==="api"?`<a class="btn ghost sm" href="/.auth/logout?post_logout_redirect_uri=/">Sign out</a>`:"");
   }
 }

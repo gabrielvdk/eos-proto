@@ -65,6 +65,7 @@
      on teams and meetings ("team level"), like the Scorecard (measurables). A meeting's members also fully edit the
      rocks the meeting shows (and the measurables tracked in it).
    - membership ("who is in a unit"): add and remove people in units you have rights on (a team member: their own team).
+   - your own profile: everyone may change their own name, initials and colour (nothing else of their person record).
    - structure (create, rename, reorder, delete, move a unit): only units *below* your own: a department member manages
      its teams, a company member the departments, teams and meetings. A unit can't change itself or anything above it.
    - private meetings (unit.private, e.g. the DT Team): only their direct members see and change their rocks and board,
@@ -104,6 +105,10 @@ function createRights({units,people,adminEmails}){
   const canManageMembers=(p,unitId)=>hasRights(p,unitId)||isAdmin(p); // admins may always add themselves (break-glass)
   // a record's fields apart from some keys (and _etag etc.), to check that nothing else changed
   const fieldsBut=(x,skip)=>JSON.stringify(Object.keys(x||{}).filter(k=>!skip.includes(k)&&k[0]!=="_").sort().map(k=>[k,x[k]]));
+  // a person's own profile (Profile page): a name, at most 3 initials (empty = from the name), a colour like "#1F8FD1"
+  const PROFILE=["name","initials","color"];
+  const validProfile=x=>typeof x.name==="string"&&!!x.name.trim()&&x.name.length<=100
+    &&(x.initials===undefined||x.initials===""||(typeof x.initials==="string"&&x.initials.length<=3))&&(x.color===undefined||/^#[0-9a-fA-F]{6}$/.test(x.color));
   return {
     isAdmin,role,hasRights,canEditRock,teamLevel,canManageUnit,canManageMembers,isMember,isPrivate,canSeeContent,inForum,canSeeGoal,
     canSeeRock:canEditRock, // rocks: you see exactly the ones you can change (your teams and below, plus what your meetings show)
@@ -135,8 +140,10 @@ function createRights({units,people,adminEmails}){
         if(!before&&after.private===true)return !!parentOf(after)&&hasRights(p,parentOf(after).id); // creating a private meeting
         return (!before||canManageUnit(p,before))&&(!after||canManageUnit(p,after));
       }
-      if(collection==="people"){ // membership only: nothing else of a person changes, and every unit added or removed is yours
-        if(!before||!after||fieldsBut(before,["unitIds"])!==fieldsBut(after,["unitIds"]))return false; // people are created at sign-in
+      if(collection==="people"){ // membership (every unit added or removed is yours) and your own profile; nothing else changes
+        const own=p&&before&&before.id===p.id?PROFILE:[]; // your own name, initials and colour
+        if(!before||!after||fieldsBut(before,["unitIds",...own])!==fieldsBut(after,["unitIds",...own]))return false; // people are created at sign-in
+        if(own.length&&!validProfile(after))return false;
         const was=memberOf(before),now=memberOf(after);
         return [...now.filter(id=>!was.includes(id)),...was.filter(id=>!now.includes(id))].every(id=>canManageMembers(p,id));
       }

@@ -242,6 +242,25 @@ test("server: a team member onboards a newcomer, into their own team only",async
   eq((await api.data({principal:carol})).json.role,"member","carol is in");
   eq((await api.putItem({principal:bob,params:{collection:"units",id:"T9"},body:{record:{id:"T9",kind:"team",name:"X",parentId:"D"}}})).status,403,"a team member doesn't create teams");
 });
+test("server: everyone changes their own name, initials and colour (Profile page), nothing else and nobody else's",async()=>{
+  const {api}=setup();await tree(api);await assign(api,bob,["T1"]);
+  const carol=user("carol@letsgrow.com");await assign(api,carol,["T1"]);
+  const people=async()=>(await api.data({principal:bob})).json.people;
+  const mine=async()=>(await people()).find(p=>p.email==="bob@letsgrow.com");
+  const put=async(rec)=>(await api.putItem({principal:bob,params:{collection:"people",id:rec.id},body:{record:rec}})).status;
+  let b=await mine();
+  eq(await put({...b,name:"Bob de Bouwer",initials:"BdB",color:"#7C4DFF"}),200,"own name, initials and colour");
+  b=await mine();eq([b.name,b.initials,b.color],["Bob de Bouwer","BdB","#7C4DFF"],"stored");
+  eq(await put({...b,initials:""}),200,"initials back to automatic");
+  eq(await put({...b,initials:"ABCD"}),403,"at most 3 initials");
+  eq(await put({...b,name:"  "}),403,"a name is required");
+  eq(await put({...b,color:"red"}),403,"a colour like #1F8FD1");
+  eq(await put({...b,email:"x@letsgrow.com"}),403,"not the e-mail address");
+  eq(await put({...b,admin:true}),403,"not the admin flag");
+  eq(await put({...b,unitIds:["T1","T3"]}),403,"not into a unit you don't manage");
+  const c=(await people()).find(p=>p.email==="carol@letsgrow.com");
+  eq(await put({...c,name:"Caroline"}),403,"not someone else's name, even in your team");
+});
 test("server: members only change their own branch; moving needs rights on both sides",async()=>{
   const {api}=setup();await tree(api);await assign(api,bob,["T1"]);
   const put=(c,rec)=>api.putItem({principal:bob,params:{collection:c,id:rec.id},body:{record:rec}}).then(r=>r.status);
